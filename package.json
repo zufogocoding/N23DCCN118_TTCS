@@ -1,0 +1,23 @@
+{
+  "name": "n23dccn118_ttcs",
+  "version": "1.0.0",
+  "description": "đồ án thực tập cơ sở của các bạn sinh viên thuộc nhóm N23DCCN118",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zufogocoding/N23DCCN118_TTCS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zufogocoding/N23DCCN118_TTCS/issues"
+  },
+  "homepage": "https://github.com/zufogocoding/N23DCCN118_TTCS#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
