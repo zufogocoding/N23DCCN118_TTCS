@@ -1,7 +1,9 @@
-FROM node:22
+FROM node:25-alpine3.22
 
 
 WORKDIR /app
+
+RUN npm install -g nodemon
 
 COPY package*.json ./ 
 
