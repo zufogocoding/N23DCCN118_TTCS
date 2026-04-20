@@ -19,6 +19,10 @@
   },
   "homepage": "https://github.com/zufogocoding/N23DCCN118_TTCS#readme",
   "dependencies": {
-    "express": "^5.2.1"
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "node": "^24.15.0",
+    "nodemon": "^3.1.14",
+    "pg": "^8.20.0"
   }
 }
