@@ -53,3 +53,5 @@ router.get('/api/songs/:id/stream', async (req, res) => {
     res.status(500).send('Lỗi Server: ' + error.message);
   }
 });
+
+module.exports = router;
