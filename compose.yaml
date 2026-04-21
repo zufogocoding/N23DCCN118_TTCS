@@ -5,8 +5,10 @@ services:
      - '9000:9000'
     depends_on:
      - db
+    environment:
+     - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
  db:
-    image: postgres:latest
+    image: postgres:18-alpine
     environment:
      - POSTGRES_USER=${DB_USER}
      - POSTGRES_PASSWORD=${DB_PASSWORD}
@@ -14,7 +16,7 @@ services:
     volumes:
      - postgres_data:/var/lib/postgresql/data:Z
     ports:
-    - "5431:5432"
+    - "5433:5432"
 
 volumes:
   postgres_data:
