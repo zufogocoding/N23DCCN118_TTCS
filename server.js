@@ -4,7 +4,7 @@ const path = require('path');
 
 const songRoutes = require('./routes/songRoutes.js')
 const streamRoutes = require('./routes/streamRoutes.js')
-
+const authRoutes = require('./routes/authRoutes.js')
 const app = express()
 
 app.use(express.json());
