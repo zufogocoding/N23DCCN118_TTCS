@@ -7,9 +7,11 @@ RUN npm install -g nodemon
 
 COPY package*.json ./ 
 
-RUN npx prisma generate
+RUN npm install
 
 COPY . .
+
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost/dummy" npx prisma generate
 
 ENV PORT=9000
 
