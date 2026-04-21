@@ -2,9 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../db/index');
 
 // Secret Key để tạo Token (Thực tế nên bỏ vào file .env: process.env.JWT_SECRET)
 const JWT_SECRET = 'PandaExpress_Secret_Key_123!@#';

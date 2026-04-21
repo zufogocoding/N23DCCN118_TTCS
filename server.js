@@ -2,8 +2,9 @@ const express = require('express');
 
 const path = require('path');
 
-const songRoutes = require('./routes/songRoutes.js')
+//const songRoutes = require('./routes/songRoutes.js')
 const streamRoutes = require('./routes/streamRoutes.js')
+const songRoutes = require('./routes/songRoutes.js')
 const authRoutes = require('./routes/authRoutes.js')
 const app = express()
 
@@ -17,6 +18,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(songRoutes);
 app.use(streamRoutes);
+app.use(authRoutes);
 
 app.listen(9000, '0.0.0.0', () => {
   console.log('The server is now live and pretty much acessable')

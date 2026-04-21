@@ -4,25 +4,23 @@ const { Pool } = require('pg');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { PrismaClient } = require('@prisma/client');
 
+
 const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  host: process.env.DB_HOST || 'localhost',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL
 });
-pool.connect((err, client, release) => {
+
+
+const adapter = new PrismaPg(pool);
+
+
+const prisma = new PrismaClient({ adapter });
+
+pool.connect((err) => {
   if (err) {
-    console.error("Error connect to PostgreSQL:", err.stack);
+    console.error('❌ Lỗi kết nối Database:', err.message);
   } else {
-    console.log(`Connected to database: ${process.env.DB_NAME}`);
-    release();
+    console.log('✅ Đã kết nối Database thành công qua Prisma Adapter!');
   }
 });
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-  pool,
-};
 
-
-
+module.exports = prisma;
