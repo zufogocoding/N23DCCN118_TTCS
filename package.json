@@ -19,11 +19,17 @@
   },
   "homepage": "https://github.com/zufogocoding/N23DCCN118_TTCS#readme",
   "dependencies": {
+    "@prisma/client": "^7.7.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "multer": "^2.1.1",
     "node": "^24.15.0",
     "nodemon": "^3.1.14",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "prisma": "^7.7.0"
