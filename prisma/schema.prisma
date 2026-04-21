@@ -1,0 +1,184 @@
+// ==========================================
+// CẤU HÌNH KẾT NỐI (Prisma 7)
+// ==========================================
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 1. CÁC THỰC THỂ CHÍNH (BASE MODELS)
+// ==========================================
+
+model User {
+  id         Int       @id @default(autoincrement())
+  username   String    @db.VarChar(100)
+  email      String    @unique @db.VarChar(255)
+  dob        DateTime? @db.Date
+  country    String?   @db.VarChar(100)
+  isAdmin    Boolean   @default(false)
+  isActive   Boolean   @default(true) // Cho tính năng Soft Delete
+
+  // Quan hệ
+  artist       Artist?
+  playlists    Playlist[]
+  follows      Follow[]      @relation("Follower")
+  followedBy   Follow[]      @relation("Followee")
+  interactions Interaction[]
+}
+
+model Artist {
+  userId       Int      @id // PK cũng là FK trỏ về User
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistBio    String?  @db.Text
+  verifiedTick Boolean  @default(false)
+
+  albums       Album[]
+  songs        ArtistSong[]
+}
+
+model Playlist {
+  id          Int      @id @default(autoincrement())
+  playlistUrl String   @unique @db.VarChar(255)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  songs       PlaylistSong[]
+}
+
+model Album {
+  id           Int       @id @default(autoincrement())
+  type         String?   @db.VarChar(50)
+  releasedDate DateTime? @db.Date
+  artistId     Int
+  artist       Artist    @relation(fields: [artistId], references: [userId], onDelete: Cascade)
+
+  songs        AlbumSong[]
+}
+
+model Song {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(255)
+  energy      Decimal?  @db.Decimal(5, 4)
+  tempo       Decimal?  @db.Decimal(6, 2)
+  status      String?   @db.VarChar(50)
+  
+  // Streaming URLs
+  audioUrl    String    @db.VarChar(500)
+  coverArtUrl String?   @db.VarChar(500)
+  durationMs  Int
+  isDeleted   Boolean   @default(false) // Ignore Tag
+
+  // Quan hệ tới các bảng trung gian
+  genres       SongGenre[]
+  albums       AlbumSong[]
+  interactions Interaction[]
+  playlists    PlaylistSong[]
+  artists      ArtistSong[]
+  charts       ChartSong[]
+}
+
+model Genre {
+  id       Int         @id @default(autoincrement())
+  genreTag String      @unique @db.VarChar(100)
+  songs    SongGenre[]
+}
+
+model Chart {
+  id        Int         @id @default(autoincrement())
+  chartType String?     @db.VarChar(100)
+  updateAt  DateTime    @default(now())
+
+  songs     ChartSong[]
+}
+
+// ==========================================
+// 2. CÁC BẢNG TRUNG GIAN (JUNCTION TABLES)
+// ==========================================
+
+// Bảng User follow User
+model Follow {
+  followerId Int
+  followeeId Int
+  follower   User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followee   User @relation("Followee", fields: [followeeId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followeeId])
+}
+
+// Bảng Tương tác Lịch sử nghe nhạc (Cho ML)
+model Interaction {
+  userId         Int
+  songId         Int
+  timeStamp      DateTime @default(now())
+  completionRate Decimal? @db.Decimal(5, 4)
+  isLiked        Boolean  @default(false)
+  durationPlayed Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  // Khóa chính kết hợp 3 trường để 1 user có thể nghe 1 bài nhiều lần vào các lúc khác nhau
+  @@id([userId, songId, timeStamp]) 
+}
+
+// Playlist chứa Song
+model PlaylistSong {
+  playlistId Int
+  songId     Int
+  addAt      DateTime @default(now())
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, songId])
+}
+
+// Artist biểu diễn Song
+model ArtistSong {
+  artistId Int
+  songId   Int
+
+  artist Artist @relation(fields: [artistId], references: [userId], onDelete: Cascade)
+  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, songId])
+}
+
+// Album chứa Song
+model AlbumSong {
+  albumId Int
+  songId  Int
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, songId])
+}
+
+// Song thuộc Genre
+model SongGenre {
+  songId  Int
+  genreId Int
+
+  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([songId, genreId])
+}
+
+// Chart xếp hạng Song
+model ChartSong {
+  chartId    Int
+  songId     Int
+  totalScore Decimal? @db.Decimal(10, 2)
+  rank       Int?
+
+  chart Chart @relation(fields: [chartId], references: [id], onDelete: Cascade)
+  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([chartId, songId])
+}
