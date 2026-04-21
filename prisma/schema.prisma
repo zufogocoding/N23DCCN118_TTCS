@@ -17,6 +17,7 @@ model User {
   id         Int       @id @default(autoincrement())
   username   String    @db.VarChar(100)
   email      String    @unique @db.VarChar(255)
+  password   String    @db.VarChar(255)
   dob        DateTime? @db.Date
   country    String?   @db.VarChar(100)
   isAdmin    Boolean   @default(false)
