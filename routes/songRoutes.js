@@ -2,10 +2,9 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
-const router = express.সম্প্র(Router)(); const uploadDir = 'uploads/songs';
+const prisma = require('../db/index');
+const router = express.Router();
+const uploadDir = 'uploads/songs';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
