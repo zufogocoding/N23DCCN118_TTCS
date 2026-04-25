@@ -43,6 +43,7 @@ model Artist {
 
 model Playlist {
   id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
   playlistUrl String   @unique @db.VarChar(255)
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
