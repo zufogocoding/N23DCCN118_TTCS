@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
-const JWT_SECRET = 'PandaExpress_Secret_Key_123!@#';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const authController = {
   signup: async (req, res) => {
