@@ -1,4 +1,4 @@
-```markdown
+ 
 # N23DCCN118_TTCS - Backend API
 
 Đồ án thực tập cơ sở của nhóm N23DCCN118. Đây là hệ thống Backend API (PERN stack) hỗ trợ quản lý người dùng và stream âm nhạc.
@@ -86,4 +86,3 @@ Server sẽ chạy tại: `http://localhost:9000`
 * `/prisma` - Chứa file `schema.prisma` và lịch sử migrations.
 * `/db` - Cấu hình Prisma Client kết nối database bằng adapter-pg.
 * `/uploads` - Thư mục lưu trữ file audio được upload.
-```
