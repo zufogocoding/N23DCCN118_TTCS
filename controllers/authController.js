@@ -10,7 +10,7 @@ const authController = {
     try {
       const { username, email, password, dob, country } = req.body;
       const existingUser = await prisma.user.findUnique({ where: { email: email } });
-      
+
       if (existingUser) return res.status(400).json({ error: 'Email này đã được sử dụng!' });
 
       const hashedPassword = await bcrypt.hash(password, 10);

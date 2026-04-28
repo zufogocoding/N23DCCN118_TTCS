@@ -6,7 +6,7 @@ const songController = {
   uploadSong: async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: 'Chưa chọn file!' });
-      
+
       const savedAudioUrl = `/${req.file.path.replace(/\\/g, '/')}`;
       const { title, durationMs } = req.body;
 
