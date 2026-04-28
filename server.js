@@ -2,8 +2,7 @@ const express = require('express');
 
 const path = require('path');
 
-//const songRoutes = require('./routes/songRoutes.js')
-//const streamRoutes = require('./routes/streamRoutes.js')
+const streamRoutes = require('./routes/streamRoutes.js')
 const songRoutes = require('./routes/songRoutes.js')
 const authRoutes = require('./routes/authRoutes.js')
 const app = express()
