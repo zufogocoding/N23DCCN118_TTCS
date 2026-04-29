@@ -1,12 +1,15 @@
 // ==========================================
-// CẤU HÌNH KẾT NỐI (Prisma 7)
+// CẤU HÌNH KẾT NỐI (Yêu cầu Prisma 5.1+ để dùng extensions)
 // ==========================================
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"] // Bật tính năng nhận diện extension
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector] // Kích hoạt pgvector
 }
 
 // ==========================================
@@ -21,34 +24,38 @@ model User {
   dob        DateTime? @db.Date
   country    String?   @db.VarChar(100)
   isAdmin    Boolean   @default(false)
-  isActive   Boolean   @default(true) // Cho tính năng Soft Delete
+  isActive   Boolean   @default(true)
+
+  // Vector lưu trữ User Factors từ ALS (Giả sử số chiều k = 64)
+  alsFeature Unsupported("vector(64)")?
 
   // Quan hệ
-  artist       Artist?
-  playlists    Playlist[]
-  follows      Follow[]      @relation("Follower")
-  followedBy   Follow[]      @relation("Followee")
-  interactions Interaction[]
+  artist              Artist?
+  playlists           Playlist[]
+  follows             Follow[]              @relation("Follower")
+  followedBy          Follow[]              @relation("Followee")
+  interactions        Interaction[]
+  recommendationCache RecommendationCache[]
 }
 
 model Artist {
-  userId       Int      @id // PK cũng là FK trỏ về User
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  artistBio    String?  @db.Text
-  verifiedTick Boolean  @default(false)
+  userId       Int     @id
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistBio    String? @db.Text
+  verifiedTick Boolean @default(false)
 
-  albums       Album[]
-  songs        ArtistSong[]
+  albums Album[]
+  songs  ArtistSong[]
 }
 
 model Playlist {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(255)
-  playlistUrl String   @unique @db.VarChar(255)
+  id          Int    @id @default(autoincrement())
+  title       String @db.VarChar(255)
+  playlistUrl String @unique @db.VarChar(255)
   userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  songs       PlaylistSong[]
+  songs PlaylistSong[]
 }
 
 model Album {
@@ -58,50 +65,75 @@ model Album {
   artistId     Int
   artist       Artist    @relation(fields: [artistId], references: [userId], onDelete: Cascade)
 
-  songs        AlbumSong[]
+  songs AlbumSong[]
 }
 
 model Song {
-  id          Int       @id @default(autoincrement())
-  title       String    @db.VarChar(255)
-  energy      Decimal?  @db.Decimal(5, 4)
-  tempo       Decimal?  @db.Decimal(6, 2)
-  status      String?   @db.VarChar(50)
-  
-  // Streaming URLs
-  audioUrl    String    @db.VarChar(500)
-  coverArtUrl String?   @db.VarChar(500)
-  durationMs  Int
-  isDeleted   Boolean   @default(false) // Ignore Tag
+  id          Int     @id @default(autoincrement())
+  title       String  @db.VarChar(255)
+  energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
+  tempo       Float? // Đổi sang Float
+  status      String? @db.VarChar(50)
 
-  // Quan hệ tới các bảng trung gian
-  genres       SongGenre[]
-  albums       AlbumSong[]
-  interactions Interaction[]
-  playlists    PlaylistSong[]
-  artists      ArtistSong[]
-  charts       ChartSong[]
+  // Vector lưu trữ Item Features (Cho CBF hoặc Item Factors của ALS)
+  embedding Unsupported("vector(64)")?
+
+  // Streaming URLs
+  audioUrl    String  @db.VarChar(500)
+  coverArtUrl String? @db.VarChar(500)
+  durationMs  Int
+  isDeleted   Boolean @default(false)
+
+  // Quan hệ
+  genres              SongGenre[]
+  albums              AlbumSong[]
+  interactions        Interaction[]
+  playlists           PlaylistSong[]
+  artists             ArtistSong[]
+  charts              ChartSong[]
+  recommendationCache RecommendationCache[]
+
+  // Tối ưu câu lệnh WHERE isDeleted = false khi quét toàn bộ bảng
+  @@index([isDeleted])
 }
 
 model Genre {
-  id       Int         @id @default(autoincrement())
-  genreTag String      @unique @db.VarChar(100)
-  songs    SongGenre[]
+  id       Int    @id @default(autoincrement())
+  genreTag String @unique @db.VarChar(100)
+
+  songs SongGenre[]
 }
 
 model Chart {
-  id        Int         @id @default(autoincrement())
-  chartType String?     @db.VarChar(100)
-  updateAt  DateTime    @default(now())
+  id        Int      @id @default(autoincrement())
+  chartType String?  @db.VarChar(100)
+  updateAt  DateTime @default(now())
 
-  songs     ChartSong[]
+  songs ChartSong[]
 }
 
 // ==========================================
-// 2. CÁC BẢNG TRUNG GIAN (JUNCTION TABLES)
+// 2. CÁC BẢNG TRUNG GIAN & HỆ THỐNG GỢI Ý
 // ==========================================
 
-// Bảng User follow User
+// Bảng lưu trữ kết quả chạy ngầm từ Python API
+model RecommendationCache {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  songId     Int
+  finalScore Float // Điểm gợi ý đã được tổng hợp (ALS + Content Based)
+  updatedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  // Tối ưu việc lấy Top N bài hát có điểm cao nhất cho 1 user
+  @@index([userId, finalScore(sort: Desc)])
+  
+  // Đảm bảo không insert trùng 1 bài nhiều lần cho 1 user trong cache
+  @@unique([userId, songId])
+}
+
 model Follow {
   followerId Int
   followeeId Int
@@ -111,23 +143,24 @@ model Follow {
   @@id([followerId, followeeId])
 }
 
-// Bảng Tương tác Lịch sử nghe nhạc (Cho ML)
 model Interaction {
   userId         Int
   songId         Int
   timeStamp      DateTime @default(now())
-  completionRate Decimal? @db.Decimal(5, 4)
+  completionRate Float?   // Tính bằng: durationPlayed / tổng thời lượng bài hát
   isLiked        Boolean  @default(false)
+  isSkipped      Boolean  @default(false) // Bổ sung cờ đánh dấu bấm Next
   durationPlayed Int?
+  
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song           Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+  // Khóa chính đảm bảo lưu được mọi sự kiện nghe lại (Replay)
+  @@id([userId, songId, timeStamp])
 
-  // Khóa chính kết hợp 3 trường để 1 user có thể nghe 1 bài nhiều lần vào các lúc khác nhau
-  @@id([userId, songId, timeStamp]) 
+  @@index([userId, timeStamp])
 }
 
-// Playlist chứa Song
 model PlaylistSong {
   playlistId Int
   songId     Int
@@ -139,7 +172,6 @@ model PlaylistSong {
   @@id([playlistId, songId])
 }
 
-// Artist biểu diễn Song
 model ArtistSong {
   artistId Int
   songId   Int
@@ -150,7 +182,6 @@ model ArtistSong {
   @@id([artistId, songId])
 }
 
-// Album chứa Song
 model AlbumSong {
   albumId Int
   songId  Int
@@ -161,7 +192,6 @@ model AlbumSong {
   @@id([albumId, songId])
 }
 
-// Song thuộc Genre
 model SongGenre {
   songId  Int
   genreId Int
@@ -172,15 +202,13 @@ model SongGenre {
   @@id([songId, genreId])
 }
 
-// Chart xếp hạng Song
 model ChartSong {
   chartId    Int
   songId     Int
-  totalScore Decimal? @db.Decimal(10, 2)
+  totalScore Float? // Đổi sang Float
   rank       Int?
-
-  chart Chart @relation(fields: [chartId], references: [id], onDelete: Cascade)
-  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+  chart      Chart  @relation(fields: [chartId], references: [id], onDelete: Cascade)
+  song       Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
 
   @@id([chartId, songId])
 }
