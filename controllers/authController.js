@@ -2,7 +2,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../db/index');
 
-// Cứ để đây, nhưng nếu undefined thì lát nữa sẽ có phương án dự phòng
 const JWT_SECRET = process.env.JWT_SECRET; 
 
 const authController = {
@@ -42,7 +41,7 @@ const authController = {
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) return res.status(401).json({ error: 'Sai email hoặc mật khẩu!' });
 
-      // Lấy Secret từ .env, nếu không có thì xài tạm chuỗi này để không bao giờ bị lỗi sập server
+      // Lấy Secret từ .env
       const secretKey = JWT_SECRET || 'PandaExpress_Backup_Secret_Key_123!@#';
 
       const token = jwt.sign(
