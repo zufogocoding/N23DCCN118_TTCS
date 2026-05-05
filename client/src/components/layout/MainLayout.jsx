@@ -1,26 +1,20 @@
 import React from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { 
-  Home, Search, Library, PlusSquare, Heart, 
-  PlayCircle, SkipBack, SkipForward, Shuffle, Repeat, 
-  Volume2, Mic2, ListMusic, Maximize2, MoreHorizontal, LogOut
+import { Outlet, Link } from 'react-router-dom';
+import {
+  Home, Search, Library, PlusSquare, Heart,
+  PlayCircle, SkipBack, SkipForward, Shuffle, Repeat,
+  Volume2, Mic2, ListMusic, Maximize2, MoreHorizontal
 } from 'lucide-react';
+// Đảm bảo đường dẫn import UserDropdown chính xác với cấu trúc thư mục của bạn
+import UserDropdown from '../UserDropdown';
 
 export default function MainLayout() {
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
-
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
-      
+
       {/* KHU VỰC TRÊN: 3 CỘT */}
       <div className="flex flex-1 overflow-hidden">
-        
+
         {/* CỘT 1: SIDEBAR TRÁI */}
         <div className="w-[240px] bg-black border-r border-[#222] flex flex-col hidden md:flex">
           <div className="p-6">
@@ -28,7 +22,7 @@ export default function MainLayout() {
               SOUNDWAVE.
             </h1>
           </div>
-          
+
           <nav className="flex flex-col gap-4 px-6 text-sm font-semibold text-[#a0a0a0]">
             <Link to="/" className="flex items-center gap-4 text-white hover:text-white transition-colors">
               <Home size={24} /> Trang chủ
@@ -50,25 +44,26 @@ export default function MainLayout() {
             </button>
           </div>
 
-          <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto">
+          <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
               <li className="hover:text-white cursor-pointer truncate">Chill Vibes</li>
               <li className="hover:text-white cursor-pointer truncate">Workout Mix</li>
               <li className="hover:text-white cursor-pointer truncate">Lofi Coding</li>
             </ul>
           </div>
-
-          {/* Nút Đăng xuất ở đáy Sidebar */}
-          <div className="p-4 border-t border-[#222]">
-            <button onClick={handleLogout} className="flex items-center gap-3 text-[#a0a0a0] hover:text-[#ff4d4f] transition-colors text-sm font-bold">
-              <LogOut size={18} /> Đăng xuất
-            </button>
-          </div>
         </div>
 
         {/* CỘT 2: NỘI DUNG CHÍNH Ở GIỮA */}
-        <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative">
-          <Outlet />
+        <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col">
+          {/* Header chứa UserDropdown */}
+          <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-4 bg-gradient-to-b from-[#121212] to-transparent">
+            <UserDropdown />
+          </div>
+
+          {/* Nội dung các trang */}
+          <div className="px-6 pb-6">
+            <Outlet />
+          </div>
         </div>
 
         {/* CỘT 3: NOW PLAYING BÊN PHẢI */}
@@ -77,13 +72,13 @@ export default function MainLayout() {
             <h3 className="font-bold text-sm uppercase tracking-widest text-[#00e6e6]">Đang phát</h3>
             <MoreHorizontal size={20} className="text-[#a0a0a0] cursor-pointer" />
           </div>
-          
-          <img 
-            src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop" 
-            alt="Now Playing" 
+
+          <img
+            src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"
+            alt="Now Playing"
             className="w-full aspect-square object-cover rounded-xl mb-4 shadow-2xl shadow-[#00e6e6]/10"
           />
-          
+
           <div className="flex justify-between items-start mb-4">
             <div>
               <h2 className="font-bold text-xl hover:underline cursor-pointer">Sài Gòn Đau Lòng Lắm</h2>
@@ -103,7 +98,7 @@ export default function MainLayout() {
 
       {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER */}
       <div className="h-[95px] bg-black border-t border-[#222] flex items-center justify-between px-4 z-50">
-        
+
         {/* 1. Trái: Info bài hát */}
         <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
           <img src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100&auto=format&fit=crop" alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
@@ -145,7 +140,7 @@ export default function MainLayout() {
           <Maximize2 size={16} className="hover:text-white cursor-pointer ml-2 transition-colors" />
         </div>
       </div>
-      
+
     </div>
   );
 }
