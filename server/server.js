@@ -1,5 +1,5 @@
 const express = require('express');
-
+const cors = require('cors');
 const path = require('path');
 
 const streamRoutes = require('./routes/streamRoutes.js')
@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes.js')
 const playlistRoutes = require('./routes/playlistRoutes.js');
 const app = express()
 
+app.use(cors()); // Cho phép Frontend gọi API 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
