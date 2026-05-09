@@ -1,5 +1,5 @@
 import React, { useState } from "react"; // Đã thêm useState
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useNavigate } from "react-router-dom";
 import {
   Home,
   Search,
@@ -22,6 +22,16 @@ import CreatePlaylistModal from "../CreatePlaylistModal";
 
 export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleProtectedAction = (action) => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      navigate('/login');
+    } else if (action) {
+      action();
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
@@ -64,12 +74,15 @@ export default function MainLayout() {
 
           <div className="mt-8 px-6 flex flex-col gap-4 text-sm font-semibold text-[#a0a0a0]">
             <button
-              onClick={() => setIsPlaylistModalOpen(true)}
+              onClick={() => handleProtectedAction(() => setIsPlaylistModalOpen(true))}
               className="flex items-center gap-4 hover:text-white transition-colors"
             >
               <PlusSquare size={24} /> Tạo Playlist
             </button>
-            <button className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]">
+            <button 
+              onClick={() => handleProtectedAction()}
+              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
+            >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
             </button>
           </div>
@@ -132,6 +145,7 @@ export default function MainLayout() {
             <Heart
               size={20}
               className="text-[#00e6e6] fill-current mt-1 cursor-pointer"
+              onClick={() => handleProtectedAction()}
             />
           </div>
 
@@ -165,6 +179,7 @@ export default function MainLayout() {
           <Heart
             size={16}
             className="text-[#a0a0a0] hover:text-[#00e6e6] cursor-pointer ml-2 transition-colors"
+            onClick={() => handleProtectedAction()}
           />
         </div>
 
@@ -177,7 +192,10 @@ export default function MainLayout() {
             <button className="text-[#a0a0a0] hover:text-white transition-colors">
               <SkipBack size={20} fill="currentColor" />
             </button>
-            <button className="text-white hover:scale-110 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5">
+            <button 
+              onClick={() => handleProtectedAction()}
+              className="text-white hover:scale-110 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5"
+            >
               <PlayCircle
                 size={36}
                 className="text-black"
