@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import UserDropdown from "../UserDropdown";
+import NotificationDropdown from "../NotificationDropdown.jsx";
 import CreatePlaylistModal from "../CreatePlaylistModal";
 
 export default function MainLayout() {
@@ -90,13 +91,16 @@ export default function MainLayout() {
         </div>
 
         {/* CỘT 2: NỘI DUNG CHÍNH Ở GIỮA */}
-        <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col">
-          {/* Header chứa UserDropdown */}
-          <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-4 bg-gradient-to-b from-[#121212] to-transparent">
-            <UserDropdown />
+        <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
+
+          {/* THANH HEADER PHẢI */}
+          <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-3 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-md">
+            <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
+              <NotificationDropdown />
+              <UserDropdown />
+            </div>
           </div>
 
-          {/* Nội dung các trang */}
           <div className="px-6 pb-6">
             <Outlet />
           </div>
@@ -123,7 +127,7 @@ export default function MainLayout() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h2 className="font-bold text-xl hover:underline cursor-pointer">
-                Sài Gòn Đau Lòng Lắm
+                Sài Gòn Đau Lòng Vãi :((((
               </h2>
               <p className="text-[#a0a0a0] text-sm hover:underline cursor-pointer">
                 Hứa Kim Tuyền
