@@ -9,6 +9,7 @@ import MainLayout from './components/layout/MainLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Home from './pages/user/Home';
+import Search from './pages/user/Search';
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
@@ -35,7 +36,7 @@ function App() {
         >
           {/* Outlet: Các trang này sẽ được nhúng vào giữa cái MainLayout */}
           <Route index element={<Home />} />
-          <Route path="search" element={<div className="p-8 text-white text-2xl font-bold">Trang Tìm Kiếm (Đang xây dựng)</div>} />
+          <Route path="search" element={<Search />} />
           <Route path="library" element={
             <ProtectedRoute>
               <div className="p-8 text-white text-2xl font-bold">Thư Viện Của Tôi (Đang xây dựng)</div>
