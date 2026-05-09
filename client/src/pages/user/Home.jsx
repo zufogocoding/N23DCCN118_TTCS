@@ -17,31 +17,23 @@ export default function Home() {
               <ChevronRight size={20} />
             </button>
           </div>
-          
+
           <div className="relative relative w-[300px] hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
-            <input 
-              type="text" 
-              placeholder="What do you want to listen to?" 
+            <input
+              type="text"
+              placeholder="What do you want to listen to?"
               className="w-full py-2 pl-10 pr-4 rounded-full bg-white text-black text-sm outline-none font-medium"
             />
           </div>
         </div>
-
-        <div className="flex items-center gap-4">
-          <button className="text-[#a0a0a0] hover:text-white relative">
-            <Bell size={20} />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-[#00e6e6] rounded-full"></span>
-          </button>
-          <div className="w-8 h-8 rounded-full bg-[#1ed760] flex items-center justify-center text-black font-bold text-sm">
-            {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
-          </div>
-        </div>
+        {/*Clean Import*/}
+        <div></div>
       </div>
 
       {/* NỘI DUNG CUỘN */}
       <div className="p-6 pt-0 flex-1 overflow-y-auto">
-        
+
         {/* Lời chào */}
         <div className="mt-8 mb-6">
           <h1 className="text-4xl font-black text-[#5e9ca0] mb-1 uppercase tracking-wider">Welcome Back</h1>
