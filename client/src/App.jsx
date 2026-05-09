@@ -21,7 +21,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        
+
         {/* NHÓM XÁC THỰC (Không cần đăng nhập) */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
@@ -29,8 +29,8 @@ function App() {
         </Route>
 
         {/* NHÓM APP CHÍNH (Bắt buộc phải đăng nhập) */}
-        <Route 
-          path="/" 
+        <Route
+          path="/"
           element={
             <ProtectedRoute>
               <MainLayout />

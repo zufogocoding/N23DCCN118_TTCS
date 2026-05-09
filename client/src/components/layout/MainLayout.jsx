@@ -1,5 +1,6 @@
-import React, { useState } from "react"; // Đã thêm useState
+import React, { useState } from "react";
 import { Outlet, Link } from "react-router-dom";
+import { usePlayer } from '../../context/PlayerContext';
 import {
   Home,
   Search,
@@ -7,6 +8,7 @@ import {
   PlusSquare,
   Heart,
   PlayCircle,
+  PauseCircle, // Đã import thêm PauseCircle
   SkipBack,
   SkipForward,
   Shuffle,
@@ -23,6 +25,14 @@ import CreatePlaylistModal from "../CreatePlaylistModal";
 
 export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+
+  // Lấy các state và function từ global context
+  const {
+    currentSong, isPlaying, volume, currentTime, duration,
+    isShuffle, isRepeat, setVolume, togglePlay, playNext, playPrev,
+    handleSeek, formatTime, toggleShuffle, toggleRepeat
+  } = usePlayer();
 
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
@@ -43,22 +53,13 @@ export default function MainLayout() {
           </div>
 
           <nav className="flex flex-col gap-4 px-6 text-sm font-semibold text-[#a0a0a0]">
-            <Link
-              to="/"
-              className="flex items-center gap-4 text-white hover:text-white transition-colors"
-            >
+            <Link to="/" className="flex items-center gap-4 text-white hover:text-white transition-colors">
               <Home size={24} /> Trang chủ
             </Link>
-            <Link
-              to="/search"
-              className="flex items-center gap-4 hover:text-white transition-colors"
-            >
+            <Link to="/search" className="flex items-center gap-4 hover:text-white transition-colors">
               <Search size={24} /> Tìm kiếm
             </Link>
-            <Link
-              to="/library"
-              className="flex items-center gap-4 hover:text-white transition-colors"
-            >
+            <Link to="/library" className="flex items-center gap-4 hover:text-white transition-colors">
               <Library size={24} /> Thư viện
             </Link>
           </nav>
@@ -77,22 +78,15 @@ export default function MainLayout() {
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
-              <li className="hover:text-white cursor-pointer truncate">
-                Chill Vibes
-              </li>
-              <li className="hover:text-white cursor-pointer truncate">
-                Workout Mix
-              </li>
-              <li className="hover:text-white cursor-pointer truncate">
-                Lofi Coding
-              </li>
+              <li className="hover:text-white cursor-pointer truncate">Chill Vibes</li>
+              <li className="hover:text-white cursor-pointer truncate">Workout Mix</li>
+              <li className="hover:text-white cursor-pointer truncate">Lofi Coding</li>
             </ul>
           </div>
         </div>
 
         {/* CỘT 2: NỘI DUNG CHÍNH Ở GIỮA */}
         <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
-
           {/* THANH HEADER PHẢI */}
           <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-3 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-md">
             <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
@@ -109,34 +103,26 @@ export default function MainLayout() {
         {/* CỘT 3: NOW PLAYING BÊN PHẢI */}
         <div className="w-[300px] bg-black p-4 hidden lg:flex flex-col border-l border-[#222]">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-sm uppercase tracking-widest text-[#00e6e6]">
-              Đang phát
-            </h3>
-            <MoreHorizontal
-              size={20}
-              className="text-[#a0a0a0] cursor-pointer"
-            />
+            <h3 className="font-bold text-sm uppercase tracking-widest text-[#00e6e6]">Đang phát</h3>
+            <MoreHorizontal size={20} className="text-[#a0a0a0] cursor-pointer" />
           </div>
 
           <img
-            src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"
+            src={currentSong?.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"}
             alt="Now Playing"
             className="w-full aspect-square object-cover rounded-xl mb-4 shadow-2xl shadow-[#00e6e6]/10"
           />
 
           <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="font-bold text-xl hover:underline cursor-pointer">
-                Sài Gòn Đau Lòng Vãi :((((
+            <div className="overflow-hidden pr-2">
+              <h2 className="font-bold text-xl hover:underline cursor-pointer truncate">
+                {currentSong?.title || "Sài Gòn Đau Lòng Vãi :(((("}
               </h2>
-              <p className="text-[#a0a0a0] text-sm hover:underline cursor-pointer">
-                Hứa Kim Tuyền
+              <p className="text-[#a0a0a0] text-sm hover:underline cursor-pointer truncate">
+                {currentSong?.artist?.name || "Hứa Kim Tuyền"}
               </p>
             </div>
-            <Heart
-              size={20}
-              className="text-[#00e6e6] fill-current mt-1 cursor-pointer"
-            />
+            <Heart size={20} className="text-[#00e6e6] fill-current mt-1 cursor-pointer shrink-0" />
           </div>
 
           <div className="bg-[#181818] p-4 rounded-xl mt-4 border border-[#333]">
@@ -149,82 +135,91 @@ export default function MainLayout() {
         </div>
       </div>
 
-      {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER */}
+      {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER HOẠT ĐỘNG */}
       <div className="h-[95px] bg-black border-t border-[#222] flex items-center justify-between px-4 z-50">
+
         {/* 1. Trái: Info bài hát */}
         <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
-          <img
-            src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100&auto=format&fit=crop"
-            alt="Cover"
-            className="w-14 h-14 rounded-md object-cover shadow-lg"
-          />
-          <div className="hidden sm:block">
-            <h4 className="font-semibold text-sm hover:underline cursor-pointer">
-              Sài Gòn Đau Lòng Lắm
-            </h4>
-            <p className="text-xs text-[#a0a0a0] hover:underline cursor-pointer">
-              Hứa Kim Tuyền
-            </p>
-          </div>
-          <Heart
-            size={16}
-            className="text-[#a0a0a0] hover:text-[#00e6e6] cursor-pointer ml-2 transition-colors"
-          />
+          {currentSong ? (
+            <>
+              <img src={currentSong.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100"} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
+              <div className="hidden sm:block max-w-[180px]">
+                <h4 className="font-semibold text-sm hover:underline cursor-pointer truncate">{currentSong.title}</h4>
+                <p className="text-xs text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Unknown Artist"}</p>
+              </div>
+              <Heart
+                onClick={() => setIsLiked(!isLiked)}
+                size={18}
+                className={`cursor-pointer ml-2 transition-colors ${isLiked ? 'text-[#00e6e6] fill-current' : 'text-[#a0a0a0] hover:text-white'}`}
+              />
+            </>
+          ) : (
+            <>
+              <img src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100&auto=format&fit=crop" alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg opacity-50" />
+              <div className="hidden sm:block text-xs text-[#a0a0a0]">Chưa phát bài nào</div>
+            </>
+          )}
         </div>
 
         {/* 2. Giữa: Player Controls */}
         <div className="flex flex-col items-center justify-center w-[40%] max-w-[500px]">
           <div className="flex items-center gap-6 mb-2">
-            <button className="text-[#a0a0a0] hover:text-white transition-colors">
+            <button onClick={toggleShuffle} className={`transition-colors ${isShuffle ? 'text-[#00e6e6]' : 'text-[#a0a0a0] hover:text-white'}`}>
               <Shuffle size={18} />
             </button>
-            <button className="text-[#a0a0a0] hover:text-white transition-colors">
+            <button onClick={playPrev} className="text-[#a0a0a0] hover:text-white transition-colors">
               <SkipBack size={20} fill="currentColor" />
             </button>
-            <button className="text-white hover:scale-110 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5">
-              <PlayCircle
-                size={36}
-                className="text-black"
-                fill="currentColor"
-              />
+
+            <button onClick={togglePlay} className="text-white hover:scale-105 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5">
+              {isPlaying ? (
+                <PauseCircle size={36} className="text-black" fill="currentColor" />
+              ) : (
+                <PlayCircle size={36} className="text-black" fill="currentColor" />
+              )}
             </button>
-            <button className="text-[#a0a0a0] hover:text-white transition-colors">
+
+            <button onClick={playNext} className="text-[#a0a0a0] hover:text-white transition-colors">
               <SkipForward size={20} fill="currentColor" />
             </button>
-            <button className="text-[#a0a0a0] hover:text-white transition-colors">
+            <button onClick={toggleRepeat} className={`transition-colors ${isRepeat ? 'text-[#00e6e6]' : 'text-[#a0a0a0] hover:text-white'}`}>
               <Repeat size={18} />
             </button>
           </div>
+
+          {/* Thanh tua nhạc (Progress Bar) */}
           <div className="w-full flex items-center gap-2 text-xs text-[#a0a0a0] font-mono">
-            <span>2:34</span>
-            <div className="h-1 flex-1 bg-[#333] rounded-full overflow-hidden cursor-pointer group relative">
-              <div className="w-2/3 h-full bg-[#00e6e6] group-hover:bg-[#00ffff] transition-colors"></div>
-            </div>
-            <span>4:12</span>
+            <span className="w-10 text-right">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              value={currentTime}
+              onChange={(e) => handleSeek(Number(e.target.value))}
+              className="flex-1 h-1 bg-[#333] rounded-full appearance-none cursor-pointer accent-[#00e6e6] hover:accent-[#00ffff]"
+            />
+            <span className="w-10 text-left">{formatTime(duration)}</span>
           </div>
         </div>
 
         {/* 3. Phải: Tools (Volume, Queue) */}
         <div className="flex items-center justify-end gap-3 w-[30%] min-w-[180px] text-[#a0a0a0]">
-          <Mic2
-            size={18}
-            className="hover:text-white cursor-pointer transition-colors"
+          <Mic2 size={18} className="hover:text-white cursor-pointer transition-colors" />
+          <ListMusic size={18} className="hover:text-white cursor-pointer transition-colors" />
+          <Volume2 size={18} className="hover:text-white cursor-pointer transition-colors" />
+
+          {/* Thanh chỉnh âm lượng (Volume Bar) */}
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="w-24 h-1 bg-[#333] rounded-full appearance-none cursor-pointer accent-white hover:accent-[#00e6e6]"
           />
-          <ListMusic
-            size={18}
-            className="hover:text-white cursor-pointer transition-colors"
-          />
-          <Volume2
-            size={18}
-            className="hover:text-white cursor-pointer transition-colors"
-          />
-          <div className="w-24 h-1 bg-[#333] rounded-full overflow-hidden cursor-pointer group">
-            <div className="w-1/2 h-full bg-white group-hover:bg-[#00e6e6] transition-colors"></div>
-          </div>
-          <Maximize2
-            size={16}
-            className="hover:text-white cursor-pointer ml-2 transition-colors"
-          />
+
+          <Maximize2 size={16} className="hover:text-white cursor-pointer ml-2 transition-colors" />
         </div>
       </div>
     </div>
