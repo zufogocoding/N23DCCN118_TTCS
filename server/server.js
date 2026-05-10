@@ -6,6 +6,7 @@ const streamRoutes = require('./routes/streamRoutes.js')
 const songRoutes = require('./routes/songRoutes.js')
 const authRoutes = require('./routes/authRoutes.js')
 const playlistRoutes = require('./routes/playlistRoutes.js');
+const interactRoutes = require('./routes/interactRoutes.js');
 const app = express()
 
 app.use(cors()); // Cho phép Frontend gọi API 
