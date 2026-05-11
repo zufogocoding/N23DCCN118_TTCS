@@ -28,21 +28,23 @@ export default function Home() {
               <ChevronRight size={20} />
             </button>
           </div>
-          
+
           <div className="relative relative w-[300px] hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
-            <input 
-              type="text" 
-              placeholder="What do you want to listen to?" 
+            <input
+              type="text"
+              placeholder="What do you want to listen to?"
               className="w-full py-2 pl-10 pr-4 rounded-full bg-white text-black text-sm outline-none font-medium"
             />
           </div>
         </div>
+        {/*Clean Import*/}
+        <div></div>
       </div>
 
       {/* NỘI DUNG CUỘN */}
       <div className="p-6 pt-0 flex-1 overflow-y-auto">
-        
+
         {/* Lời chào */}
         <div className="mt-8 mb-6">
           <h1 className="text-4xl font-black text-[#5e9ca0] mb-1 uppercase tracking-wider">{user.username ? 'Welcome Back' : 'Welcome to Soundwave'}</h1>
