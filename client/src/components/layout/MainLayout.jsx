@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Outlet, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from '../../context/PlayerContext';
 import {
   Home,
@@ -229,7 +229,6 @@ export default function MainLayout() {
               ) : (
                 <PlayCircle size={36} className="text-black" fill="currentColor" />
               )}
-            </button>
             </button>
 
             <button onClick={playNext} className="text-[#a0a0a0] hover:text-white transition-colors">
