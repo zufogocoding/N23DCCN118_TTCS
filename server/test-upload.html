@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Upload Nhạc Nhanh</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #121212; color: white; }
+        .container { max-width: 500px; background: #282828; padding: 20px; border-radius: 8px; }
+        input, button { width: 100%; margin-bottom: 15px; padding: 10px; box-sizing: border-box; }
+        button { background: #1ed760; border: none; color: black; font-weight: bold; cursor: pointer; }
+        button:hover { background: #1db954; }
+        #status { margin-top: 10px; font-size: 14px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Upload Nhạc Test</h2>
+    <form id="uploadForm">
+        <label>Tên bài hát:</label>
+        <input type="text" id="title" required>
+
+        <label>ID Nghệ sĩ (artistId):</label>
+        <input type="number" id="artistId" required>
+
+        <label>File Nhạc (MP3, WAV):</label>
+        <input type="file" id="songFile" accept="audio/*" required>
+
+        <label>Ảnh bìa (Tùy chọn):</label>
+        <input type="file" id="coverImage" accept="image/*">
+
+        <button type="submit">Gửi API Upload</button>
+    </form>
+    <div id="status"></div>
+</div>
+
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const statusDiv = document.getElementById('status');
+        const submitBtn = document.querySelector('button');
+        
+        statusDiv.innerText = "Đang xử lý...";
+        statusDiv.style.color = "yellow";
+        submitBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('title', document.getElementById('title').value);
+        formData.append('artistId', document.getElementById('artistId').value);
+        
+        // Đảm bảo tên 'song' và 'coverImage' khớp với tên cấu hình trong Multer ở Backend
+        formData.append('song', document.getElementById('songFile').files[0]);
+        
+        const coverInput = document.getElementById('coverImage').files[0];
+        if (coverInput) {
+            formData.append('coverImage', coverInput);
+        }
+
+        try {
+            // Sửa lại đường dẫn API nếu bạn dùng route khác (vd: /api/songs/upload)
+            const response = await fetch('http://localhost:9000/api/songs', {
+                method: 'POST',
+                // Bỏ comment dòng dưới nếu API của bạn yêu cầu JWT Token để upload
+                // headers: { 'Authorization': 'Bearer YOUR_TOKEN_HERE' },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                statusDiv.innerText = "Thành công: " + JSON.stringify(data);
+                statusDiv.style.color = "#1ed760";
+                document.getElementById('uploadForm').reset();
+            } else {
+                statusDiv.innerText = "Lỗi Backend: " + (data.error || JSON.stringify(data));
+                statusDiv.style.color = "#ff4d4f";
+            }
+        } catch (error) {
+            statusDiv.innerText = "Lỗi kết nối (CORS hoặc Server chết): " + error.message;
+            statusDiv.style.color = "#ff4d4f";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
