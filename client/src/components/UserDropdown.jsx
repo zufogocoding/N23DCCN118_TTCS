@@ -7,11 +7,9 @@ export default function UserDropdown() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  // Lấy thông tin user từ localStorage để kiểm tra trạng thái
-  const user = JSON.parse(localStorage.getItem('user')) || {};
+const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : {};
   const isLoggedIn = !!user.username || !!user.email;
-
-  // Logic lấy chữ cái đầu tiên của tên làm Avatar (nếu không có thì trả về icon)
   const getInitial = () => {
     if (user.username) return user.username.charAt(0).toUpperCase();
     if (user.email) return user.email.charAt(0).toUpperCase();
@@ -34,6 +32,25 @@ export default function UserDropdown() {
     setIsOpen(false);
     navigate('/login');
   };
+
+  if (!user) {
+    return (
+      <div className="flex items-center gap-4">
+        <Link 
+          to="/register" 
+          className="text-[#a0a0a0] hover:text-white font-bold py-2 px-4 transition-colors"
+        >
+          Đăng ký
+        </Link>
+        <Link 
+          to="/login" 
+          className="bg-white text-black hover:scale-105 font-bold py-2 px-6 rounded-full transition-transform"
+        >
+          Đăng nhập
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>

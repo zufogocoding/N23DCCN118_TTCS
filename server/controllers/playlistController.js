@@ -150,7 +150,7 @@ const playlistController = {
     }
   },
 
-  // 5. Lấy danh sách playlist của 1 user
+// Lấy danh sách playlist của một user
   getUserPlaylists: async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -160,12 +160,12 @@ const playlistController = {
         include: {
           _count: { select: { songs: true } }
         },
-        orderBy: { updatedAt: 'desc' }
+        orderBy: { updatedAt: 'desc' } // Mới cập nhật lên đầu
       });
 
       res.status(200).json(playlists);
     } catch (error) {
-      console.error("Lỗi getUserPlaylists:", error);
+console.error("Lỗi getUserPlaylists:", error);
       res.status(500).json({ error: 'Lỗi server khi lấy danh sách Playlist' });
     }
   },

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Music, X } from 'lucide-react';
 
-export default function CreatePlaylistModal({ isOpen, onClose }) {
+export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
@@ -34,24 +34,25 @@ export default function CreatePlaylistModal({ isOpen, onClose }) {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      // Sử dụng FormData vì có upload file
-      const formData = new FormData();
-      formData.append('title', title.trim() || 'My Playlist #1');
-      formData.append('description', description.trim());
-      formData.append('userId', user.id);
-      if (image) {
-        formData.append('image', image);
-      }
+      // Gửi dưới dạng JSON thay vì FormData vì Backend chưa cài đặt multer cho route này và DB chưa có cột lưu ảnh cover
+      const payload = {
+        title: title.trim() || 'My Playlist #1',
+        description: description.trim(),
+        userId: user.id
+      };
 
-      // Điều chỉnh URL này theo cấu hình route backend của bạn (ví dụ: server/routes/playlistRoutes.js)
       const res = await fetch('http://localhost:9000/api/playlists', {
         method: 'POST',
-        // headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }, // Bỏ comment nếu bạn dùng JWT
-        body: formData
+        headers: { 
+          'Content-Type': 'application/json',
+          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        // Tải lại danh sách playlist (nếu có state quản lý) hoặc reload nhẹ
+        // Tải lại danh sách playlist qua callback onSuccess
+        if (onSuccess) onSuccess();
         handleClose();
       } else {
         const data = await res.json();

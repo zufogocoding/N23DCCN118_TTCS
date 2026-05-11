@@ -33,6 +33,36 @@ export default function MainLayout() {
     isShuffle, isRepeat, setVolume, togglePlay, playNext, playPrev,
     handleSeek, formatTime, toggleShuffle, toggleRepeat
   } = usePlayer();
+  const [userPlaylists, setUserPlaylists] = useState([]);
+  const navigate = useNavigate();
+
+  const fetchPlaylists = async () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      try {
+        const res = await fetch(`http://localhost:9000/api/playlists/user/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUserPlaylists(data);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy playlist:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchPlaylists();
+  }, []);
+
+  const handleProtectedAction = (action) => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      navigate('/login');
+    } else if (action) {
+      action();
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
@@ -40,6 +70,7 @@ export default function MainLayout() {
       <CreatePlaylistModal
         isOpen={isPlaylistModalOpen}
         onClose={() => setIsPlaylistModalOpen(false)}
+        onSuccess={fetchPlaylists}
       />
 
       {/* KHU VỰC TRÊN: 3 CỘT */}
@@ -66,21 +97,30 @@ export default function MainLayout() {
 
           <div className="mt-8 px-6 flex flex-col gap-4 text-sm font-semibold text-[#a0a0a0]">
             <button
-              onClick={() => setIsPlaylistModalOpen(true)}
+              onClick={() => handleProtectedAction(() => setIsPlaylistModalOpen(true))}
               className="flex items-center gap-4 hover:text-white transition-colors"
             >
               <PlusSquare size={24} /> Tạo Playlist
             </button>
-            <button className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]">
+            <button 
+              onClick={() => handleProtectedAction()}
+              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
+            >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
             </button>
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
-              <li className="hover:text-white cursor-pointer truncate">Chill Vibes</li>
-              <li className="hover:text-white cursor-pointer truncate">Workout Mix</li>
-              <li className="hover:text-white cursor-pointer truncate">Lofi Coding</li>
+              {userPlaylists.length === 0 ? (
+                <li className="text-xs text-[#666]">Chưa có playlist nào.</li>
+              ) : (
+                userPlaylists.map(playlist => (
+                  <li key={playlist.id} className="hover:text-white cursor-pointer truncate transition-colors">
+                    {playlist.title}
+                  </li>
+                ))
+              )}
             </ul>
           </div>
         </div>
@@ -122,7 +162,11 @@ export default function MainLayout() {
                 {currentSong?.artist?.name || "Hứa Kim Tuyền"}
               </p>
             </div>
-            <Heart size={20} className="text-[#00e6e6] fill-current mt-1 cursor-pointer shrink-0" />
+            <Heart
+              size={20}
+              className="text-[#00e6e6] fill-current mt-1 cursor-pointer shrink-0"
+              onClick={() => handleProtectedAction()}
+            />
           </div>
 
           <div className="bg-[#181818] p-4 rounded-xl mt-4 border border-[#333]">
@@ -140,7 +184,7 @@ export default function MainLayout() {
 
         {/* 1. Trái: Info bài hát */}
         <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
-          {currentSong ? (
+{currentSong ? (
             <>
               <img src={currentSong.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100"} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
               <div className="hidden sm:block max-w-[180px]">
@@ -148,7 +192,10 @@ export default function MainLayout() {
                 <p className="text-xs text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Unknown Artist"}</p>
               </div>
               <Heart
-                onClick={() => setIsLiked(!isLiked)}
+                onClick={() => {
+                  handleProtectedAction(); 
+                  setIsLiked(!isLiked);
+                }}
                 size={18}
                 className={`cursor-pointer ml-2 transition-colors ${isLiked ? 'text-[#00e6e6] fill-current' : 'text-[#a0a0a0] hover:text-white'}`}
               />
@@ -170,13 +217,19 @@ export default function MainLayout() {
             <button onClick={playPrev} className="text-[#a0a0a0] hover:text-white transition-colors">
               <SkipBack size={20} fill="currentColor" />
             </button>
-
-            <button onClick={togglePlay} className="text-white hover:scale-105 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5">
+            <button
+              onClick={() => {
+                handleProtectedAction();
+                togglePlay();
+              }}
+              className="text-white hover:scale-105 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5"
+            >
               {isPlaying ? (
                 <PauseCircle size={36} className="text-black" fill="currentColor" />
               ) : (
                 <PlayCircle size={36} className="text-black" fill="currentColor" />
               )}
+            </button>
             </button>
 
             <button onClick={playNext} className="text-[#a0a0a0] hover:text-white transition-colors">

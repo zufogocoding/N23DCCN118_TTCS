@@ -88,6 +88,9 @@ export default function Login() {
             </button>
           </div>
           {errors.password && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.password.message}</p>}
+          <div className="flex justify-end mt-1">
+            <Link to="/forgot-password" className="text-xs text-[#a0a0a0] hover:text-[#00e6e6] transition-colors">Quên mật khẩu?</Link>
+          </div>
         </div>
 
         <button type="submit" disabled={isLoading} className="mt-4 p-3 rounded-lg bg-gradient-to-r from-[#00e6e6] to-[#008080] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
