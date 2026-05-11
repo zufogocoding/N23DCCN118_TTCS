@@ -1,64 +1,142 @@
 // server/controllers/interactController.js
 const prisma = require('../db/index');
 
-const trackInteraction = async (req, res) => {
-  try {
-    const { userId, songId, action, duration } = req.body;
+const interactController = {
+  /**
+   * Ghi nhận tương tác nghe nhạc (LISTEN / SKIP)
+   * Mỗi lần nghe = 1 record mới trong bảng Interaction (composite key: userId + songId + timeStamp)
+   */
+  trackListening: async (req, res) => {
+    try {
+      const { userId, songId, durationPlayed, isSkipped } = req.body;
 
-    if (!userId || !songId || !action) {
-      return res.status(400).json({ error: "Thiếu dữ liệu bắt buộc" });
-    }
+      if (!userId || !songId) {
+        return res.status(400).json({ error: "Thiếu userId hoặc songId" });
+      }
 
-    // 1. Nếu hành động là LIKE / UNLIKE
-    if (action === 'LIKE') {
-      // Tìm xem đã like chưa
-      const existingLike = await prisma.interaction.findFirst({
-        where: { userId, songId, type: 'LIKE' }
+      // Kiểm tra bài hát có tồn tại và chưa bị xóa không
+      const song = await prisma.song.findFirst({
+        where: { id: parseInt(songId), isDeleted: false }
       });
 
-      if (existingLike) {
-        // Nếu đã like rồi thì xóa (Toggle Unlike)
-        await prisma.interaction.delete({ where: { id: existingLike.id } });
-        return res.status(200).json({ message: "Đã bỏ thích", isLiked: false });
-      } else {
-        // Chưa like thì tạo mới
-        await prisma.interaction.create({
-          data: { userId, songId, type: 'LIKE' }
-        });
-        return res.status(200).json({ message: "Đã thích", isLiked: true });
+      if (!song) {
+        return res.status(404).json({ error: "Bài hát không tồn tại hoặc đã bị xóa" });
       }
-    }
 
-    // 2. Nếu hành động là LISTEN hoặc SKIP (Ghi nhận lịch sử nghe)
-    if (action === 'LISTEN' || action === 'SKIP') {
-      await prisma.interaction.create({
+      // Tính completionRate = durationPlayed / tổng thời lượng bài hát
+      const parsedDuration = parseInt(durationPlayed) || 0;
+      const completionRate = song.durationMs > 0
+        ? Math.min(parsedDuration / song.durationMs, 1.0)
+        : 0;
+
+      const interaction = await prisma.interaction.create({
         data: {
-          userId,
-          songId,
-          type: action,
-          duration: duration || 0 // Số giây user đã nghe
+          userId: parseInt(userId),
+          songId: parseInt(songId),
+          durationPlayed: parsedDuration,
+          completionRate: completionRate,
+          isSkipped: Boolean(isSkipped),
+          isLiked: false
         }
       });
 
-      // Nếu là LISTEN hợp lệ (nghe > 30s), có thể cộng 1 view vào bảng Song
-      if (action === 'LISTEN') {
-        await prisma.song.update({
-          where: { id: songId },
-          data: { playCount: { increment: 1 } }
-        });
+      res.status(200).json({ message: "Đã ghi nhận tương tác", data: interaction });
+    } catch (error) {
+      console.error("Lỗi trackListening:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
+  },
+
+  /**
+   * Toggle Like / Unlike bài hát
+   * Tìm record interaction gần nhất của user với bài hát đó và toggle isLiked
+   * Nếu chưa có record nào → tạo record mới với isLiked = true
+   */
+  toggleLike: async (req, res) => {
+    try {
+      const { userId, songId } = req.body;
+
+      if (!userId || !songId) {
+        return res.status(400).json({ error: "Thiếu userId hoặc songId" });
       }
 
-      return res.status(200).json({ message: "Đã ghi nhận tương tác" });
+      const parsedUserId = parseInt(userId);
+      const parsedSongId = parseInt(songId);
+
+      // Kiểm tra bài hát có tồn tại không
+      const song = await prisma.song.findFirst({
+        where: { id: parsedSongId, isDeleted: false }
+      });
+
+      if (!song) {
+        return res.status(404).json({ error: "Bài hát không tồn tại hoặc đã bị xóa" });
+      }
+
+      // Tìm record liked gần nhất (interaction mới nhất mà isLiked = true)
+      const existingLike = await prisma.interaction.findFirst({
+        where: {
+          userId: parsedUserId,
+          songId: parsedSongId,
+          isLiked: true
+        },
+        orderBy: { timeStamp: 'desc' }
+      });
+
+      if (existingLike) {
+        // Đã like rồi → unlike (cập nhật record đó thành isLiked = false)
+        await prisma.interaction.update({
+          where: {
+            userId_songId_timeStamp: {
+              userId: existingLike.userId,
+              songId: existingLike.songId,
+              timeStamp: existingLike.timeStamp
+            }
+          },
+          data: { isLiked: false }
+        });
+        return res.status(200).json({ message: "Đã bỏ thích", isLiked: false });
+      } else {
+        // Chưa like → tạo record mới với isLiked = true
+        await prisma.interaction.create({
+          data: {
+            userId: parsedUserId,
+            songId: parsedSongId,
+            isLiked: true,
+            isSkipped: false,
+            durationPlayed: 0,
+            completionRate: 0
+          }
+        });
+        return res.status(200).json({ message: "Đã thích", isLiked: true });
+      }
+    } catch (error) {
+      console.error("Lỗi toggleLike:", error);
+      res.status(500).json({ error: "Lỗi server" });
     }
+  },
 
-    return res.status(400).json({ error: "Hành động không hợp lệ" });
+  /**
+   * Kiểm tra trạng thái like của user với 1 bài hát
+   */
+  checkLikeStatus: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const songId = parseInt(req.params.songId);
 
-  } catch (error) {
-    console.error("Lỗi trackInteraction:", error);
-    res.status(500).json({ error: "Lỗi server" });
+      const likedInteraction = await prisma.interaction.findFirst({
+        where: {
+          userId,
+          songId,
+          isLiked: true
+        }
+      });
+
+      res.status(200).json({ isLiked: Boolean(likedInteraction) });
+    } catch (error) {
+      console.error("Lỗi checkLikeStatus:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
   }
 };
 
-module.exports = {
-  trackInteraction
-};
+module.exports = interactController;
