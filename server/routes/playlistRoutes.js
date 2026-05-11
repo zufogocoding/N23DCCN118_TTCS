@@ -10,7 +10,6 @@ router.get('/api/playlists/user/:userId', playlistController.getUserPlaylists);
 
 // Lấy chi tiết 1 playlist
 router.get('/api/playlists/:id', playlistController.getPlaylistById);
-router.get('/api/playlists/user/:userId', playlistController.getUserPlaylists);
 
 // Cập nhật thông tin playlist (title, description, isPublic)
 router.put('/api/playlists/:id', playlistController.updatePlaylist);
