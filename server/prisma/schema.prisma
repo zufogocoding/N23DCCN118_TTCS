@@ -23,8 +23,10 @@ model User {
   password   String    @db.VarChar(255)
   dob        DateTime? @db.Date
   country    String?   @db.VarChar(100)
+  avatarUrl  String?   @db.VarChar(500)
   isAdmin    Boolean   @default(false)
   isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
 
   // Vector lưu trữ User Factors từ ALS (Giả sử số chiều k = 64)
   alsFeature Unsupported("vector(64)")?
@@ -41,7 +43,10 @@ model User {
 model Artist {
   userId       Int     @id
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistName   String? @db.VarChar(255)
   artistBio    String? @db.Text
+  avatarUrl    String? @db.VarChar(500)
+  bannerUrl    String? @db.VarChar(500)
   verifiedTick Boolean @default(false)
 
   albums Album[]
@@ -49,19 +54,27 @@ model Artist {
 }
 
 model Playlist {
-  id          Int    @id @default(autoincrement())
-  title       String @db.VarChar(255)
-  playlistUrl String @unique @db.VarChar(255)
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
+  description String?  @db.Text
+  coverArtUrl String?  @db.VarChar(500)
+  playlistUrl String   @unique @db.VarChar(255)
+  isPublic    Boolean  @default(true)
   userId      Int
-  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   songs PlaylistSong[]
 }
 
 model Album {
   id           Int       @id @default(autoincrement())
+  title        String    @db.VarChar(255)
   type         String?   @db.VarChar(50)
+  coverArtUrl  String?   @db.VarChar(500)
   releasedDate DateTime? @db.Date
+  createdAt    DateTime  @default(now())
   artistId     Int
   artist       Artist    @relation(fields: [artistId], references: [userId], onDelete: Cascade)
 
@@ -69,20 +82,21 @@ model Album {
 }
 
 model Song {
-  id          Int     @id @default(autoincrement())
-  title       String  @db.VarChar(255)
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
   energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
   tempo       Float? // Đổi sang Float
-  status      String? @db.VarChar(50)
+  status      String?  @db.VarChar(50)
 
   // Vector lưu trữ Item Features (Cho CBF hoặc Item Factors của ALS)
   embedding Unsupported("vector(64)")?
 
   // Streaming URLs
-  audioUrl    String  @db.VarChar(500)
-  coverArtUrl String? @db.VarChar(500)
+  audioUrl    String   @db.VarChar(500)
+  coverArtUrl String?  @db.VarChar(500)
   durationMs  Int
-  isDeleted   Boolean @default(false)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   // Quan hệ
   genres              SongGenre[]
@@ -106,6 +120,7 @@ model Genre {
 
 model Chart {
   id        Int      @id @default(autoincrement())
+  title     String?  @db.VarChar(255)
   chartType String?  @db.VarChar(100)
   updateAt  DateTime @default(now())
 
