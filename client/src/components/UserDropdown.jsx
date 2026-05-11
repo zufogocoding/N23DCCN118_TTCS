@@ -7,9 +7,25 @@ export default function UserDropdown() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : {};
+const [user, setUser] = useState({});
   const isLoggedIn = !!user.username || !!user.email;
+  
+  const loadUser = () => {
+    const userStr = localStorage.getItem('user');
+    setUser(userStr ? JSON.parse(userStr) : {});
+  };
+
+  useEffect(() => {
+    loadUser();
+    
+    // Lắng nghe sự kiện cập nhật profile để render lại dropdown
+    window.addEventListener('profileUpdated', loadUser);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', loadUser);
+    };
+  }, []);
+
   const getInitial = () => {
     if (user.username) return user.username.charAt(0).toUpperCase();
     if (user.email) return user.email.charAt(0).toUpperCase();
@@ -29,11 +45,12 @@ const userStr = localStorage.getItem('user');
 
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setIsOpen(false);
     navigate('/login');
   };
 
-  if (!user) {
+  if (!user || (!user.username && !user.email)) {
     return (
       <div className="flex items-center gap-4">
         <Link 
@@ -52,6 +69,10 @@ const userStr = localStorage.getItem('user');
     );
   }
 
+  const displayAvatar = user.avatarUrl 
+    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:9000${user.avatarUrl}`)
+    : null;
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Nút Avatar hiện chữ cái đầu tiên (vd: H) */}
@@ -59,8 +80,8 @@ const userStr = localStorage.getItem('user');
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center w-9 h-9 rounded-full bg-[#1ed760] hover:scale-105 transition-transform focus:outline-none overflow-hidden border-4 border-black"
       >
-        {user.avatar ? (
-          <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+        {displayAvatar ? (
+          <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
         ) : (
           <span className="text-black font-bold text-sm">
             {isLoggedIn ? getInitial() : <User size={18} className="text-black" />}

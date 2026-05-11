@@ -38,6 +38,9 @@ export default function Login() {
 
       if (res.ok) {
         localStorage.setItem('user', JSON.stringify(resData.user || resData));
+        if (resData.token) {
+          localStorage.setItem('token', resData.token);
+        }
         navigate('/');
       } else {
         setServerError(resData.error || resData.message || "Sai thông tin đăng nhập!");
