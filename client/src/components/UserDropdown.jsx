@@ -101,6 +101,16 @@ const [user, setUser] = useState({});
                 <p className="text-xs text-[#a0a0a0] font-normal truncate">{user.email}</p>
               </div>
 
+              {user.isAdmin && (
+                <Link
+                  to="/admin/dashboard"
+                  onClick={() => setIsOpen(false)}
+                  className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors text-[#00e6e6]"
+                >
+                  Quản lý hệ thống
+                </Link>
+              )}
+
               <Link
                 to="/profile"
                 onClick={() => setIsOpen(false)}
@@ -108,14 +118,16 @@ const [user, setUser] = useState({});
               >
                 Hồ sơ
               </Link>
-
-              <Link
-                to="/register-artist"
-                onClick={() => setIsOpen(false)}
-                className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors"
-              >
-                Trở thành Feature Artist
-              </Link>
+              
+              {!user.isAdmin && (
+                <Link
+                  to="/register-artist"
+                  onClick={() => setIsOpen(false)}
+                  className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors text-[#1db954]"
+                >
+                  Trở thành Nghệ sĩ
+                </Link>
+              )}
 
               <Link
                 to="/settings"

@@ -8,7 +8,7 @@ const dashboardController = {
         prisma.user.count(),
         prisma.song.count({ where: { isDeleted: false } }),
         prisma.playlist.count(),
-        prisma.artist.count({ where: { verifiedTick: false } }) // Đếm các ca sĩ chưa được duyệt
+        prisma.artistRequest.count({ where: { status: 'PENDING' } }) // Đếm yêu cầu đăng ký chưa được duyệt
       ]);
 
       // Trả dữ liệu về cho Front-end

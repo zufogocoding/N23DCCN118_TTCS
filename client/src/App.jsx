@@ -12,11 +12,30 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import Home from './pages/user/Home';
 import Search from './pages/user/Search';
 import Profile from './pages/user/Profile';
+import AdminLayout from './components/layout/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import ArtistRequests from './pages/admin/ArtistRequests';
+import BecomeArtist from './pages/user/BecomeArtist';
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
   if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+// Component bảo vệ Route dành riêng cho Admin
+const AdminRoute = ({ children }) => {
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return <Navigate to="/login" replace />;
+  
+  try {
+    const user = JSON.parse(userStr);
+    if (!user.isAdmin) return <Navigate to="/" replace />; // Không phải admin -> đuổi về trang chủ
+  } catch (e) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return children;
 };
 
@@ -56,7 +75,35 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="register-artist" 
+            element={
+              <ProtectedRoute>
+                <BecomeArtist />
+              </ProtectedRoute>
+            } 
+          />
           
+        </Route>
+
+        {/* NHÓM ADMIN */}
+        <Route 
+          path="/admin" 
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Users (Đang xây dựng)</div>} />
+          <Route path="artists" element={<ArtistRequests />} />
+          <Route path="songs" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Songs (Đang xây dựng)</div>} />
+          <Route path="albums" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Albums (Đang xây dựng)</div>} />
+          <Route path="playlists" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Playlists (Đang xây dựng)</div>} />
+          <Route path="genres" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Genres (Đang xây dựng)</div>} />
+          <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
         </Route>
 
       </Routes>
