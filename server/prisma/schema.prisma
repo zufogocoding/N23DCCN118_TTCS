@@ -212,3 +212,15 @@ model ChartSong {
 
   @@id([chartId, songId])
 }
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(255)
+  otp       String   @db.VarChar(10)
+  purpose   String   @db.VarChar(50)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+

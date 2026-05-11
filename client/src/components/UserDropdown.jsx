@@ -8,7 +8,8 @@ export default function UserDropdown() {
   const navigate = useNavigate();
 
   // Lấy thông tin user từ localStorage (đã lưu lúc login)
-  const user = JSON.parse(localStorage.getItem('user')) || {};
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
 
   // Xử lý đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -25,6 +26,25 @@ export default function UserDropdown() {
     localStorage.removeItem('user');
     navigate('/login');
   };
+
+  if (!user) {
+    return (
+      <div className="flex items-center gap-4">
+        <Link 
+          to="/register" 
+          className="text-[#a0a0a0] hover:text-white font-bold py-2 px-4 transition-colors"
+        >
+          Đăng ký
+        </Link>
+        <Link 
+          to="/login" 
+          className="bg-white text-black hover:scale-105 font-bold py-2 px-6 rounded-full transition-transform"
+        >
+          Đăng nhập
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>

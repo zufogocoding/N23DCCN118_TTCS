@@ -5,6 +5,8 @@ services:
      - '9000:9000'
     depends_on:
      - db
+    env_file:
+     - .env
     environment:
      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
      - ML_API_URL=http://ml-api:8000

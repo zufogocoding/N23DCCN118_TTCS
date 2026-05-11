@@ -69,6 +69,23 @@ const playlistController = {
       console.log(error);
       res.status(500).json({ error: 'Lỗi server' });
     }
+  },
+
+  // 4. Lấy danh sách Playlist của một User
+  getUserPlaylists: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      const playlists = await prisma.playlist.findMany({
+        where: { userId: userId },
+        orderBy: { id: 'desc' } // Mới nhất lên đầu
+      });
+
+      res.status(200).json(playlists);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: 'Lỗi server khi lấy danh sách Playlist' });
+    }
   }
 };
 

@@ -1,5 +1,5 @@
-import React, { useState } from "react"; // Đã thêm useState
-import { Outlet, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Outlet, Link, useNavigate } from "react-router-dom";
 import {
   Home,
   Search,
@@ -23,6 +23,36 @@ import CreatePlaylistModal from "../CreatePlaylistModal";
 
 export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [userPlaylists, setUserPlaylists] = useState([]);
+  const navigate = useNavigate();
+
+  const fetchPlaylists = async () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      try {
+        const res = await fetch(`http://localhost:9000/api/playlists/user/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUserPlaylists(data);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy playlist:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchPlaylists();
+  }, []);
+
+  const handleProtectedAction = (action) => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+      navigate('/login');
+    } else if (action) {
+      action();
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
@@ -30,6 +60,7 @@ export default function MainLayout() {
       <CreatePlaylistModal
         isOpen={isPlaylistModalOpen}
         onClose={() => setIsPlaylistModalOpen(false)}
+        onSuccess={fetchPlaylists}
       />
 
       {/* KHU VỰC TRÊN: 3 CỘT */}
@@ -65,27 +96,30 @@ export default function MainLayout() {
 
           <div className="mt-8 px-6 flex flex-col gap-4 text-sm font-semibold text-[#a0a0a0]">
             <button
-              onClick={() => setIsPlaylistModalOpen(true)}
+              onClick={() => handleProtectedAction(() => setIsPlaylistModalOpen(true))}
               className="flex items-center gap-4 hover:text-white transition-colors"
             >
               <PlusSquare size={24} /> Tạo Playlist
             </button>
-            <button className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]">
+            <button 
+              onClick={() => handleProtectedAction()}
+              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
+            >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
             </button>
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
-              <li className="hover:text-white cursor-pointer truncate">
-                Chill Vibes
-              </li>
-              <li className="hover:text-white cursor-pointer truncate">
-                Workout Mix
-              </li>
-              <li className="hover:text-white cursor-pointer truncate">
-                Lofi Coding
-              </li>
+              {userPlaylists.length === 0 ? (
+                <li className="text-xs text-[#666]">Chưa có playlist nào.</li>
+              ) : (
+                userPlaylists.map(playlist => (
+                  <li key={playlist.id} className="hover:text-white cursor-pointer truncate transition-colors">
+                    {playlist.title}
+                  </li>
+                ))
+              )}
             </ul>
           </div>
         </div>
@@ -136,6 +170,7 @@ export default function MainLayout() {
             <Heart
               size={20}
               className="text-[#00e6e6] fill-current mt-1 cursor-pointer"
+              onClick={() => handleProtectedAction()}
             />
           </div>
 
@@ -169,6 +204,7 @@ export default function MainLayout() {
           <Heart
             size={16}
             className="text-[#a0a0a0] hover:text-[#00e6e6] cursor-pointer ml-2 transition-colors"
+            onClick={() => handleProtectedAction()}
           />
         </div>
 
@@ -181,7 +217,10 @@ export default function MainLayout() {
             <button className="text-[#a0a0a0] hover:text-white transition-colors">
               <SkipBack size={20} fill="currentColor" />
             </button>
-            <button className="text-white hover:scale-110 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5">
+            <button 
+              onClick={() => handleProtectedAction()}
+              className="text-white hover:scale-110 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5"
+            >
               <PlayCircle
                 size={36}
                 className="text-black"

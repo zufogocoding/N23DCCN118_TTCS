@@ -5,5 +5,6 @@ const playlistController = require('../controllers/playlistController');
 router.post('/api/playlists', playlistController.createPlaylist);
 router.post('/api/playlists/:id/songs', playlistController.addSongToPlaylist);
 router.get('/api/playlists/:id', playlistController.getPlaylistById);
+router.get('/api/playlists/user/:userId', playlistController.getUserPlaylists);
 
 module.exports = router;
