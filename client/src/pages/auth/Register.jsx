@@ -24,9 +24,51 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // OTP States
+  const [step, setStep] = useState(1); // 1: Fill info, 2: Enter OTP
+  const [formData, setFormData] = useState(null);
+  const [otp, setOtp] = useState('');
+
   const navigate = useNavigate();
 
+  // Xử lý gửi form đăng ký (bước 1)
   const onSubmit = async (data) => {
+    setIsLoading(true);
+    setServerError('');
+
+    try {
+      const res = await fetch('http://localhost:9000/api/auth/register-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: data.username,
+          email: data.email
+        })
+      });
+      const resData = await res.json();
+
+      if (res.ok) {
+        setFormData(data); // Lưu dữ liệu lại để dùng cho bước 2
+        setStep(2); // Chuyển sang màn nhập OTP
+      } else {
+        setServerError(resData.error || "Có lỗi xảy ra!");
+      }
+    } catch (err) {
+      setServerError("Không thể kết nối đến server!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Xử lý xác nhận OTP (bước 2)
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length < 6) {
+      setServerError("Vui lòng nhập đủ mã OTP");
+      return;
+    }
+
     setIsLoading(true);
     setServerError('');
 
@@ -35,9 +77,8 @@ export default function Register() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: data.username,
-          email: data.email,
-          password: data.password
+          ...formData,
+          otp: otp
         })
       });
       const resData = await res.json();
@@ -46,7 +87,7 @@ export default function Register() {
         alert("Đăng ký thành công! Đăng nhập ngay nào.");
         navigate('/login');
       } else {
-        setServerError(resData.error || "Đăng ký thất bại!");
+        setServerError(resData.error || "Mã OTP không hợp lệ!");
       }
     } catch (err) {
       setServerError("Không thể kết nối đến server!");
@@ -58,70 +99,95 @@ export default function Register() {
   return (
     <>
       <div className="text-center mb-6">
-        <h2 className="text-xl font-bold">Tạo tài khoản mới</h2>
+        <h2 className="text-xl font-bold">{step === 1 ? 'Tạo tài khoản mới' : 'Xác thực Email'}</h2>
+        {step === 2 && <p className="text-sm text-[#888] mt-2">Chúng tôi đã gửi mã OTP gồm 6 chữ số đến email <strong>{formData?.email}</strong></p>}
       </div>
 
       {serverError && <div className="bg-[#ff4d4f]/10 border border-[#ff4d4f] text-[#ff4d4f] p-3 rounded-lg mb-6 text-sm text-center">{serverError}</div>}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
-            <input
-              type="text" placeholder="Tên hiển thị (Username)"
-              className={`w-full py-3 pl-10 pr-4 rounded-lg bg-[#0f0f0f] border ${errors.username ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
-              {...register("username")}
-            />
+      {step === 1 ? (
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <div>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
+              <input
+                type="text" placeholder="Tên hiển thị (Username)"
+                className={`w-full py-3 pl-10 pr-4 rounded-lg bg-[#0f0f0f] border ${errors.username ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
+                {...register("username")}
+              />
+            </div>
+            {errors.username && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.username.message}</p>}
           </div>
-          {errors.username && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.username.message}</p>}
-        </div>
 
-        <div>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
-            <input
-              type="email" placeholder="Email address"
-              className={`w-full py-3 pl-10 pr-4 rounded-lg bg-[#0f0f0f] border ${errors.email ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
-              {...register("email")}
-            />
+          <div>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
+              <input
+                type="email" placeholder="Email address"
+                className={`w-full py-3 pl-10 pr-4 rounded-lg bg-[#0f0f0f] border ${errors.email ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
+                {...register("email")}
+              />
+            </div>
+            {errors.email && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.email.message}</p>}
           </div>
-          {errors.email && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.email.message}</p>}
-        </div>
 
-        <div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
-            <input
-              type={showPassword ? "text" : "password"} placeholder="Mật khẩu"
-              className={`w-full py-3 pl-10 pr-10 rounded-lg bg-[#0f0f0f] border ${errors.password ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
-              {...register("password")}
-            />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-[#00e6e6]">
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+          <div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
+              <input
+                type={showPassword ? "text" : "password"} placeholder="Mật khẩu"
+                className={`w-full py-3 pl-10 pr-10 rounded-lg bg-[#0f0f0f] border ${errors.password ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
+                {...register("password")}
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-[#00e6e6]">
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.password && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.password.message}</p>}
           </div>
-          {errors.password && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.password.message}</p>}
-        </div>
 
-        <div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
-            <input
-              type={showConfirmPassword ? "text" : "password"} placeholder="Xác nhận mật khẩu"
-              className={`w-full py-3 pl-10 pr-10 rounded-lg bg-[#0f0f0f] border ${errors.confirmPassword ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
-              {...register("confirmPassword")}
-            />
-            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-[#00e6e6]">
-              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+          <div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
+              <input
+                type={showConfirmPassword ? "text" : "password"} placeholder="Xác nhận mật khẩu"
+                className={`w-full py-3 pl-10 pr-10 rounded-lg bg-[#0f0f0f] border ${errors.confirmPassword ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
+                {...register("confirmPassword")}
+              />
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-[#00e6e6]">
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.confirmPassword && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.confirmPassword.message}</p>}
           </div>
-          {errors.confirmPassword && <p className="text-[#ff4d4f] text-xs mt-1 text-left">{errors.confirmPassword.message}</p>}
-        </div>
 
-        <button type="submit" disabled={isLoading} className="mt-4 p-3 rounded-lg bg-gradient-to-r from-[#00e6e6] to-[#008080] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
-          {isLoading ? "Đang xử lý..." : "Đăng Ký"}
-        </button>
-      </form>
+          <button type="submit" disabled={isLoading} className="mt-4 p-3 rounded-lg bg-gradient-to-r from-[#00e6e6] to-[#008080] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
+            {isLoading ? "Đang gửi mã..." : "Đăng Ký"}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+          <div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
+              <input
+                type="text" 
+                placeholder="Nhập mã OTP 6 số"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))} // Chỉ cho phép nhập số
+                className={`w-full py-3 pl-10 pr-4 rounded-lg bg-[#0f0f0f] border border-[#333] focus:border-[#00e6e6] outline-none transition-all text-sm tracking-[0.5em] text-center font-bold`}
+              />
+            </div>
+          </div>
+          <button type="submit" disabled={isLoading || otp.length < 6} className="mt-4 p-3 rounded-lg bg-gradient-to-r from-[#00e6e6] to-[#008080] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
+            {isLoading ? "Đang xác thực..." : "Xác nhận & Tạo tài khoản"}
+          </button>
+          <button type="button" onClick={() => setStep(1)} className="text-sm text-[#a0a0a0] hover:text-white mt-2">
+            Quay lại chỉnh sửa thông tin
+          </button>
+        </form>
+      )}
 
       <p className="text-center text-sm text-[#888] mt-6">
         Đã có tài khoản? <Link to="/login" className="text-[#00e6e6] hover:underline">Đăng nhập</Link>
