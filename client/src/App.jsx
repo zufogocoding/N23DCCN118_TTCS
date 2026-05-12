@@ -1,3 +1,4 @@
+// SongDetail
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/SongDetail";
@@ -5,6 +6,9 @@ import SongDetail from "./pages/SongDetail";
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
 
+// PlaylistView
+
+import PlaylistView from './pages/PlaylistView'; 
 // Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -42,8 +46,9 @@ function App() {
           <Route path="search" element={<div className="p-8 text-white text-2xl font-bold">Trang Tìm Kiếm (Đang xây dựng)</div>} />
           <Route path="library" element={<div className="p-8 text-white text-2xl font-bold">Thư Viện Của Tôi (Đang xây dựng)</div>} />
         </Route>
-        // Route chi tiet bai hat
+        /* Route chi tiet bai hat */
         <Route path="/song/:id" element={<SongDetail />} />
+        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
       </Routes>
     </BrowserRouter>
   );

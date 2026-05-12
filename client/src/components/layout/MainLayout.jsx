@@ -76,19 +76,38 @@ export default function MainLayout() {
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
-            <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
-              <li className="hover:text-white cursor-pointer truncate">
-                Chill Vibes
-              </li>
-              <li className="hover:text-white cursor-pointer truncate">
-                Workout Mix
-              </li>
-              <li className="hover:text-white cursor-pointer truncate">
-                Lofi Coding
-              </li>
-            </ul>
-          </div>
-        </div>
+  <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
+
+    <li>
+      <Link
+        to="/playlist/chill-vibes"
+        className="hover:text-white cursor-pointer truncate block"
+      >
+        Chill Vibes
+      </Link>
+    </li>
+
+    <li>
+      <Link
+        to="/playlist/workout-mix"
+        className="hover:text-white cursor-pointer truncate block"
+      >
+        Workout Mix
+      </Link>
+    </li>
+
+    <li>
+      <Link
+        to="/playlist/lofi-coding"
+        className="hover:text-white cursor-pointer truncate block"
+      >
+        Lofi Coding
+      </Link>
+    </li>
+
+  </ul>
+</div>
+</div>
 
         {/* CỘT 2: NỘI DUNG CHÍNH Ở GIỮA */}
         <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
