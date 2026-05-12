@@ -127,11 +127,15 @@ const SongDetail = () => {
   <div className="border-t border-white/10 mt-10 pt-6 space-y-4 text-sm text-gray-400">
 
     <p className="hover:text-white cursor-pointer transition">
+      <Link to="/playlist/chill-vibes" className="hover:text-white cursor-pointer">
       Chill Vibes
+      </Link>
     </p>
 
     <p className="hover:text-white cursor-pointer transition">
+      <Link to="/playlist/workout-mix" className="hover:text-white cursor-pointer">
       Workout Mix
+      </Link>
     </p>
 
     <p className="hover:text-white cursor-pointer transition">

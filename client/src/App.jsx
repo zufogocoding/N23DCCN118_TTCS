@@ -1,3 +1,4 @@
+// SongDetail
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/SongDetail";
@@ -5,6 +6,13 @@ import SongDetail from "./pages/SongDetail";
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
 
+ frontend-quynh
+// PlaylistView
+
+import PlaylistView from './pages/PlaylistView'; 
+// Pages
+
+ main
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 // Cần tạo file ForgotPassword.jsx hoặc comment tạm dòng này nếu chưa có
@@ -49,8 +57,9 @@ function App() {
           />
           
         </Route>
-        // Route chi tiet bai hat
+        /* Route chi tiet bai hat */
         <Route path="/song/:id" element={<SongDetail />} />
+        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
       </Routes>
     </BrowserRouter>
   );

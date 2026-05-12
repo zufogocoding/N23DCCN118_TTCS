@@ -2,10 +2,13 @@ import { Link } from "react-router-dom";
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search, Bell, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const navigate = useNavigate();
+
+ frontend-quynh
 
   const handleProtectedAction = (action) => {
     const userStr = localStorage.getItem('user');
@@ -15,6 +18,7 @@ export default function Home() {
       action();
     }
   };
+ main
 
   return (
     <div className="flex flex-col h-full">
@@ -60,6 +64,38 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {/* Card 1 */}
+ frontend-quynh
+            <Link to="/playlist/chill-vibes">
+              <div className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group">
+                <img
+                  src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=400&auto=format&fit=crop"
+                  className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg"
+                  alt="Cover"
+                />
+
+                <h3 className="font-bold truncate text-white">
+                  Chill Vibes
+                </h3>
+              </div>
+            </Link>
+            {/* Card 2 */}
+            <Link to="/playlist/workout-mix">
+              <div className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group">
+                <img 
+                  src="https://images.unsplash.com/photo-1534258936925-c58bed479fcb?q=80&w=400&auto=format&fit=crop" 
+                  className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" 
+                  alt="Cover" 
+                />
+                <h3 className="font-bold truncate text-white">Workout Mix</h3>
+              </div>
+            </Link>
+            {/* Card 3 */}
+            <Link to="/playlist/liked-songs">
+              <div className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group">
+                <div className="w-full aspect-square bg-gradient-to-br from-indigo-600 to-purple-800 rounded-md mb-4 shadow-lg flex items-center justify-center">
+                  <Heart size={48} className="text-white fill-current" />
+                </div>
+                <h3 className="font-bold truncate text-white">Liked Songs</h3>
             <div onClick={() => handleProtectedAction()} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group">
               <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=400&auto=format&fit=crop" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" alt="Cover" />
               <h3 className="font-bold truncate text-white">Chill Vibes</h3>
@@ -73,10 +109,9 @@ export default function Home() {
             <div onClick={() => handleProtectedAction()} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group">
               <div className="w-full aspect-square bg-gradient-to-br from-indigo-600 to-purple-800 rounded-md mb-4 shadow-lg flex items-center justify-center">
                 <Heart size={48} className="text-white fill-current" />
+ main
               </div>
-              <h3 className="font-bold truncate text-white">Liked Songs</h3>
-            </div>
-          </div>
+            </Link>
         </div>
 
         {/* Section: Trending Songs */}
@@ -88,7 +123,7 @@ export default function Home() {
       Show all
     </button>
   </div>
-
+    </div>
   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
 
     {/* Song Card 1 */}
