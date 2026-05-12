@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-
+import SongDetail from "./pages/SongDetail";
 // Layouts
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
@@ -49,7 +49,8 @@ function App() {
           />
           
         </Route>
-
+        // Route chi tiet bai hat
+        <Route path="/song/:id" element={<SongDetail />} />
       </Routes>
     </BrowserRouter>
   );
