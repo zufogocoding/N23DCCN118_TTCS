@@ -26,7 +26,10 @@ model User {
   avatarUrl  String?   @db.VarChar(500)
   isAdmin    Boolean   @default(false)
   isActive   Boolean   @default(true)
+  role       String    @default("user") // phan quyen user - admin
+  isVerified Boolean   @default(false) // xac thuc account
   createdAt  DateTime  @default(now())
+  lastLogin  DateTime?                    // lan dang nhap gan nhat
 
   // Vector lưu trữ User Factors từ ALS (Giả sử số chiều k = 64)
   alsFeature Unsupported("vector(64)")?
@@ -49,6 +52,11 @@ model Artist {
   bannerUrl    String? @db.VarChar(500)
   verifiedTick Boolean @default(false)
 
+  followerCount Int @default(0) // hien fl cho frontend
+  facebookUrl String? @db.VarChar(500) // social links
+  instagramUrl String? @db.VarChar(500)
+  youtubeUrl String? @db.VarChar(500)
+  status String @default("active") // trang thai artist active -banned - pending
   albums Album[]
   songs  ArtistSong[]
 }
@@ -95,6 +103,7 @@ model Song {
   audioUrl    String   @db.VarChar(500)
   coverArtUrl String?  @db.VarChar(500)
   durationMs  Int
+  playCount Int @default(0) // luot nghe- top trending - query nhanh
   isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
