@@ -102,7 +102,7 @@ export default function MainLayout() {
             >
               <PlusSquare size={24} /> Tạo Playlist
             </button>
-            <button 
+            <button
               onClick={() => handleProtectedAction()}
               className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
             >
@@ -111,40 +111,6 @@ export default function MainLayout() {
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
- frontend-quynh
-  <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
-
-    <li>
-      <Link
-        to="/playlist/chill-vibes"
-        className="hover:text-white cursor-pointer truncate block"
-      >
-        Chill Vibes
-      </Link>
-    </li>
-
-    <li>
-      <Link
-        to="/playlist/workout-mix"
-        className="hover:text-white cursor-pointer truncate block"
-      >
-        Workout Mix
-      </Link>
-    </li>
-
-    <li>
-      <Link
-        to="/playlist/lofi-coding"
-        className="hover:text-white cursor-pointer truncate block"
-      >
-        Lofi Coding
-      </Link>
-    </li>
-
-  </ul>
-</div>
-</div>
-
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
               {userPlaylists.length === 0 ? (
                 <li className="text-xs text-[#666]">Chưa có playlist nào.</li>
@@ -158,7 +124,6 @@ export default function MainLayout() {
             </ul>
           </div>
         </div>
- main
 
         {/* CỘT 2: NỘI DUNG CHÍNH Ở GIỮA */}
         <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
@@ -219,7 +184,7 @@ export default function MainLayout() {
 
         {/* 1. Trái: Info bài hát */}
         <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
-{currentSong ? (
+          {currentSong ? (
             <>
               <img src={currentSong.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100"} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
               <div className="hidden sm:block max-w-[180px]">
@@ -228,7 +193,7 @@ export default function MainLayout() {
               </div>
               <Heart
                 onClick={() => {
-                  handleProtectedAction(); 
+                  handleProtectedAction();
                   setIsLiked(!isLiked);
                 }}
                 size={18}
