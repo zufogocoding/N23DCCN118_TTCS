@@ -61,9 +61,13 @@ export const PlayerProvider = ({ children }) => {
     setQueue(playlist);
     setCurrentIndex(playlist.findIndex(s => s.id === song.id));
 
-    // Giả sử API trả về URL file nhạc qua trường 'songUrl'
-    audioRef.current.src = song.songUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; // Nhạc test
-    audioRef.current.play();
+    // Sử dụng streaming API endpoint
+    const streamUrl = `http://localhost:9000/api/songs/${song.id}/stream`;
+    audioRef.current.src = streamUrl;
+    audioRef.current.play().catch(() => {
+      // Nếu lỗi (ví dụ file không tồn tại), vẫn set state đúng
+      console.warn('Không thể phát bài hát này');
+    });
     setIsPlaying(true);
   }
 
