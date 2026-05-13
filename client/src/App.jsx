@@ -1,10 +1,14 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import SongDetail from "./pages/SongDetail";
+import PlaylistView from './pages/PlaylistView'; 
 
 // Layouts
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
+import AdminLayout from './components/layout/AdminLayout';
 
+// Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 // Cần tạo file ForgotPassword.jsx hoặc comment tạm dòng này nếu chưa có
@@ -85,7 +89,6 @@ function App() {
           />
           
         </Route>
-
         {/* NHÓM ADMIN */}
         <Route 
           path="/admin" 
@@ -106,6 +109,9 @@ function App() {
           <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
         </Route>
 
+        {/* Route chi tiet bai hat */}
+        <Route path="/song/:id" element={<SongDetail />} />
+        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
       </Routes>
     </BrowserRouter>
   );
