@@ -112,9 +112,11 @@ function App() {
           <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
         </Route>
 
-        {/* Route chi tiet bai hat */}
-        <Route path="/song/:id" element={<SongDetail />} />
-        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
+        {/* Song detail và Playlist view - bên trong MainLayout để dùng chung sidebar + player */}
+        <Route path="/" element={<MainLayout />}>
+          <Route path="song/:id" element={<SongDetail />} />
+          <Route path="playlist/:playlistId" element={<PlaylistView />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

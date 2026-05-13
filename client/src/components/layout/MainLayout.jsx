@@ -103,12 +103,12 @@ export default function MainLayout() {
             >
               <PlusSquare size={24} /> Tạo Playlist
             </button>
-            <button
-              onClick={() => handleProtectedAction()}
+            <Link
+              to="/playlist/liked"
               className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
             >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
-            </button>
+            </Link>
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
@@ -117,8 +117,13 @@ export default function MainLayout() {
                 <li className="text-xs text-[#666]">Chưa có playlist nào.</li>
               ) : (
                 userPlaylists.map(playlist => (
-                  <li key={playlist.id} className="hover:text-white cursor-pointer truncate transition-colors">
-                    {playlist.title}
+                  <li key={playlist.id}>
+                    <Link
+                      to={`/playlist/${playlist.id}`}
+                      className="hover:text-white cursor-pointer truncate transition-colors block"
+                    >
+                      {playlist.title}
+                    </Link>
                   </li>
                 ))
               )}
@@ -194,8 +199,17 @@ export default function MainLayout() {
               </div>
               <Heart
                 onClick={() => {
-                  handleProtectedAction();
-                  setIsLiked(!isLiked);
+                  if (!currentSong) return;
+                  const user = JSON.parse(localStorage.getItem('user') || '{}');
+                  if (!user.id) { navigate('/login'); return; }
+                  fetch('http://localhost:9000/api/interactions/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id, songId: currentSong.id })
+                  })
+                    .then(r => r.json())
+                    .then(data => setIsLiked(data.isLiked))
+                    .catch(err => console.error(err));
                 }}
                 size={18}
                 className={`cursor-pointer ml-2 transition-colors ${isLiked ? 'text-[#00e6e6] fill-current' : 'text-[#a0a0a0] hover:text-white'}`}
