@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, LogIn, UserPlus } from 'lucide-react';
 

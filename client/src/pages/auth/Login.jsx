@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff } from 'lucide-react'; // Đổi Mail thành User cho phù hợp với cả 2 hình thức
 import { useForm } from 'react-hook-form';
@@ -45,7 +45,7 @@ export default function Login() {
       } else {
         setServerError(resData.error || resData.message || "Sai thông tin đăng nhập!");
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setServerError("Không thể kết nối đến server!");
     } finally {
       setIsLoading(false);

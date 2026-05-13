@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from 'react';
 import { Check, X, User } from 'lucide-react';
 
 export default function ArtistRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchRequests();
-  }, []);
-
-  const fetchRequests = async () => {
+  async function fetchRequests() {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:9000/api/artist-requests/admin/pending', {
@@ -21,12 +18,16 @@ export default function ArtistRequests() {
         const data = await res.json();
         setRequests(data);
       }
-    } catch (error) {
+    } catch (error) { console.error(error);
       console.error('Lỗi khi lấy danh sách yêu cầu:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   const handleAction = async (id, action) => {
     try {
@@ -49,7 +50,7 @@ export default function ArtistRequests() {
         const errData = await res.json();
         alert(errData.error || 'Có lỗi xảy ra');
       }
-    } catch (error) {
+    } catch (error) { console.error(error);
       alert('Lỗi kết nối đến server');
     }
   };

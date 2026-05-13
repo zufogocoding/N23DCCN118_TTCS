@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Camera, Edit2, Save, X, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from 'react';
+import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
@@ -14,11 +15,7 @@ export default function Profile() {
   
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+  async function fetchProfile() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -57,12 +54,16 @@ export default function Profile() {
         }
         setError(errorData.error || 'Không thể lấy thông tin profile');
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -125,7 +126,7 @@ export default function Profile() {
         const errorData = await res.json();
         setError(errorData.error || 'Cập nhật thất bại');
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);

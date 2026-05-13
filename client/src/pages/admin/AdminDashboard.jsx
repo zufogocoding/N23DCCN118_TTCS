@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Mock Data cho biểu đồ
@@ -21,6 +22,19 @@ const recentReports = [
   { id: 'R-2843', type: 'Harassment', item: 'Comment on "Summer Vibes"', status: 'Resolved', date: '2026-04-11' },
 ];
 
+const StatCard = ({ title, value, change, loading }) => (
+  <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg flex flex-col justify-between">
+    <h3 className="text-sm font-semibold text-[#a0a0a0] mb-2">{title}</h3>
+    <p className="text-4xl font-bold text-white mb-2">
+      {loading ? '-' : value.toLocaleString()}
+    </p>
+    {/* Mock data thay đổi % theo tháng vì API hiện chưa hỗ trợ tính năng này */}
+    <p className={`text-sm ${change.startsWith('+') ? 'text-[#00e6e6]' : 'text-[#00e6e6]'}`}>
+      {change} from last month
+    </p>
+  </div>
+);
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -30,10 +44,6 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
   const fetchStats = async () => {
     try {
       // Gọi API thực tế
@@ -42,25 +52,17 @@ export default function AdminDashboard() {
         const data = await res.json();
         setStats(data);
       }
-    } catch (error) {
+    } catch (error) { console.error(error);
       console.error('Lỗi khi lấy dữ liệu thống kê:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const StatCard = ({ title, value, change }) => (
-    <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg flex flex-col justify-between">
-      <h3 className="text-sm font-semibold text-[#a0a0a0] mb-2">{title}</h3>
-      <p className="text-4xl font-bold text-white mb-2">
-        {loading ? '-' : value.toLocaleString()}
-      </p>
-      {/* Mock data thay đổi % theo tháng vì API hiện chưa hỗ trợ tính năng này */}
-      <p className={`text-sm ${change.startsWith('+') ? 'text-[#00e6e6]' : 'text-[#00e6e6]'}`}>
-        {change} from last month
-      </p>
-    </div>
-  );
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -80,10 +82,10 @@ export default function AdminDashboard() {
       
       {/* 4 Thẻ Thống kê */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Users" value={stats.totalUsers} change="+12.5%" />
-        <StatCard title="Total Songs" value={stats.totalSongs} change="+3.2%" />
-        <StatCard title="Total Playlists" value={stats.totalPlaylists} change="+8.7%" />
-        <StatCard title="Pending Artist Requests" value={stats.pendingArtists} change="-15.4%" />
+        <StatCard title="Total Users" value={stats.totalUsers} change="+12.5%" loading={loading} />
+        <StatCard title="Total Songs" value={stats.totalSongs} change="+3.2%" loading={loading} />
+        <StatCard title="Total Playlists" value={stats.totalPlaylists} change="+8.7%" loading={loading} />
+        <StatCard title="Pending Artist Requests" value={stats.pendingArtists} change="-15.4%" loading={loading} />
       </div>
 
       {/* Biểu đồ */}

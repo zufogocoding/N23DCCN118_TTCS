@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic2, Upload, FileAudio, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -86,7 +86,7 @@ export default function BecomeArtist() {
       } else {
         setError(resData.error || 'Có lỗi xảy ra khi gửi yêu cầu');
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);

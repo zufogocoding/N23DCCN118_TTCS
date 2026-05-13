@@ -1,7 +1,6 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/SongDetail";
-import PlaylistView from './pages/PlaylistView'; 
+import PlaylistView from './pages/PlaylistView';
 
 // Layouts
 import AuthLayout from './components/layout/AuthLayout';
@@ -12,11 +11,10 @@ import AdminLayout from './components/layout/AdminLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 // Cần tạo file ForgotPassword.jsx hoặc comment tạm dòng này nếu chưa có
-import ForgotPassword from './pages/auth/ForgotPassword'; 
+import ForgotPassword from './pages/auth/ForgotPassword';
 import Home from './pages/user/Home';
 import Search from './pages/user/Search';
 import Profile from './pages/user/Profile';
-import AdminLayout from './components/layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ArtistRequests from './pages/admin/ArtistRequests';
 import BecomeArtist from './pages/user/BecomeArtist';
@@ -32,14 +30,19 @@ const ProtectedRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
   const userStr = localStorage.getItem('user');
   if (!userStr) return <Navigate to="/login" replace />;
-  
+
+  let isAdmin = false;
+  let parseError = false;
   try {
     const user = JSON.parse(userStr);
-    if (!user.isAdmin) return <Navigate to="/" replace />; // Không phải admin -> đuổi về trang chủ
-  } catch (e) {
-    return <Navigate to="/login" replace />;
+    isAdmin = user.isAdmin;
+  } catch {
+    parseError = true;
   }
-  
+
+  if (parseError) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />; // Không phải admin -> đuổi về trang chủ
+
   return children;
 };
 
@@ -57,41 +60,41 @@ function App() {
 
         {/* NHÓM APP CHÍNH */}
         <Route path="/" element={<MainLayout />}>
-          
+
           {/* Các trang Public (Không cần đăng nhập vẫn xem được Layout) */}
           <Route index element={<Home />} />
           <Route path="search" element={<Search />} />
-          
+
           {/* Các trang Protected (Bắt buộc đăng nhập mới xem được nội dung) */}
-          <Route 
-            path="library" 
+          <Route
+            path="library"
             element={
               <ProtectedRoute>
                 <div className="p-8 text-white text-2xl font-bold">Thư Viện Của Tôi (Đang xây dựng)</div>
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="profile" 
+          <Route
+            path="profile"
             element={
               <ProtectedRoute>
                 <Profile />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="register-artist" 
+          <Route
+            path="register-artist"
             element={
               <ProtectedRoute>
                 <BecomeArtist />
               </ProtectedRoute>
-            } 
+            }
           />
-          
+
         </Route>
         {/* NHÓM ADMIN */}
-        <Route 
-          path="/admin" 
+        <Route
+          path="/admin"
           element={
             <AdminRoute>
               <AdminLayout />

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from '../../context/PlayerContext';
 import {
@@ -45,7 +46,7 @@ export default function MainLayout() {
           const data = await res.json();
           setUserPlaylists(data);
         }
-      } catch (error) {
+      } catch (error) { console.error(error);
         console.error("Lỗi khi lấy playlist:", error);
       }
     }

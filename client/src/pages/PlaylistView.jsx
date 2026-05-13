@@ -1,7 +1,6 @@
-import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { playlistsData } from '../data/playlists'; // Import dữ liệu vừa tạo
-import { Play, Clock, MoreHorizontal, Heart } from 'lucide-react';
+import { Play, Clock, MoreHorizontal } from 'lucide-react';
 import { House } from "lucide-react";
 const PlaylistView = () => {
   const { playlistId } = useParams(); // Lấy ID từ thanh địa chỉ trình duyệt
