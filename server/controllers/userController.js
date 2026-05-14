@@ -17,7 +17,11 @@ const getProfile = async (req, res) => {
         avatarUrl: true,
         isAdmin: true,
         isActive: true,
-        createdAt: true
+        role: true,
+        createdAt: true,
+        artist: {
+          select: { artistName: true }
+        }
       }
     });
 
@@ -25,7 +29,13 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
 
-    res.status(200).json(user);
+    const { artist, ...userData } = user;
+
+    res.status(200).json({
+      ...userData,
+      isArtist: !!artist,
+      artistName: artist?.artistName || null
+    });
   } catch (error) {
     console.error("Lỗi getProfile:", error);
     res.status(500).json({ error: "Lỗi server khi lấy thông tin profile" });

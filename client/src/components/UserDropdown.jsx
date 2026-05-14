@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogIn, UserPlus } from 'lucide-react';
+import { User, LogIn, UserPlus, Music } from 'lucide-react';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,7 +28,8 @@ const [user, setUser] = useState({});
   }, []);
 
   const getInitial = () => {
-    if (user.username) return user.username.charAt(0).toUpperCase();
+    const displayName = user.artistName || user.username;
+    if (displayName) return displayName.charAt(0).toUpperCase();
     if (user.email) return user.email.charAt(0).toUpperCase();
     return '?';
   };
@@ -74,6 +75,9 @@ const [user, setUser] = useState({});
     ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:9000${user.avatarUrl}`)
     : null;
 
+  // Hiển thị artistName nếu là nghệ sĩ, ngược lại hiển thị username
+  const displayName = user.isArtist && user.artistName ? user.artistName : user.username;
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Nút Avatar hiện chữ cái đầu tiên (vd: H) */}
@@ -98,8 +102,18 @@ const [user, setUser] = useState({});
             <>
               {/* Trạng thái 1: ĐÃ ĐĂNG NHẬP */}
               <div className="px-4 py-3 border-b border-[#3e3e3e] mb-1">
-                <p className="text-white truncate text-base">{user.username}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-white truncate text-base">{displayName}</p>
+                  {user.isArtist && (
+                    <Music size={14} className="text-[#1db954] flex-shrink-0" />
+                  )}
+                </div>
                 <p className="text-xs text-[#a0a0a0] font-normal truncate">{user.email}</p>
+                {user.isArtist && (
+                  <span className="inline-block mt-1 text-[10px] font-bold text-[#1db954] bg-[#1db954]/10 px-2 py-0.5 rounded-full">
+                    Nghệ sĩ
+                  </span>
+                )}
               </div>
 
               {user.isAdmin && (
@@ -120,7 +134,8 @@ const [user, setUser] = useState({});
                 Hồ sơ
               </Link>
               
-              {!user.isAdmin && (
+              {/* Chỉ hiện "Trở thành Nghệ sĩ" nếu KHÔNG phải admin VÀ CHƯA là nghệ sĩ */}
+              {!user.isAdmin && !user.isArtist && (
                 <Link
                   to="/register-artist"
                   onClick={() => setIsOpen(false)}

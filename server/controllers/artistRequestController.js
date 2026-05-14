@@ -82,22 +82,42 @@ const artistRequestController = {
       if (!request) return res.status(404).json({ error: "Không tìm thấy yêu cầu" });
       if (request.status !== 'PENDING') return res.status(400).json({ error: "Yêu cầu này đã được xử lý" });
 
-      // Cập nhật trạng thái thành APPROVED
-      await prisma.artistRequest.update({
-        where: { id: parseInt(id) },
-        data: { status: 'APPROVED' }
+      // Dùng transaction để đảm bảo tất cả thay đổi thành công hoặc rollback
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Cập nhật trạng thái thành APPROVED
+        await tx.artistRequest.update({
+          where: { id: parseInt(id) },
+          data: { status: 'APPROVED' }
+        });
+
+        // 2. Tạo bản ghi Artist
+        const newArtist = await tx.artist.create({
+          data: {
+            userId: request.userId,
+            artistName: request.artistName,
+            verifiedTick: true
+          }
+        });
+
+        // 3. Cập nhật role của User thành "artist" (giữ nguyên username)
+        await tx.user.update({
+          where: { id: request.userId },
+          data: { role: 'artist' }
+        });
+
+        // 4. Tạo thông báo cho user
+        await tx.notification.create({
+          data: {
+            userId: request.userId,
+            message: `🎵 Chúc mừng! Yêu cầu trở thành nghệ sĩ của bạn đã được chấp thuận. Nghệ danh: ${request.artistName}`,
+            type: 'artist_approved'
+          }
+        });
+
+        return newArtist;
       });
 
-      // Tạo bản ghi Artist
-      const newArtist = await prisma.artist.create({
-        data: {
-          userId: request.userId,
-          artistName: request.artistName,
-          verifiedTick: true
-        }
-      });
-
-      res.status(200).json({ message: "Đã duyệt yêu cầu thành công!", artist: newArtist });
+      res.status(200).json({ message: "Đã duyệt yêu cầu thành công!", artist: result });
     } catch (error) {
       console.error("Lỗi approveRequest:", error);
       res.status(500).json({ error: "Lỗi server khi duyệt yêu cầu" });
@@ -113,16 +133,60 @@ const artistRequestController = {
       if (!request) return res.status(404).json({ error: "Không tìm thấy yêu cầu" });
       if (request.status !== 'PENDING') return res.status(400).json({ error: "Yêu cầu này đã được xử lý" });
 
-      // Cập nhật trạng thái thành REJECTED
-      await prisma.artistRequest.update({
-        where: { id: parseInt(id) },
-        data: { status: 'REJECTED' }
+      // Dùng transaction
+      await prisma.$transaction(async (tx) => {
+        // 1. Cập nhật trạng thái thành REJECTED
+        await tx.artistRequest.update({
+          where: { id: parseInt(id) },
+          data: { status: 'REJECTED' }
+        });
+
+        // 2. Tạo thông báo cho user
+        await tx.notification.create({
+          data: {
+            userId: request.userId,
+            message: `Yêu cầu trở thành nghệ sĩ của bạn đã bị từ chối. Bạn có thể gửi lại yêu cầu mới.`,
+            type: 'artist_rejected'
+          }
+        });
       });
 
       res.status(200).json({ message: "Đã từ chối yêu cầu!" });
     } catch (error) {
       console.error("Lỗi rejectRequest:", error);
       res.status(500).json({ error: "Lỗi server khi từ chối yêu cầu" });
+    }
+  },
+
+  // 5. User kiểm tra trạng thái yêu cầu của mình
+  getMyRequestStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Kiểm tra xem user đã là nghệ sĩ chưa
+      const artist = await prisma.artist.findUnique({ where: { userId } });
+      if (artist) {
+        return res.status(200).json({ 
+          status: 'IS_ARTIST', 
+          artistName: artist.artistName,
+          message: 'Bạn đã là nghệ sĩ!' 
+        });
+      }
+
+      // Kiểm tra yêu cầu hiện tại
+      const request = await prisma.artistRequest.findUnique({ where: { userId } });
+      if (!request) {
+        return res.status(200).json({ status: 'NO_REQUEST' });
+      }
+
+      res.status(200).json({ 
+        status: request.status, 
+        artistName: request.artistName,
+        createdAt: request.createdAt
+      });
+    } catch (error) {
+      console.error("Lỗi getMyRequestStatus:", error);
+      res.status(500).json({ error: "Lỗi server" });
     }
   }
 };

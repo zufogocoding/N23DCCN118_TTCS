@@ -1,16 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic2, Upload, FileAudio, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mic2, Upload, FileAudio, CheckCircle2, AlertCircle, Clock, XCircle, Music } from 'lucide-react';
 
 export default function BecomeArtist() {
   const [formData, setFormData] = useState({ artistName: '' });
   const [idCardFile, setIdCardFile] = useState(null);
   const [demoTrackFile, setDemoTrackFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [requestStatus, setRequestStatus] = useState(null); // null, 'NO_REQUEST', 'PENDING', 'APPROVED', 'REJECTED', 'IS_ARTIST'
+  const [statusData, setStatusData] = useState(null);
   
   const navigate = useNavigate();
+
+  // Kiểm tra trạng thái yêu cầu khi vào trang
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const res = await fetch('http://localhost:9000/api/artist-requests/my-status', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setRequestStatus(data.status);
+          setStatusData(data);
+        }
+      } catch (err) {
+        console.error('Lỗi kiểm tra trạng thái:', err);
+      } finally {
+        setPageLoading(false);
+      }
+    }
+
+    checkStatus();
+  }, [navigate]);
 
   const handleIdCardChange = (e) => {
     const file = e.target.files[0];
@@ -83,6 +115,7 @@ export default function BecomeArtist() {
         setFormData({ artistName: '' });
         setIdCardFile(null);
         setDemoTrackFile(null);
+        setRequestStatus('PENDING');
       } else {
         setError(resData.error || 'Có lỗi xảy ra khi gửi yêu cầu');
       }
@@ -93,6 +126,66 @@ export default function BecomeArtist() {
     }
   };
 
+  if (pageLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1db954]"></div>
+      </div>
+    );
+  }
+
+  // Trạng thái: Đã là nghệ sĩ
+  if (requestStatus === 'IS_ARTIST') {
+    return (
+      <div className="max-w-3xl mx-auto py-10 px-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center p-4 bg-[#1db954]/10 rounded-full mb-4">
+            <Music size={40} className="text-[#1db954]" />
+          </div>
+          <h1 className="text-4xl font-black text-white mb-4 tracking-tight">Bạn đã là Nghệ sĩ!</h1>
+          <p className="text-[#a0a0a0] mb-2">Nghệ danh: <span className="text-[#1db954] font-bold text-lg">{statusData?.artistName}</span></p>
+          <p className="text-[#666] text-sm">Bạn đã được cấp quyền nghệ sĩ và có thể upload bài hát.</p>
+          
+          <div className="mt-8 bg-[#181818] border border-[#1db954]/30 rounded-2xl p-6 inline-block">
+            <div className="flex items-center gap-3 text-[#1db954]">
+              <CheckCircle2 size={24} />
+              <span className="font-bold">Trạng thái: Đã duyệt</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Trạng thái: Đang chờ duyệt
+  if (requestStatus === 'PENDING') {
+    return (
+      <div className="max-w-3xl mx-auto py-10 px-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center p-4 bg-yellow-500/10 rounded-full mb-4">
+            <Clock size={40} className="text-yellow-500" />
+          </div>
+          <h1 className="text-4xl font-black text-white mb-4 tracking-tight">Đang chờ duyệt</h1>
+          <p className="text-[#a0a0a0] mb-2">Nghệ danh đăng ký: <span className="text-yellow-500 font-bold text-lg">{statusData?.artistName}</span></p>
+          <p className="text-[#666] text-sm">Yêu cầu của bạn đang được quản trị viên xem xét. Vui lòng kiên nhẫn chờ đợi.</p>
+          
+          <div className="mt-8 bg-[#181818] border border-yellow-500/30 rounded-2xl p-6 inline-block">
+            <div className="flex items-center gap-3 text-yellow-500">
+              <Clock size={24} className="animate-pulse" />
+              <span className="font-bold">Trạng thái: Đang chờ xét duyệt</span>
+            </div>
+            {statusData?.createdAt && (
+              <p className="text-[#666] text-xs mt-2">
+                Gửi lúc: {new Date(statusData.createdAt).toLocaleString('vi-VN')}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Trạng thái: Bị từ chối (cho phép gửi lại) hoặc chưa gửi
   return (
     <div className="max-w-3xl mx-auto py-10 px-6">
       <div className="text-center mb-10">
@@ -102,6 +195,14 @@ export default function BecomeArtist() {
         <h1 className="text-4xl font-black text-white mb-4 tracking-tight">Trở thành Nghệ sĩ</h1>
         <p className="text-[#a0a0a0]">Chia sẻ âm nhạc của bạn với hàng triệu người nghe trên toàn thế giới.</p>
       </div>
+
+      {/* Thông báo bị từ chối trước đó */}
+      {requestStatus === 'REJECTED' && (
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg flex items-center gap-3 mb-8">
+          <XCircle size={20} />
+          <p>Yêu cầu trước đó của bạn đã bị từ chối. Bạn có thể gửi lại yêu cầu mới bên dưới.</p>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-3 rounded-lg flex items-center gap-3 mb-8">
@@ -187,7 +288,7 @@ export default function BecomeArtist() {
             {loading ? (
               <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-black"></div>
             ) : (
-              'Gửi yêu cầu xét duyệt'
+              requestStatus === 'REJECTED' ? 'Gửi lại yêu cầu xét duyệt' : 'Gửi yêu cầu xét duyệt'
             )}
           </button>
         </div>
