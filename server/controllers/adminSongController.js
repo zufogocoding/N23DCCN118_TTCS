@@ -1,10 +1,21 @@
 const prisma = require("../db/index.js");
-// lấy bài pending
+
+// Lấy bài pending (có include artist info)
 const getPendingSongs = async (req, res) => {
   try {
     const songs = await prisma.song.findMany({
       where: {
         status: "pending",
+        isDeleted: false,
+      },
+      include: {
+        artists: {
+          include: {
+            artist: {
+              include: { user: { select: { username: true } } },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -14,9 +25,27 @@ const getPendingSongs = async (req, res) => {
     res.json(songs);
   } catch (error) {
     console.log(error);
-
     res.status(500).json({
       error: "Cannot get pending songs",
+    });
+  }
+};
+
+// Đếm số bài pending (cho notification badge)
+const getPendingCount = async (req, res) => {
+  try {
+    const count = await prisma.song.count({
+      where: {
+        status: "pending",
+        isDeleted: false,
+      },
+    });
+
+    res.json({ count });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Cannot get pending count",
     });
   }
 };
@@ -71,6 +100,7 @@ const rejectSong = async (req, res) => {
 
 module.exports = {
   getPendingSongs,
+  getPendingCount,
   approveSong,
   rejectSong,
 };

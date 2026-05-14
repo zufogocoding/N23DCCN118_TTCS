@@ -1,33 +1,41 @@
 const prisma = require('../db/index');
 
 const songController = {
-  // 1. Logic Upload
+  // 1. Logic Upload (nhận audio + cover image)
   uploadSong: async (req, res) => {
     try {
-      if (!req.file) return res.status(400).json({ error: 'Chưa chọn file!' });
+      // req.files chứa { audioFile: [...], coverImage: [...] }
+      const audioFile = req.files?.audioFile?.[0];
+      if (!audioFile) return res.status(400).json({ error: 'Chưa chọn file nhạc!' });
 
-      const savedAudioUrl = `/${req.file.path.replace(/\\/g, '/')}`;
-      const { title, durationMs } = req.body;
+      const savedAudioUrl = `/${audioFile.path.replace(/\\/g, '/')}`;
+      const { title, durationMs, artistName, genre } = req.body;
+
+      // Cover image (optional)
+      const coverFile = req.files?.coverImage?.[0];
+      const savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
 
       const newSong = await prisma.song.create({
         data: {
           title: title || 'Bài hát chưa đặt tên',
           durationMs: parseInt(durationMs) || 0,
           audioUrl: savedAudioUrl,
+          coverArtUrl: savedCoverUrl,
+          status: 'pending', // Mặc định pending, chờ admin duyệt
         }
       });
-      res.status(201).json({ message: 'Upload thành công!', song: newSong });
+      res.status(201).json({ message: 'Upload thành công! Bài hát đang chờ admin duyệt.', song: newSong });
     } catch (error) {
       console.error("Lỗi uploadSong:", error);
       res.status(500).json({ error: 'Lỗi server' });
     }
   },
 
-  // 2. Logic Lấy tất cả bài hát (chỉ lấy bài chưa bị xóa mềm)
+  // 2. Logic Lấy tất cả bài hát (chỉ lấy bài đã duyệt và chưa bị xóa mềm)
   getAllSongs: async (req, res) => {
     try {
       const allSongs = await prisma.song.findMany({
-        where: { isDeleted: false },
+        where: { isDeleted: false, status: 'approved' },
         include: {
           artists: {
             include: {

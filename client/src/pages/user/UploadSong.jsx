@@ -1,183 +1,360 @@
-import { useState } from "react";
-import { Image, Music } from "lucide-react";
+import { useState, useRef } from "react";
+import { Image, Music, Upload, CheckCircle, Loader2, ArrowLeft, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function UploadSong() {
+  const navigate = useNavigate();
   const [coverImage, setCoverImage] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
+  const [title, setTitle] = useState("");
+  const [artistName, setArtistName] = useState("");
+  const [genre, setGenre] = useState("");
+  const [description, setDescription] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  // Duration detection
+  const [durationMs, setDurationMs] = useState(0);
 
-    console.log({
-      coverImage,
-      audioFile,
-    });
-
-    alert("Song uploaded successfully!");
+  const handleCoverChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setCoverImage(file);
+      setCoverPreview(URL.createObjectURL(file));
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-black text-white flex justify-center px-6 py-10">
+  const handleAudioChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAudioFile(file);
 
-      <div className="w-full max-w-4xl flex flex-col items-center">
+      // Tự động detect duration
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(file);
+      audio.addEventListener('loadedmetadata', () => {
+        setDurationMs(Math.round(audio.duration * 1000));
+      });
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!audioFile) {
+      setError("Vui lòng chọn file nhạc!");
+      return;
+    }
+    if (!title.trim()) {
+      setError("Vui lòng nhập tên bài hát!");
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append("audioFile", audioFile);
+      if (coverImage) formData.append("coverImage", coverImage);
+      formData.append("title", title);
+      formData.append("artistName", artistName);
+      formData.append("genre", genre);
+      formData.append("durationMs", durationMs.toString());
+
+      // Sử dụng XMLHttpRequest để theo dõi progress
+      const xhr = new XMLHttpRequest();
+
+      await new Promise((resolve, reject) => {
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(percent);
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            reject(new Error("Upload thất bại"));
+          }
+        });
+
+        xhr.addEventListener("error", () => reject(new Error("Lỗi kết nối")));
+
+        xhr.open("POST", "http://localhost:9000/api/songs/upload");
+        xhr.send(formData);
+      });
+
+      setUploadSuccess(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Upload thất bại. Vui lòng thử lại.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Success state
+  if (uploadSuccess) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={40} className="text-emerald-400" />
+          </div>
+          <h1 className="text-3xl font-bold mb-3">Upload thành công!</h1>
+          <p className="text-[#a0a0a0] mb-8">
+            Bài hát <span className="text-white font-semibold">"{title}"</span> đã được gửi và đang chờ admin duyệt. 
+            Bạn sẽ nhận được thông báo khi bài hát được phê duyệt.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => {
+                setUploadSuccess(false);
+                setTitle("");
+                setArtistName("");
+                setGenre("");
+                setDescription("");
+                setCoverImage(null);
+                setCoverPreview(null);
+                setAudioFile(null);
+                setDurationMs(0);
+                setUploadProgress(0);
+              }}
+              className="px-6 py-3 rounded-full bg-[#222] text-white font-semibold hover:bg-[#333] transition-colors"
+            >
+              Upload thêm
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="px-6 py-3 rounded-full bg-[#00e6e6] text-black font-bold hover:bg-[#00d0d0] transition-colors"
+            >
+              Về trang chủ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex justify-center px-6 py-10">
+      <div className="w-full max-w-3xl flex flex-col">
+
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-[#a0a0a0] hover:text-white mb-6 w-fit transition-colors"
+        >
+          <ArrowLeft size={20} />
+          <span className="text-sm font-medium">Quay lại</span>
+        </button>
 
         {/* TITLE */}
-        <h1 className="text-6xl font-bold mb-2 text-center">
-          Upload Song
-        </h1>
-
-        <p className="text-gray-400 text-xl mb-10 text-center">
-          Share your music with the community
-        </p>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">
+            <span className="text-[#00e6e6]">Upload</span> bài hát
+          </h1>
+          <p className="text-[#a0a0a0] text-base">
+            Chia sẻ âm nhạc của bạn với cộng đồng. Bài hát sẽ được duyệt trước khi xuất bản.
+          </p>
+        </div>
 
         {/* FORM */}
         <form
           onSubmit={handleSubmit}
-          className="bg-[#111] border border-[#222] rounded-3xl p-8 w-full"
+          className="bg-[#121212] border border-[#222] rounded-2xl p-8 space-y-6"
         >
+          {/* Error */}
+          {error && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <X size={18} />
+              {error}
+            </div>
+          )}
 
           {/* UPLOAD BOX */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             {/* COVER */}
-            <label className="border-2 border-dashed border-[#2a2a2a] rounded-3xl h-[220px] flex flex-col items-center justify-center cursor-pointer hover:border-cyan-400 transition">
-
+            <label className={`relative border-2 border-dashed rounded-2xl h-[200px] flex flex-col items-center justify-center cursor-pointer transition-all duration-300 overflow-hidden ${
+              coverPreview 
+                ? 'border-[#00e6e6]/50' 
+                : 'border-[#2a2a2a] hover:border-[#00e6e6]/50 hover:bg-[#00e6e6]/5'
+            }`}>
               <input
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => setCoverImage(e.target.files[0])}
+                onChange={handleCoverChange}
               />
 
-              <Image size={60} className="text-cyan-400 mb-4" />
-
-              <h2 className="text-3xl font-bold mb-2">
-                Upload Cover
-              </h2>
-
-              <p className="text-gray-400">
-                PNG, JPG
-              </p>
-
-              {coverImage && (
-                <p className="text-cyan-400 mt-3 text-sm">
-                  {coverImage.name}
-                </p>
+              {coverPreview ? (
+                <>
+                  <img src={coverPreview} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <p className="text-sm font-semibold text-white">Đổi ảnh bìa</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-14 h-14 rounded-full bg-[#00e6e6]/10 flex items-center justify-center mb-3">
+                    <Image size={24} className="text-[#00e6e6]" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">Ảnh bìa</h3>
+                  <p className="text-[#666] text-sm">PNG, JPG (tùy chọn)</p>
+                </>
               )}
             </label>
 
             {/* AUDIO */}
-            <label className="border-2 border-dashed border-[#2a2a2a] rounded-3xl h-[220px] flex flex-col items-center justify-center cursor-pointer hover:border-cyan-400 transition">
-
+            <label className={`border-2 border-dashed rounded-2xl h-[200px] flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
+              audioFile 
+                ? 'border-emerald-500/50 bg-emerald-500/5' 
+                : 'border-[#2a2a2a] hover:border-[#00e6e6]/50 hover:bg-[#00e6e6]/5'
+            }`}>
               <input
                 type="file"
                 accept="audio/*"
                 className="hidden"
-                onChange={(e) => setAudioFile(e.target.files[0])}
+                onChange={handleAudioChange}
               />
 
-              <Music size={60} className="text-cyan-400 mb-4" />
-
-              <h2 className="text-3xl font-bold mb-2">
-                Upload Audio
-              </h2>
-
-              <p className="text-gray-400">
-                MP3, WAV
-              </p>
-
-              {audioFile && (
-                <p className="text-cyan-400 mt-3 text-sm">
-                  {audioFile.name}
-                </p>
+              {audioFile ? (
+                <>
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                    <CheckCircle size={24} className="text-emerald-400" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-1 text-emerald-400">File đã chọn</h3>
+                  <p className="text-[#a0a0a0] text-sm text-center px-4 truncate max-w-full">{audioFile.name}</p>
+                  {durationMs > 0 && (
+                    <p className="text-[#666] text-xs mt-1">
+                      Thời lượng: {Math.floor(durationMs / 60000)}:{String(Math.floor((durationMs % 60000) / 1000)).padStart(2, '0')}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-14 h-14 rounded-full bg-[#00e6e6]/10 flex items-center justify-center mb-3">
+                    <Music size={24} className="text-[#00e6e6]" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">File nhạc *</h3>
+                  <p className="text-[#666] text-sm">MP3, WAV</p>
+                </>
               )}
             </label>
           </div>
 
           {/* SONG TITLE */}
-          <div className="mb-6">
-            <label className="block mb-2 text-lg font-semibold">
-              Song Title
+          <div>
+            <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
+              Tên bài hát <span className="text-red-400">*</span>
             </label>
-
             <input
               type="text"
-              placeholder="Enter song title"
-              className="w-full bg-[#181818] border border-[#2a2a2a] rounded-2xl px-5 py-4 text-lg outline-none focus:border-cyan-400"
+              placeholder="Nhập tên bài hát"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
             />
           </div>
 
           {/* ARTIST */}
-          <div className="mb-6">
-            <label className="block mb-2 text-lg font-semibold">
-              Artist Name
+          <div>
+            <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
+              Nghệ sĩ
             </label>
-
             <input
               type="text"
-              placeholder="Enter artist name"
-              className="w-full bg-[#181818] border border-[#2a2a2a] rounded-2xl px-5 py-4 text-lg outline-none focus:border-cyan-400"
+              placeholder="Nhập tên nghệ sĩ"
+              value={artistName}
+              onChange={(e) => setArtistName(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
             />
           </div>
 
           {/* GENRE */}
-          <div className="mb-6">
-            <label className="block mb-2 text-lg font-semibold">
-              Genre
+          <div>
+            <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
+              Thể loại
             </label>
-
             <select
-              className="w-full bg-[#181818] border border-[#2a2a2a] rounded-2xl px-5 py-4 text-lg outline-none focus:border-cyan-400"
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors text-white"
             >
-              <option>Select genre</option>
-              <option>Pop</option>
-              <option>Rock</option>
-              <option>Hip Hop</option>
-              <option>Lo-fi</option>
-              <option>EDM</option>
+              <option value="">Chọn thể loại</option>
+              <option value="Pop">Pop</option>
+              <option value="Rock">Rock</option>
+              <option value="Hip Hop">Hip Hop</option>
+              <option value="Lo-fi">Lo-fi</option>
+              <option value="EDM">EDM</option>
+              <option value="R&B">R&B</option>
+              <option value="Jazz">Jazz</option>
+              <option value="Classical">Classical</option>
             </select>
           </div>
 
           {/* DESCRIPTION */}
-          <div className="mb-8">
-            <label className="block mb-2 text-lg font-semibold">
-              Description
+          <div>
+            <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
+              Mô tả
             </label>
-
             <textarea
-              rows="5"
-              placeholder="Write something about your song..."
-              className="w-full bg-[#181818] border border-[#2a2a2a] rounded-2xl px-5 py-4 text-lg outline-none focus:border-cyan-400 resize-none"
+              rows="4"
+              placeholder="Viết gì đó về bài hát của bạn..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors resize-none placeholder-[#444]"
             />
           </div>
+
+          {/* Progress Bar */}
+          {uploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#a0a0a0]">Đang upload...</span>
+                <span className="text-[#00e6e6] font-semibold">{uploadProgress}%</span>
+              </div>
+              <div className="h-2 bg-[#222] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#00e6e6] to-[#00b8d4] rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* BUTTON */}
           <button
             type="submit"
-  className="ml-auto mr-2 flex items-center justify-center gap-3 bg-[#00E5FF] hover:bg-[#00d0e8] text-black font-bold text-2xl px-12 py-5 rounded-full transition duration-300"
->
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                stroke="currentColor"
-                className="w-7 h-7"
-            >
-                <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 16V4m0 0l-4 4m4-4l4 4M4 16.5v1.125C4 19.489 5.511 21 7.375 21h9.25C18.489 21 20 19.489 20 17.625V16.5"
-                />
-            </svg>
-
-  Upload Song
-</button>
-
+            disabled={uploading}
+            className={`w-full flex items-center justify-center gap-3 font-bold text-lg px-8 py-4 rounded-xl transition-all duration-300 ${
+              uploading
+                ? 'bg-[#333] text-[#666] cursor-not-allowed'
+                : 'bg-gradient-to-r from-[#00e6e6] to-[#00b8d4] text-black hover:shadow-lg hover:shadow-[#00e6e6]/20 hover:scale-[1.01] active:scale-[0.99]'
+            }`}
+          >
+            {uploading ? (
+              <>
+                <Loader2 size={22} className="animate-spin" />
+                Đang upload...
+              </>
+            ) : (
+              <>
+                <Upload size={22} />
+                Upload bài hát
+              </>
+            )}
+          </button>
         </form>
-
       </div>
-
     </div>
   );
 }
