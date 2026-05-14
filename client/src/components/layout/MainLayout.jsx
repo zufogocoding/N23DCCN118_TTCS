@@ -147,28 +147,16 @@ export default function MainLayout() {
             </button>
 
 
-            <button
-              onClick={() => handleProtectedAction()}
-              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
-            >
-              <Heart size={24} className="fill-current" />
-              Bài hát đã thích
-            </button>
-
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
-
 
             <Link
               to="/playlist/liked"
-              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
+              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6] mb-4"
             >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
             </Link>
-          </div>
-
-          <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
 
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
 
@@ -177,14 +165,6 @@ export default function MainLayout() {
                   Chưa có playlist nào.
                 </li>
               ) : (
-
-                userPlaylists.map((playlist) => (
-                  <li
-                    key={playlist.id}
-                    className="hover:text-white cursor-pointer truncate transition-colors"
-                  >
-                    {playlist.title}
-
                 userPlaylists.map(playlist => (
                   <li key={playlist.id}>
                     <Link
@@ -193,37 +173,9 @@ export default function MainLayout() {
                     >
                       {playlist.title}
                     </Link>
-
                   </li>
                 ))
               )}
-
-              <li>
-                <Link
-                  to="/playlist/chill-vibes"
-                  className="hover:text-white cursor-pointer truncate block"
-                >
-                  Chill Vibes
-                </Link>
-              </li>
-
-              <li>
-                <Link
-                  to="/playlist/workout-mix"
-                  className="hover:text-white cursor-pointer truncate block"
-                >
-                  Workout Mix
-                </Link>
-              </li>
-
-              <li>
-                <Link
-                  to="/playlist/lofi-coding"
-                  className="hover:text-white cursor-pointer truncate block"
-                >
-                  Lofi Coding
-                </Link>
-              </li>
 
             </ul>
 
