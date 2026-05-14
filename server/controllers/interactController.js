@@ -136,6 +136,53 @@ const interactController = {
       console.error("Lỗi checkLikeStatus:", error);
       res.status(500).json({ error: "Lỗi server" });
     }
+  },
+
+  /**
+   * Lấy danh sách tất cả bài hát đã like của user
+   */
+  getLikedSongs: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+
+      // Tìm tất cả songId mà user đã like (isLiked = true)
+      const likedInteractions = await prisma.interaction.findMany({
+        where: {
+          userId,
+          isLiked: true
+        },
+        select: { songId: true },
+        distinct: ['songId']
+      });
+
+      const songIds = likedInteractions.map(i => i.songId);
+
+      if (songIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      // Lấy thông tin đầy đủ của các bài hát
+      const songs = await prisma.song.findMany({
+        where: {
+          id: { in: songIds },
+          isDeleted: false
+        },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true } } }
+              }
+            }
+          }
+        }
+      });
+
+      res.status(200).json(songs);
+    } catch (error) {
+      console.error("Lỗi getLikedSongs:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
   }
 };
 

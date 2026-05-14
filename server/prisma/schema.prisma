@@ -36,6 +36,7 @@ model User {
 
   // Quan hệ
   artist              Artist?
+  artistRequest       ArtistRequest?
   playlists           Playlist[]
   follows             Follow[]              @relation("Follower")
   followedBy          Follow[]              @relation("Followee")
@@ -247,3 +248,13 @@ model Otp {
   @@index([email])
 }
 
+model ArtistRequest {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistName   String   @db.VarChar(255)
+  idCardUrl    String   @db.VarChar(500)
+  demoTrackUrl String   @db.VarChar(500)
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt    DateTime @default(now())
+}

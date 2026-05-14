@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from '../../context/PlayerContext';
 import {
@@ -45,7 +46,7 @@ export default function MainLayout() {
           const data = await res.json();
           setUserPlaylists(data);
         }
-      } catch (error) {
+      } catch (error) { console.error(error);
         console.error("Lỗi khi lấy playlist:", error);
       }
     }
@@ -102,63 +103,33 @@ export default function MainLayout() {
             >
               <PlusSquare size={24} /> Tạo Playlist
             </button>
-            <button 
-              onClick={() => handleProtectedAction()}
+            <Link
+              to="/playlist/liked"
               className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6]"
             >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
-            </button>
+            </Link>
           </div>
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
- frontend-quynh
-  <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
-
-    <li>
-      <Link
-        to="/playlist/chill-vibes"
-        className="hover:text-white cursor-pointer truncate block"
-      >
-        Chill Vibes
-      </Link>
-    </li>
-
-    <li>
-      <Link
-        to="/playlist/workout-mix"
-        className="hover:text-white cursor-pointer truncate block"
-      >
-        Workout Mix
-      </Link>
-    </li>
-
-    <li>
-      <Link
-        to="/playlist/lofi-coding"
-        className="hover:text-white cursor-pointer truncate block"
-      >
-        Lofi Coding
-      </Link>
-    </li>
-
-  </ul>
-</div>
-</div>
-
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
               {userPlaylists.length === 0 ? (
                 <li className="text-xs text-[#666]">Chưa có playlist nào.</li>
               ) : (
                 userPlaylists.map(playlist => (
-                  <li key={playlist.id} className="hover:text-white cursor-pointer truncate transition-colors">
-                    {playlist.title}
+                  <li key={playlist.id}>
+                    <Link
+                      to={`/playlist/${playlist.id}`}
+                      className="hover:text-white cursor-pointer truncate transition-colors block"
+                    >
+                      {playlist.title}
+                    </Link>
                   </li>
                 ))
               )}
             </ul>
           </div>
         </div>
- main
 
         {/* CỘT 2: NỘI DUNG CHÍNH Ở GIỮA */}
         <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
@@ -219,7 +190,7 @@ export default function MainLayout() {
 
         {/* 1. Trái: Info bài hát */}
         <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
-{currentSong ? (
+          {currentSong ? (
             <>
               <img src={currentSong.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100"} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
               <div className="hidden sm:block max-w-[180px]">
@@ -228,8 +199,17 @@ export default function MainLayout() {
               </div>
               <Heart
                 onClick={() => {
-                  handleProtectedAction(); 
-                  setIsLiked(!isLiked);
+                  if (!currentSong) return;
+                  const user = JSON.parse(localStorage.getItem('user') || '{}');
+                  if (!user.id) { navigate('/login'); return; }
+                  fetch('http://localhost:9000/api/interactions/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id, songId: currentSong.id })
+                  })
+                    .then(r => r.json())
+                    .then(data => setIsLiked(data.isLiked))
+                    .catch(err => console.error(err));
                 }}
                 size={18}
                 className={`cursor-pointer ml-2 transition-colors ${isLiked ? 'text-[#00e6e6] fill-current' : 'text-[#a0a0a0] hover:text-white'}`}

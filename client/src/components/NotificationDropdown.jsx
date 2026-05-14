@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 
 export default function NotificationDropdown() {
