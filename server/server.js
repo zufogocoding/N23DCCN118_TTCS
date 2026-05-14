@@ -14,6 +14,7 @@ const adminSongRoutes = require("./routes/adminSongRoutes");
 
 const userRoutes = require('./routes/userRoutes.js');
 const artistRequestRoutes = require('./routes/artistRequestRoutes.js');
+const notificationRoutes = require('./routes/notificationRoutes.js');
  
 const app = express()
 
@@ -38,6 +39,7 @@ app.use(adminSongRoutes);
 
 app.use('/api/users', userRoutes);
 app.use('/api/artist-requests', artistRequestRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 
 app.listen(9000, '0.0.0.0', () => {

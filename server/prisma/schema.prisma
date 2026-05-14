@@ -42,6 +42,7 @@ model User {
   followedBy          Follow[]              @relation("Followee")
   interactions        Interaction[]
   recommendationCache RecommendationCache[]
+  notifications       Notification[]
 }
 
 model Artist {
@@ -257,4 +258,16 @@ model ArtistRequest {
   demoTrackUrl String   @db.VarChar(500)
   status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt    DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String   @db.Text
+  type      String   @default("info") @db.VarChar(50) // info, artist_approved, artist_rejected
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
 }

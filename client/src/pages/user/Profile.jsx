@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
-import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2, Music } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
@@ -43,7 +43,9 @@ export default function Profile() {
         localStorage.setItem('user', JSON.stringify({
           ...lsUser,
           username: data.username,
-          avatarUrl: data.avatarUrl
+          avatarUrl: data.avatarUrl,
+          isArtist: data.isArtist,
+          artistName: data.artistName
         }));
       } else {
         const errorData = await res.json();
@@ -180,9 +182,17 @@ export default function Profile() {
         
         <div className="flex-1 text-center md:text-left">
           <h4 className="uppercase text-xs font-bold tracking-[0.2em] text-[#a0a0a0] mb-2">Hồ sơ người dùng</h4>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-[#a0a0a0] mb-6">
-            {user?.username}
-          </h1>
+          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-[#a0a0a0]">
+              {user?.isArtist && user?.artistName ? user.artistName : user?.username}
+            </h1>
+            {user?.isArtist && (
+              <div className="flex items-center gap-1.5 bg-[#1db954]/10 border border-[#1db954]/30 px-3 py-1.5 rounded-full self-center">
+                <Music size={16} className="text-[#1db954]" />
+                <span className="text-[#1db954] text-xs font-bold">Nghệ sĩ</span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center justify-center md:justify-start gap-4 text-sm font-semibold">
             <span className="text-white">{user?.email}</span>
             <span className="text-[#a0a0a0]">•</span>
