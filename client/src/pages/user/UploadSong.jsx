@@ -87,7 +87,11 @@ export default function UploadSong() {
 
         xhr.addEventListener("error", () => reject(new Error("Lỗi kết nối")));
 
+        const token = localStorage.getItem("token");
         xhr.open("POST", "http://localhost:9000/api/songs/upload");
+        if (token) {
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        }
         xhr.send(formData);
       });
 

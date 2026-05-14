@@ -216,10 +216,10 @@ export default function MainLayout() {
           <div className="flex justify-between items-start mb-4">
             <div className="overflow-hidden pr-2">
               <h2 className="font-bold text-xl hover:underline cursor-pointer truncate">
-                {currentSong?.title || "Sài Gòn Đau Lòng Vãi :(((("}
+                {currentSong?.title || "Chưa phát bài nào"}
               </h2>
               <p className="text-[#a0a0a0] text-sm hover:underline cursor-pointer truncate">
-                {currentSong?.artist?.name || "Hứa Kim Tuyền"}
+                {currentSong?.artist?.name || "Nghệ sĩ"}
               </p>
             </div>
             <Heart
@@ -232,8 +232,9 @@ export default function MainLayout() {
           <div className="bg-[#181818] p-4 rounded-xl mt-4 border border-[#333]">
             <h4 className="font-bold text-sm mb-2">Về nghệ sĩ</h4>
             <p className="text-xs text-[#a0a0a0] line-clamp-3 leading-relaxed">
-              Hứa Kim Tuyền là một nhạc sĩ, nhà sản xuất âm nhạc nổi tiếng với
-              nhiều bản hit lãng mạn, gắn liền với tâm trạng của giới trẻ...
+              {currentSong 
+                ? `${currentSong.artist?.name} là nghệ sĩ đang phát trên Soundwave. Hãy theo dõi để cập nhật những sản phẩm mới nhất của họ.`
+                : "Chọn một bài hát để xem thông tin nghệ sĩ."}
             </p>
           </div>
         </div>
@@ -249,7 +250,7 @@ export default function MainLayout() {
               <img src={currentSong.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100"} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
               <div className="hidden sm:block max-w-[180px]">
                 <h4 className="font-semibold text-sm hover:underline cursor-pointer truncate">{currentSong.title}</h4>
-                <p className="text-xs text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Unknown Artist"}</p>
+                <p className="text-xs text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Nghệ sĩ"}</p>
               </div>
               <Heart
                 onClick={() => {

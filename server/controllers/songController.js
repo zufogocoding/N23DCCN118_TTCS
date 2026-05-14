@@ -10,6 +10,20 @@ const songController = {
 
       const savedAudioUrl = `/${audioFile.path.replace(/\\/g, '/')}`;
       const { title, durationMs, artistName, genre } = req.body;
+      const userId = req.user.id;
+
+      // Đảm bảo user đã có bản ghi Artist (nếu chưa thì tạo mới với artistName từ client hoặc username)
+      let artist = await prisma.artist.findUnique({ where: { userId } });
+      if (!artist) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        artist = await prisma.artist.create({
+          data: {
+            userId,
+            artistName: artistName || user.username,
+            status: 'active'
+          }
+        });
+      }
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
@@ -22,6 +36,11 @@ const songController = {
           audioUrl: savedAudioUrl,
           coverArtUrl: savedCoverUrl,
           status: 'pending', // Mặc định pending, chờ admin duyệt
+          artists: {
+            create: {
+              artistId: userId
+            }
+          }
         }
       });
       res.status(201).json({ message: 'Upload thành công! Bài hát đang chờ admin duyệt.', song: newSong });
