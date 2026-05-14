@@ -1,16 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, CheckCheck } from 'lucide-react';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
-  // Dữ liệu mẫu thông báo
-  const notifications = [
-    { id: 1, text: "Nghệ sĩ Sơn Tùng M-TP vừa ra mắt bài hát mới.", time: "2 phút trước", isUnread: true },
-    { id: 2, text: "Playlist 'Chill Vibes' của bạn có thêm người theo dõi.", time: "1 giờ trước", isUnread: true },
-    { id: 3, text: "Chào mừng bạn quay trở lại Soundwave!", time: "5 giờ trước", isUnread: false },
-  ];
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await fetch('http://localhost:9000/api/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy thông báo:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Polling mỗi 30 giây để kiểm tra thông báo mới
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refetch khi mở dropdown
+  useEffect(() => {
+    if (isOpen) fetchNotifications();
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -22,6 +49,60 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleMarkAsRead = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`http://localhost:9000/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Lỗi markAsRead:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:9000/api/notifications/read-all', {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Lỗi markAllAsRead:', error);
+    }
+  };
+
+  const formatTime = (dateStr) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    return `${diffDays} ngày trước`;
+  };
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case 'artist_approved': return 'border-l-[#1db954]';
+      case 'artist_rejected': return 'border-l-[#ff4d4f]';
+      default: return 'border-l-[#00e6e6]';
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Nút Chuông */}
@@ -30,31 +111,47 @@ export default function NotificationDropdown() {
         className="relative p-2 rounded-full hover:bg-[#282828] text-[#a0a0a0] hover:text-white transition-colors"
       >
         <Bell size={20} />
-        {/* Chấm đỏ báo hiệu có thông báo mới */}
-        <span className="absolute top-2 right-2 w-2 h-2 bg-[#ff4d4f] rounded-full border-2 border-black"></span>
+        {/* Badge số thông báo chưa đọc */}
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center bg-[#ff4d4f] rounded-full text-white text-[10px] font-bold px-1 border-2 border-black">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Menu xổ xuống */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-[#282828] border border-[#3e3e3e] rounded-md shadow-2xl py-2 z-50">
-          <div className="px-4 py-2 border-b border-[#3e3e3e]">
+          <div className="px-4 py-2 border-b border-[#3e3e3e] flex items-center justify-between">
             <h3 className="font-bold text-white">Thông báo</h3>
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAllAsRead}
+                className="flex items-center gap-1 text-xs text-[#00e6e6] hover:text-[#00c8c8] transition-colors font-semibold"
+              >
+                <CheckCheck size={14} />
+                Đọc tất cả
+              </button>
+            )}
           </div>
 
           <div className="max-h-80 overflow-y-auto">
-            {notifications.map((noti) => (
-              <div
-                key={noti.id}
-                className={`px-4 py-3 hover:bg-[#3e3e3e] cursor-pointer transition-colors border-b border-[#333] last:border-0 ${noti.isUnread ? 'bg-white/5' : ''}`}
-              >
-                <p className="text-sm text-[#eaeaea] leading-snug">{noti.text}</p>
-                <p className="text-[10px] text-[#a0a0a0] mt-1">{noti.time}</p>
+            {notifications.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[#666] text-sm">
+                Chưa có thông báo nào
               </div>
-            ))}
-          </div>
-
-          <div className="px-4 py-2 text-center border-t border-[#3e3e3e]">
-            <button className="text-xs text-[#00e6e6] hover:underline font-bold">Xem tất cả</button>
+            ) : (
+              notifications.map((noti) => (
+                <div
+                  key={noti.id}
+                  onClick={() => !noti.isRead && handleMarkAsRead(noti.id)}
+                  className={`px-4 py-3 hover:bg-[#3e3e3e] cursor-pointer transition-colors border-b border-[#333] last:border-0 border-l-2 ${getTypeColor(noti.type)} ${!noti.isRead ? 'bg-white/5' : ''}`}
+                >
+                  <p className="text-sm text-[#eaeaea] leading-snug">{noti.message}</p>
+                  <p className="text-[10px] text-[#a0a0a0] mt-1">{formatTime(noti.createdAt)}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

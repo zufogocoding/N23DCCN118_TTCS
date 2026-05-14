@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -54,7 +54,7 @@ export default function Register() {
       } else {
         setServerError(resData.error || "Có lỗi xảy ra!");
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setServerError("Không thể kết nối đến server!");
     } finally {
       setIsLoading(false);
@@ -89,7 +89,7 @@ export default function Register() {
       } else {
         setServerError(resData.error || "Mã OTP không hợp lệ!");
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setServerError("Không thể kết nối đến server!");
     } finally {
       setIsLoading(false);

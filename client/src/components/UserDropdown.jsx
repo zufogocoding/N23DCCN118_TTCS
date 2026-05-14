@@ -1,17 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogIn, UserPlus } from 'lucide-react';
+import { User, LogIn, UserPlus, Music } from 'lucide-react';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : {};
+const [user, setUser] = useState({});
   const isLoggedIn = !!user.username || !!user.email;
+  
+  const loadUser = () => {
+    const userStr = localStorage.getItem('user');
+    setUser(userStr ? JSON.parse(userStr) : {});
+  };
+
+  useEffect(() => {
+    loadUser();
+    
+    // Lắng nghe sự kiện cập nhật profile để render lại dropdown
+    window.addEventListener('profileUpdated', loadUser);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', loadUser);
+    };
+  }, []);
+
   const getInitial = () => {
-    if (user.username) return user.username.charAt(0).toUpperCase();
+    const displayName = user.artistName || user.username;
+    if (displayName) return displayName.charAt(0).toUpperCase();
     if (user.email) return user.email.charAt(0).toUpperCase();
     return '?';
   };
@@ -29,11 +47,12 @@ const userStr = localStorage.getItem('user');
 
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setIsOpen(false);
     navigate('/login');
   };
 
-  if (!user) {
+  if (!user || (!user.username && !user.email)) {
     return (
       <div className="flex items-center gap-4">
         <Link 
@@ -52,6 +71,13 @@ const userStr = localStorage.getItem('user');
     );
   }
 
+  const displayAvatar = user.avatarUrl 
+    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:9000${user.avatarUrl}`)
+    : null;
+
+  // Hiển thị artistName nếu là nghệ sĩ, ngược lại hiển thị username
+  const displayName = user.isArtist && user.artistName ? user.artistName : user.username;
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Nút Avatar hiện chữ cái đầu tiên (vd: H) */}
@@ -59,8 +85,8 @@ const userStr = localStorage.getItem('user');
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center w-9 h-9 rounded-full bg-[#1ed760] hover:scale-105 transition-transform focus:outline-none overflow-hidden border-4 border-black"
       >
-        {user.avatar ? (
-          <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+        {displayAvatar ? (
+          <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
         ) : (
           <span className="text-black font-bold text-sm">
             {isLoggedIn ? getInitial() : <User size={18} className="text-black" />}
@@ -76,9 +102,29 @@ const userStr = localStorage.getItem('user');
             <>
               {/* Trạng thái 1: ĐÃ ĐĂNG NHẬP */}
               <div className="px-4 py-3 border-b border-[#3e3e3e] mb-1">
-                <p className="text-white truncate text-base">{user.username}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-white truncate text-base">{displayName}</p>
+                  {user.isArtist && (
+                    <Music size={14} className="text-[#1db954] flex-shrink-0" />
+                  )}
+                </div>
                 <p className="text-xs text-[#a0a0a0] font-normal truncate">{user.email}</p>
+                {user.isArtist && (
+                  <span className="inline-block mt-1 text-[10px] font-bold text-[#1db954] bg-[#1db954]/10 px-2 py-0.5 rounded-full">
+                    Nghệ sĩ
+                  </span>
+                )}
               </div>
+
+              {user.isAdmin && (
+                <Link
+                  to="/admin/dashboard"
+                  onClick={() => setIsOpen(false)}
+                  className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors text-[#00e6e6]"
+                >
+                  Quản lý hệ thống
+                </Link>
+              )}
 
               <Link
                 to="/profile"
@@ -87,14 +133,17 @@ const userStr = localStorage.getItem('user');
               >
                 Hồ sơ
               </Link>
-
-              <Link
-                to="/register-artist"
-                onClick={() => setIsOpen(false)}
-                className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors"
-              >
-                Trở thành Feature Artist
-              </Link>
+              
+              {/* Chỉ hiện "Trở thành Nghệ sĩ" nếu KHÔNG phải admin VÀ CHƯA là nghệ sĩ */}
+              {!user.isAdmin && !user.isArtist && (
+                <Link
+                  to="/register-artist"
+                  onClick={() => setIsOpen(false)}
+                  className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors text-[#1db954]"
+                >
+                  Trở thành Nghệ sĩ
+                </Link>
+              )}
 
               <Link
                 to="/settings"

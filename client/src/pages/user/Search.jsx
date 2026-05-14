@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Search as SearchIcon, Play, Heart } from 'lucide-react';
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Khởi tạo state trống, chuẩn bị sẵn để fetch từ DB sau này
-  const [suggestions, setSuggestions] = useState([]);
-  const [searchResults, setSearchResults] = useState({
+  const [suggestions] = useState([]);
+  const [searchResults] = useState({
     songs: [],
     albums: [],
     artists: []

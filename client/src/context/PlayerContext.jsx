@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useRef, useEffect } from 'react';
 
 const PlayerContext = createContext();
 
@@ -55,18 +56,22 @@ export const PlayerProvider = ({ children }) => {
   };
 
   // Hàm phát một bài cụ thể
-  const playSong = (song, playlist = queue) => {
+  function playSong(song, playlist = queue) {
     setCurrentSong(song);
     setQueue(playlist);
     setCurrentIndex(playlist.findIndex(s => s.id === song.id));
 
-    // Giả sử API trả về URL file nhạc qua trường 'songUrl'
-    audioRef.current.src = song.songUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; // Nhạc test
-    audioRef.current.play();
+    // Sử dụng streaming API endpoint
+    const streamUrl = `http://localhost:9000/api/songs/${song.id}/stream`;
+    audioRef.current.src = streamUrl;
+    audioRef.current.play().catch(() => {
+      // Nếu lỗi (ví dụ file không tồn tại), vẫn set state đúng
+      console.warn('Không thể phát bài hát này');
+    });
     setIsPlaying(true);
-  };
+  }
 
-  const playNext = () => {
+  function playNext() {
     if (queue.length === 0) return;
     if (isRepeat) {
       audioRef.current.currentTime = 0;
@@ -82,9 +87,9 @@ export const PlayerProvider = ({ children }) => {
     }
 
     playSong(queue[nextIndex], queue);
-  };
+  }
 
-  const playPrev = () => {
+  function playPrev() {
     if (queue.length === 0) return;
     // Nếu đang phát quá 3 giây, nút prev sẽ tua lại từ đầu bài thay vì qua bài trước
     if (currentTime > 3) {

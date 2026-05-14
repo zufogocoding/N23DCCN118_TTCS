@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export default function ForgotPassword() {
       } else {
         setServerError(data.error || "Email không tồn tại");
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setServerError("Lỗi kết nối đến server");
     } finally {
       setIsLoading(false);
@@ -74,7 +74,7 @@ export default function ForgotPassword() {
       } else {
         setServerError(data.error || "Mã OTP không đúng hoặc đã hết hạn");
       }
-    } catch (err) {
+    } catch (err) { console.error(err);
       setServerError("Lỗi kết nối đến server");
     } finally {
       setIsLoading(false);

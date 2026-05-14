@@ -12,4 +12,7 @@ router.post('/api/interactions/like', interactController.toggleLike);
 // GET /api/interactions/like/:userId/:songId - Kiểm tra trạng thái like
 router.get('/api/interactions/like/:userId/:songId', interactController.checkLikeStatus);
 
+// GET /api/interactions/liked/:userId - Lấy danh sách bài hát đã thích
+router.get('/api/interactions/liked/:userId', interactController.getLikedSongs);
+
 module.exports = router;

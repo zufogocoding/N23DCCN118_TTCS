@@ -135,6 +135,11 @@ const login = async (req, res) => {
           { email: identifier },
           { username: identifier }
         ]
+      },
+      include: {
+        artist: {
+          select: { artistName: true }
+        }
       }
     });
 
@@ -153,11 +158,15 @@ const login = async (req, res) => {
       { expiresIn: '7d' } // Token sống 7 ngày
     );
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, artist, ...userWithoutPassword } = user;
 
     res.status(200).json({
       message: "Đăng nhập thành công",
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        isArtist: !!artist,
+        artistName: artist?.artistName || null
+      },
       token
     });
 
