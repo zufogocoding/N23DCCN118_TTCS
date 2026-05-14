@@ -7,7 +7,20 @@ import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
 import AdminLayout from './components/layout/AdminLayout';
 
+
+ // Pending Song
+import PendingSongs from "./pages/admin/PendingSongs";
+// PlaylistView
+
+// upload
+import UploadSong from "./pages/user/UploadSong";
+
+import PlaylistView from './pages/PlaylistView'; 
 // Pages
+
+ 
+// Pages
+main
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 // Cần tạo file ForgotPassword.jsx hoặc comment tạm dòng này nếu chưa có
@@ -117,6 +130,15 @@ function App() {
           <Route path="song/:id" element={<SongDetail />} />
           <Route path="playlist/:playlistId" element={<PlaylistView />} />
         </Route>
+ quynh
+        /* Route chi tiet bai hat */
+        <Route path="/song/:id" element={<SongDetail />} />
+        <Route path="/playlist/:playlistId" element={<PlaylistView />} />
+         /* Route duyet songs */
+        <Route path="/admin/pending-songs" element={<PendingSongs />} />
+        <Route path="/upload-song" element={<UploadSong />} />
+        
+         main
       </Routes>
     </BrowserRouter>
   );
