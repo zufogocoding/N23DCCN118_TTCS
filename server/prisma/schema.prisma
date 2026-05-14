@@ -94,8 +94,7 @@ model Song {
   title       String   @db.VarChar(255)
   energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
   tempo       Float? // Đổi sang Float
-  status      String?  @db.VarChar(50)
-
+  status String @default("pending") @db.VarChar(50) // moi bai upload moi se tu pending
   // Vector lưu trữ Item Features (Cho CBF hoặc Item Factors của ALS)
   embedding Unsupported("vector(64)")?
 
