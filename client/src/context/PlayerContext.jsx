@@ -69,6 +69,26 @@ export const PlayerProvider = ({ children }) => {
       console.warn('Không thể phát bài hát này');
     });
     setIsPlaying(true);
+
+    // Call API để tracking lượt nghe
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        fetch('http://localhost:9000/api/interactions/listen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            songId: song.id,
+            durationPlayed: 0, // Tạm thời gửi 0, chỉ để tăng playCount
+            isSkipped: false
+          })
+        }).catch(err => console.error('Track listen error:', err));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 
   function playNext() {
