@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
 
@@ -9,22 +9,29 @@ import {
   Library,
   PlusSquare,
   Heart,
-  PlayCircle,
-  PauseCircle,
+  Play,
+  Pause,
   SkipBack,
   SkipForward,
   Shuffle,
   Repeat,
   Volume2,
+  VolumeX,
   Mic2,
-  ListMusic,
-  Maximize2,
+  Music,
   MoreHorizontal,
 } from "lucide-react";
 
 import UserDropdown from "../UserDropdown";
 import NotificationDropdown from "../NotificationDropdown.jsx";
 import CreatePlaylistModal from "../CreatePlaylistModal";
+
+function formatPlayerClock(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
@@ -46,10 +53,44 @@ export default function MainLayout() {
     playNext,
     playPrev,
     handleSeek,
-    formatTime,
     toggleShuffle,
     toggleRepeat,
   } = usePlayer();
+
+  const progressBarRef = useRef(null);
+  const seekingRef = useRef(false);
+
+  const seekFromClientX = useCallback(
+    (clientX) => {
+      const el = progressBarRef.current;
+      if (!el || !Number.isFinite(duration) || duration <= 0) return;
+      const rect = el.getBoundingClientRect();
+      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      handleSeek(pct * duration);
+    },
+    [duration, handleSeek]
+  );
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!seekingRef.current) return;
+      seekFromClientX(e.clientX);
+    };
+    const onUp = () => {
+      seekingRef.current = false;
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [seekFromClientX]);
+
+  const progressPct =
+    Number.isFinite(duration) && duration > 0
+      ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
+      : 0;
 
   const fetchPlaylists = async () => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -73,6 +114,28 @@ export default function MainLayout() {
   useEffect(() => {
     fetchPlaylists();
   }, []);
+
+  useEffect(() => {
+    if (!currentSong?.id) {
+      setIsLiked(false);
+      return;
+    }
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!user.id) {
+      setIsLiked(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`http://localhost:9000/api/interactions/like/${user.id}/${currentSong.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setIsLiked(!!data.isLiked);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [currentSong?.id]);
 
   const handleProtectedAction = (action) => {
     const user = localStorage.getItem("user");
@@ -241,77 +304,189 @@ export default function MainLayout() {
       </div>
 
       {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER HOẠT ĐỘNG */}
-      <div className="h-[95px] bg-black border-t border-[#222] flex items-center justify-between px-4 z-50">
+      <div className="min-h-[96px] shrink-0 bg-[#121212] border-t border-[#2a2a2a] flex items-center justify-between gap-3 px-4 py-2 z-50">
 
         {/* 1. Trái: Info bài hát */}
-        <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
+        <div className="flex items-center gap-3 min-w-0 flex-[1.1] max-w-[28vw]">
           {currentSong ? (
             <>
-              <img src={currentSong.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100"} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg" />
-              <div className="hidden sm:block max-w-[180px]">
-                <h4 className="font-semibold text-sm hover:underline cursor-pointer truncate">{currentSong.title}</h4>
-                <p className="text-xs text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Nghệ sĩ"}</p>
+              {currentSong.coverImage ? (
+                <img
+                  src={currentSong.coverImage}
+                  alt=""
+                  className="w-14 h-14 rounded object-cover shadow-md shrink-0 bg-[#282828]"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded shrink-0 bg-[#282828] flex items-center justify-center">
+                  <Music size={22} className="text-[#666]" strokeWidth={1.5} />
+                </div>
+              )}
+              <div className="hidden sm:block min-w-0 flex-1">
+                <h4 className="font-semibold text-sm text-white truncate leading-tight">{currentSong.title}</h4>
+                <p className="text-xs text-[#b3b3b3] truncate mt-0.5">{currentSong.artist?.name || "Nghệ sĩ"}</p>
               </div>
-              <Heart
-                onClick={() => {
-                  if (!currentSong) return;
-                  const user = JSON.parse(localStorage.getItem('user') || '{}');
-                  if (!user.id) { navigate('/login'); return; }
-                  fetch('http://localhost:9000/api/interactions/like', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id, songId: currentSong.id })
-                  })
-                    .then(r => r.json())
-                    .then(data => setIsLiked(data.isLiked))
-                    .catch(err => console.error(err));
-                }}
-                size={18}
-                className={`cursor-pointer ml-2 transition-colors ${isLiked ? 'text-[#00e6e6] fill-current' : 'text-[#a0a0a0] hover:text-white'}`}
-              />
+              <div className="hidden sm:flex items-center gap-1 shrink-0">
+                <Heart
+                  onClick={() => {
+                    if (!currentSong) return;
+                    const user = JSON.parse(localStorage.getItem("user") || "{}");
+                    if (!user.id) {
+                      navigate("/login");
+                      return;
+                    }
+                    fetch("http://localhost:9000/api/interactions/like", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ userId: user.id, songId: currentSong.id }),
+                    })
+                      .then((r) => r.json())
+                      .then((data) => setIsLiked(data.isLiked))
+                      .catch((err) => console.error(err));
+                  }}
+                  size={18}
+                  className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#b3b3b3] hover:text-white"}`}
+                />
+              </div>
             </>
           ) : (
             <>
-              <img src="https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=100&auto=format&fit=crop" alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg opacity-50" />
-              <div className="hidden sm:block text-xs text-[#a0a0a0]">Chưa phát bài nào</div>
+              <div className="w-14 h-14 rounded shrink-0 bg-[#282828] flex items-center justify-center opacity-70">
+                <Music size={22} className="text-[#555]" strokeWidth={1.5} />
+              </div>
+              <div className="hidden sm:block text-xs text-[#b3b3b3]">Chưa phát bài nào</div>
             </>
           )}
         </div>
 
-        {/* 2. Giữa: Player Controls */}
-        <div className="flex flex-col items-center justify-center w-[40%] max-w-[500px]">
-          <div className="flex items-center gap-6 mb-2">
-            <button onClick={toggleShuffle} className={`transition-colors ${isShuffle ? 'text-[#00e6e6]' : 'text-[#a0a0a0] hover:text-white'}`}>
-              <Shuffle size={18} />
+        {/* 2. Giữa: điều khiển + thanh tua */}
+        <div className="flex flex-col items-stretch justify-center flex-[1.6] max-w-[560px] w-full min-w-0">
+          <div className="flex items-center justify-center gap-5 mb-1.5">
+            <button
+              type="button"
+              onClick={toggleShuffle}
+              className={`p-1 rounded transition-colors ${isShuffle ? "text-[#00e6e6]" : "text-[#b3b3b3] hover:text-white"}`}
+              aria-label="Trộn bài"
+            >
+              <Shuffle size={17} strokeWidth={1.75} />
             </button>
-            <button onClick={playPrev} className="text-[#a0a0a0] hover:text-white transition-colors">
+            <button
+              type="button"
+              onClick={playPrev}
+              className="p-1 rounded text-[#b3b3b3] hover:text-white transition-colors"
+              aria-label="Bài trước"
+            >
               <SkipBack size={20} fill="currentColor" />
             </button>
             <button
+              type="button"
               onClick={() => {
                 handleProtectedAction();
                 togglePlay();
               }}
-              className="text-white hover:scale-105 transition-transform bg-white rounded-full p-1 shadow-lg shadow-white/5"
+              className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-[1.06] active:scale-95 transition-transform shadow-md"
+              aria-label={isPlaying ? "Tạm dừng" : "Phát"}
             >
               {isPlaying ? (
-                <PauseCircle size={36} className="text-black" fill="currentColor" />
+                <Pause size={22} className="text-black" fill="currentColor" />
               ) : (
-                <PlayCircle size={36} className="text-black" fill="currentColor" />
+                <Play size={22} className="text-black ml-[3px]" fill="currentColor" />
               )}
             </button>
-
-            <button onClick={playNext} className="text-[#a0a0a0] hover:text-white transition-colors">
+            <button
+              type="button"
+              onClick={playNext}
+              className="p-1 rounded text-[#b3b3b3] hover:text-white transition-colors"
+              aria-label="Bài tiếp"
+            >
               <SkipForward size={20} fill="currentColor" />
             </button>
-            <button onClick={toggleRepeat} className={`transition-colors ${isRepeat ? 'text-[#00e6e6]' : 'text-[#a0a0a0] hover:text-white'}`}>
-              <Repeat size={18} />
+            <button
+              type="button"
+              onClick={toggleRepeat}
+              className={`p-1 rounded transition-colors ${isRepeat ? "text-[#00e6e6]" : "text-[#b3b3b3] hover:text-white"}`}
+              aria-label="Lặp lại"
+            >
+              <Repeat size={17} strokeWidth={1.75} />
             </button>
           </div>
 
-
+          <div className="flex items-center gap-2 w-full">
+            <span className="text-[11px] text-[#b3b3b3] tabular-nums w-10 text-right shrink-0">
+              {formatPlayerClock(currentTime)}
+            </span>
+            <div
+              ref={progressBarRef}
+              role="slider"
+              tabIndex={currentSong && duration > 0 ? 0 : -1}
+              aria-valuenow={Math.round(progressPct)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className={`relative flex-1 h-5 flex items-center ${currentSong && duration > 0 ? "cursor-pointer" : "cursor-default opacity-50"}`}
+              onMouseDown={(e) => {
+                if (!currentSong || !Number.isFinite(duration) || duration <= 0) return;
+                e.preventDefault();
+                seekingRef.current = true;
+                seekFromClientX(e.clientX);
+              }}
+              onKeyDown={(e) => {
+                if (!currentSong || !Number.isFinite(duration) || duration <= 0) return;
+                const step = duration * 0.05;
+                if (e.key === "ArrowRight") {
+                  e.preventDefault();
+                  handleSeek(Math.min(duration, currentTime + step));
+                } else if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  handleSeek(Math.max(0, currentTime - step));
+                }
+              }}
+            >
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-[#4d4d4d]" />
+              <div
+                className="absolute left-0 top-1/2 -translate-y-1/2 h-[4px] rounded-full bg-white pointer-events-none transition-[width] duration-150 ease-linear"
+                style={{ width: `${progressPct}%` }}
+              />
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md pointer-events-none ring-2 ring-[#121212]"
+                style={{ left: `calc(${progressPct}% - 6px)` }}
+              />
+            </div>
+            <span className="text-[11px] text-[#b3b3b3] tabular-nums w-10 shrink-0">
+              {formatPlayerClock(duration)}
+            </span>
+          </div>
         </div>
 
+        {/* 3. Phải: âm lượng, lyrics */}
+        <div className="hidden md:flex items-center justify-end gap-2 flex-[1.1] min-w-0 max-w-[28vw]">
+          <button
+            type="button"
+            onClick={() => setVolume(volume > 0 ? 0 : 1)}
+            className="p-1.5 rounded text-[#b3b3b3] hover:text-white transition-colors shrink-0"
+            aria-label={volume === 0 ? "Bật tiếng" : "Tắt tiếng"}
+          >
+            {volume === 0 ? <VolumeX size={18} strokeWidth={1.75} /> : <Volume2 size={18} strokeWidth={1.75} />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            className="w-[88px] h-1 accent-white cursor-pointer shrink-0 opacity-90 hover:opacity-100"
+            aria-label="Âm lượng"
+          />
+          <button
+            type="button"
+            disabled={!currentSong}
+            onClick={() => currentSong && navigate(`/song/${currentSong.id}`)}
+            className="p-1.5 rounded text-[#b3b3b3] hover:text-white transition-colors shrink-0 disabled:opacity-35 disabled:pointer-events-none"
+            title="Lời bài hát"
+            aria-label="Xem lời bài hát"
+          >
+            <Mic2 size={18} strokeWidth={1.75} />
+          </button>
+        </div>
       </div>
     </div>
   );
