@@ -10,6 +10,11 @@ const playlistController = {
         return res.status(400).json({ error: 'Thiếu userId' });
       }
 
+      let coverArtUrl = null;
+      if (req.file) {
+        coverArtUrl = `/uploads/covers/${req.file.filename}`;
+      }
+
       // Kiểm tra user tồn tại
       const user = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
       if (!user) {
@@ -24,7 +29,8 @@ const playlistController = {
           title: title || 'Playlist Mới',
           description: description || null,
           playlistUrl: generatedUrl, // Bắt buộc phải có theo schema
-          userId: parseInt(userId)
+          userId: parseInt(userId),
+          coverArtUrl: coverArtUrl
         }
       });
       res.status(201).json({ message: 'Tạo Playlist thành công!', playlist: newPlaylist });
@@ -257,6 +263,11 @@ console.error("Lỗi getUserPlaylists:", error);
       const playlistId = parseInt(req.params.id);
       const { userId, title, description, isPublic } = req.body;
 
+      let coverArtUrl;
+      if (req.file) {
+        coverArtUrl = `/uploads/covers/${req.file.filename}`;
+      }
+
       // Kiểm tra playlist tồn tại
       const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
       if (!playlist) {
@@ -269,9 +280,10 @@ console.error("Lỗi getUserPlaylists:", error);
       }
 
       const updateData = {};
-      if (title !== undefined) updateData.title = title;
+      if (title !== undefined && title !== '') updateData.title = title;
       if (description !== undefined) updateData.description = description;
-      if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
+      if (isPublic !== undefined) updateData.isPublic = isPublic === 'true' || isPublic === true;
+      if (coverArtUrl !== undefined) updateData.coverArtUrl = coverArtUrl;
 
       const updatedPlaylist = await prisma.playlist.update({
         where: { id: playlistId },
