@@ -1,18 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Search as SearchIcon, Play, Heart } from 'lucide-react';
+import { usePlayer } from '../../context/PlayerContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Khởi tạo state trống, chuẩn bị sẵn để fetch từ DB sau này
   const [suggestions] = useState([]);
-  const [searchResults] = useState({
+  const [searchResults, setSearchResults] = useState({
     songs: [],
-    albums: [],
+    playlists: [],
     artists: []
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const { playSong } = usePlayer();
+  const navigate = useNavigate();
 
-  const hasResults = searchResults.songs.length > 0 || searchResults.albums.length > 0 || searchResults.artists.length > 0;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        fetchSearchResults();
+      } else {
+        setSearchResults({ songs: [], playlists: [], artists: [] });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchSearchResults = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`http://localhost:9000/api/search?q=${encodeURIComponent(searchQuery)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults({
+          songs: data.songs || [],
+          artists: data.artists || [],
+          playlists: data.playlists || []
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi khi tìm kiếm:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const hasResults = searchResults.songs.length > 0 || searchResults.playlists.length > 0 || searchResults.artists.length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -65,10 +101,14 @@ export default function Search() {
         ) : (
           /* TRẠNG THÁI TÌM KIẾM (KHI CÓ TỪ KHÓA) */
           <div>
-            {!hasResults ? (
+            {!hasResults && !isLoading ? (
               <div className="flex flex-col items-center justify-center h-64 text-center mt-10">
                 <h3 className="text-2xl font-bold text-white mb-4">Không tìm thấy kết quả cho "{searchQuery}"</h3>
                 <p className="text-[#a0a0a0] text-sm">Vui lòng kiểm tra lại chính tả hoặc dùng từ khóa khác.</p>
+              </div>
+            ) : isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center mt-10">
+                <p className="text-[#a0a0a0] text-sm">Đang tìm kiếm...</p>
               </div>
             ) : (
               <div className="flex flex-col gap-10">
@@ -78,12 +118,12 @@ export default function Search() {
                     <h2 className="text-2xl font-bold text-white mb-4">Bài hát</h2>
                     <div className="flex flex-col gap-2">
                       {searchResults.songs.map((song, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer">
+                        <div key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer" onClick={() => playSong(song, searchResults.songs)}>
                           <div className="flex items-center gap-4">
-                            <img src={song.cover} alt="cover" className="w-12 h-12 rounded-sm" />
+                            <img src={song.coverArtUrl ? `http://localhost:9000${song.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-12 h-12 rounded-sm object-cover" />
                             <div>
                               <h4 className="text-white font-semibold group-hover:underline">{song.title}</h4>
-                              <p className="text-sm text-[#a0a0a0] hover:underline">{song.artist}</p>
+                              <p className="text-sm text-[#a0a0a0] hover:underline">{song.artistName || (song.artists && song.artists[0]?.artist?.user?.username) || 'Unknown Artist'}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -105,8 +145,8 @@ export default function Search() {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
                       {searchResults.artists.map((artist, index) => (
                         <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer flex flex-col items-center text-center group">
-                          <img src={artist.avatar} alt="avatar" className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg" />
-                          <h3 className="font-bold text-white truncate w-full mb-1">{artist.name}</h3>
+                          <img src={artist.avatarUrl ? `http://localhost:9000${artist.avatarUrl}` : '/default-avatar.png'} alt="avatar" className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg" />
+                          <h3 className="font-bold text-white truncate w-full mb-1">{artist.artistName || artist.user?.username}</h3>
                           <p className="text-sm text-[#a0a0a0]">Nghệ sĩ</p>
                         </div>
                       ))}
@@ -114,16 +154,16 @@ export default function Search() {
                   </div>
                 )}
 
-                {/* ALBUM */}
-                {searchResults.albums.length > 0 && (
+                {/* PLAYLISTS */}
+                {searchResults.playlists.length > 0 && (
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-4">Album</h2>
+                    <h2 className="text-2xl font-bold text-white mb-4">Playlists</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-                      {searchResults.albums.map((album, index) => (
-                        <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group">
-                          <img src={album.cover} alt="cover" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" />
-                          <h3 className="font-bold text-white truncate text-base mb-1">{album.title}</h3>
-                          <p className="text-sm text-[#a0a0a0] truncate">{album.artist}</p>
+                      {searchResults.playlists.map((playlist, index) => (
+                        <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group" onClick={() => navigate(`/playlist/${playlist.id}`)}>
+                          <img src={playlist.coverArtUrl ? `http://localhost:9000${playlist.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" />
+                          <h3 className="font-bold text-white truncate text-base mb-1">{playlist.title}</h3>
+                          <p className="text-sm text-[#a0a0a0] truncate">{playlist.user?.username}</p>
                         </div>
                       ))}
                     </div>
