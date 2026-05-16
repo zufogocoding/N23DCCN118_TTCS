@@ -2,7 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const baseDir = 'uploads/artist_requests';
+const baseDir = path.join(__dirname, '../uploads/artist_requests');
 
 // Tạo thư mục nếu chưa có
 if (!fs.existsSync(baseDir)) {
@@ -41,7 +41,7 @@ const uploadMulti = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // Giới hạn 10MB cho mỗi file (để chứa được audio)
+    fileSize: 15 * 1024 * 1024 // Giới hạn 15MB cho mỗi file (để chứa được audio)
   }
 });
 
