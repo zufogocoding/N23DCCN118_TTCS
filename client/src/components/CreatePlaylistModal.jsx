@@ -35,20 +35,21 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      // Gửi dưới dạng JSON thay vì FormData vì Backend chưa cài đặt multer cho route này và DB chưa có cột lưu ảnh cover
-      const payload = {
-        title: title.trim() || 'My Playlist #1',
-        description: description.trim(),
-        userId: user.id
-      };
+      // Dùng FormData để hỗ trợ upload ảnh
+      const formData = new FormData();
+      formData.append('title', title.trim() || 'My Playlist #1');
+      formData.append('description', description.trim());
+      formData.append('userId', user.id);
+      if (image) {
+        formData.append('cover', image);
+      }
 
       const res = await fetch('http://localhost:9000/api/playlists', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // Không set Content-Type khi dùng FormData, fetch tự tính toán boundary
         },
-        body: JSON.stringify(payload)
+        body: formData
       });
 
       if (res.ok) {
