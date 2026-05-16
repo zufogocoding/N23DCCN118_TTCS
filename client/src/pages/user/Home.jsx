@@ -12,6 +12,8 @@ function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
     return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
   }
+  // Fallback: lấy từ trường artistName trực tiếp trên Song (do người upload nhập)
+  if (song.artistName) return song.artistName;
   return 'Unknown Artist';
 }
 
@@ -79,21 +81,19 @@ export default function Home() {
   };
 
   const handlePlaySong = (song) => {
-    handleProtectedAction(() => {
-      const playerSong = {
-        id: song.id,
-        title: song.title,
-        artist: { name: getArtistName(song) },
-        coverImage: getCoverArt(song),
-      };
-      const playerQueue = songs.map(s => ({
-        id: s.id,
-        title: s.title,
-        artist: { name: getArtistName(s) },
-        coverImage: getCoverArt(s),
-      }));
-      playSong(playerSong, playerQueue);
-    });
+    const playerSong = {
+      id: song.id,
+      title: song.title,
+      artist: { name: getArtistName(song) },
+      coverImage: getCoverArt(song),
+    };
+    const playerQueue = songs.map(s => ({
+      id: s.id,
+      title: s.title,
+      artist: { name: getArtistName(s) },
+      coverImage: getCoverArt(s),
+    }));
+    playSong(playerSong, playerQueue);
   };
 
   return (
@@ -220,13 +220,10 @@ export default function Home() {
                       <h3 className="font-bold text-white truncate text-base mb-1">{song.title}</h3>
                       <p className="text-sm text-[#a0a0a0] truncate">{getArtistName(song)}</p>
                     </div>
-                    {/* Add to Playlist button */}
-                    {user.id && (
-                      <AddToPlaylistMenu
-                        songId={song.id}
-                        onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
-                      />
-                    )}
+                    <AddToPlaylistMenu
+                      songId={song.id}
+                      onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+                    />
                   </div>
                 </div>
               ))}

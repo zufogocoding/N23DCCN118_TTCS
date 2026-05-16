@@ -10,20 +10,35 @@ const songController = {
 
       const savedAudioUrl = `/${audioFile.path.replace(/\\/g, '/')}`;
       const { title, durationMs, artistName, genre } = req.body;
+      const userId = req.user.id;
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
       const savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
 
-      const newSong = await prisma.song.create({
-        data: {
-          title: title || 'Bài hát chưa đặt tên',
-          durationMs: parseInt(durationMs) || 0,
-          audioUrl: savedAudioUrl,
-          coverArtUrl: savedCoverUrl,
-          status: 'pending', // Mặc định pending, chờ admin duyệt
-        }
-      });
+      // Kiểm tra user đã có Artist record chưa (chỉ tìm, KHÔNG tự tạo)
+      const existingArtist = await prisma.artist.findUnique({ where: { userId } });
+
+      const songData = {
+        title: title || 'Bài hát chưa đặt tên',
+        artistName: artistName || null, // Lưu tên nghệ sĩ trực tiếp trên Song (metadata)
+        uploadedById: userId,           // Lưu ai đã upload
+        durationMs: parseInt(durationMs) || 0,
+        audioUrl: savedAudioUrl,
+        coverArtUrl: savedCoverUrl,
+        status: 'pending', // Mặc định pending, chờ admin duyệt
+      };
+
+      // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
+      if (existingArtist) {
+        songData.artists = {
+          create: {
+            artistId: userId
+          }
+        };
+      }
+
+      const newSong = await prisma.song.create({ data: songData });
       res.status(201).json({ message: 'Upload thành công! Bài hát đang chờ admin duyệt.', song: newSong });
     } catch (error) {
       console.error("Lỗi uploadSong:", error);

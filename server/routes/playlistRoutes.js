@@ -8,6 +8,12 @@ router.post('/api/playlists', playlistController.createPlaylist);
 // Lấy danh sách playlist của 1 user
 router.get('/api/playlists/user/:userId', playlistController.getUserPlaylists);
 
+// Playlist nào của user đang chứa bài này (cho UI thêm vào playlist)
+router.get(
+  '/api/playlists/user/:userId/song/:songId/memberships',
+  playlistController.getPlaylistIdsContainingSong
+);
+
 // Lấy chi tiết 1 playlist
 router.get('/api/playlists/:id', playlistController.getPlaylistById);
 

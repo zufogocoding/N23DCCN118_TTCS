@@ -94,6 +94,8 @@ model Album {
 model Song {
   id          Int      @id @default(autoincrement())
   title       String   @db.VarChar(255)
+  artistName  String?  @db.VarChar(255) // Tên nghệ sĩ do người upload nhập (metadata, không tạo Artist record)
+  uploadedById Int?    // ID user đã upload bài hát
   energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
   tempo       Float? // Đổi sang Float
   status String @default("pending") @db.VarChar(50) // moi bai upload moi se tu pending

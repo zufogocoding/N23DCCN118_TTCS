@@ -41,8 +41,10 @@ const uploadFields = multer({ storage, fileFilter }).fields([
   { name: 'coverImage', maxCount: 1 }
 ]);
 
+const authMiddleware = require('../middlewares/authMiddleware');
+
 // Định tuyến các yêu cầu vào routers xử lý
-router.post('/api/songs/upload', uploadFields, songController.uploadSong);
+router.post('/api/songs/upload', authMiddleware, uploadFields, songController.uploadSong);
 router.get('/api/songs', songController.getAllSongs);
 router.get('/api/songs/:id', songController.getSongById);
 router.put('/api/songs/:id', songController.updateSong);

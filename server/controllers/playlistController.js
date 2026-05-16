@@ -40,39 +40,60 @@ const playlistController = {
       const playlistId = parseInt(req.params.id);
       const { songId, userId } = req.body;
 
+      if (songId == null || songId === '' || userId == null || userId === '') {
+        return res.status(400).json({ error: 'Thiếu songId hoặc userId' });
+      }
+
+      const uid = parseInt(userId, 10);
+      const sid = parseInt(songId, 10);
+      if (Number.isNaN(uid) || Number.isNaN(sid)) {
+        return res.status(400).json({ error: 'songId hoặc userId không hợp lệ' });
+      }
+
       // Kiểm tra playlist tồn tại
       const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
       if (!playlist) {
         return res.status(404).json({ error: 'Playlist không tồn tại' });
       }
 
-      // Kiểm tra quyền sở hữu: chỉ chủ playlist mới được thêm bài
-      if (userId && playlist.userId !== parseInt(userId)) {
+      // Chỉ chủ playlist mới được thêm bài (bắt buộc xác thực userId)
+      if (playlist.userId !== uid) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 
       // Kiểm tra bài hát tồn tại và chưa bị xóa
       const song = await prisma.song.findFirst({
-        where: { id: parseInt(songId), isDeleted: false }
+        where: { id: sid, isDeleted: false }
       });
       if (!song) {
         return res.status(404).json({ error: 'Bài hát không tồn tại hoặc đã bị xóa' });
       }
 
-      // Vì dùng bảng trung gian Explicit, ta phải tạo record ở bảng PlaylistSong
+      const existing = await prisma.playlistSong.findUnique({
+        where: {
+          playlistId_songId: { playlistId, songId: sid }
+        }
+      });
+
+      if (existing) {
+        return res.status(200).json({
+          message: 'Bài hát đã có trong playlist',
+          alreadyInPlaylist: true,
+          data: existing
+        });
+      }
+
       const newPlaylistSong = await prisma.playlistSong.create({
         data: {
-          playlistId: playlistId,
-          songId: parseInt(songId)
-          // addAt sẽ tự động lấy now() theo schema
+          playlistId,
+          songId: sid
         }
       });
 
       res.status(200).json({ message: 'Đã thêm bài hát vào Playlist!', data: newPlaylistSong });
     } catch (error) {
       console.error("Lỗi addSongToPlaylist:", error);
-      // Lỗi thường gặp nhất ở đây là do bài này đã có trong Playlist (trùng composite key)
-      res.status(500).json({ error: 'Lỗi khi thêm bài hát (Có thể bài này đã có trong Playlist)' });
+      res.status(500).json({ error: 'Lỗi server khi thêm bài hát vào playlist' });
     }
   },
 
@@ -83,6 +104,15 @@ const playlistController = {
       const songId = parseInt(req.params.songId);
       const { userId } = req.body;
 
+      if (userId == null || userId === '') {
+        return res.status(400).json({ error: 'Thiếu userId' });
+      }
+
+      const uid = parseInt(userId, 10);
+      if (Number.isNaN(uid)) {
+        return res.status(400).json({ error: 'userId không hợp lệ' });
+      }
+
       // Kiểm tra playlist tồn tại
       const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
       if (!playlist) {
@@ -90,7 +120,7 @@ const playlistController = {
       }
 
       // Kiểm tra quyền sở hữu
-      if (userId && playlist.userId !== parseInt(userId)) {
+      if (playlist.userId !== uid) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 
@@ -167,6 +197,30 @@ const playlistController = {
     } catch (error) {
 console.error("Lỗi getUserPlaylists:", error);
       res.status(500).json({ error: 'Lỗi server khi lấy danh sách Playlist' });
+    }
+  },
+
+  /** Playlist của user nào đang chứa bài songId (để UI hiện trạng thái đã thêm) */
+  getPlaylistIdsContainingSong: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      const songId = parseInt(req.params.songId, 10);
+      if (Number.isNaN(userId) || Number.isNaN(songId)) {
+        return res.status(400).json({ error: 'Tham số không hợp lệ' });
+      }
+
+      const rows = await prisma.playlistSong.findMany({
+        where: {
+          songId,
+          playlist: { userId }
+        },
+        select: { playlistId: true }
+      });
+
+      res.status(200).json({ playlistIds: rows.map((r) => r.playlistId) });
+    } catch (error) {
+      console.error('Lỗi getPlaylistIdsContainingSong:', error);
+      res.status(500).json({ error: 'Lỗi server' });
     }
   },
 
