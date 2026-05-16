@@ -11,6 +11,7 @@ function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
     return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
   }
+  if (song.artistName) return song.artistName;
   return 'Unknown Artist';
 }
 

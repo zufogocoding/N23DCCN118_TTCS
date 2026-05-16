@@ -12,6 +12,8 @@ function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
     return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
   }
+  // Fallback: lấy từ trường artistName trực tiếp trên Song (do người upload nhập)
+  if (song.artistName) return song.artistName;
   return 'Unknown Artist';
 }
 
