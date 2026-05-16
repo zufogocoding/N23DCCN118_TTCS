@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Play, Clock, MoreHorizontal, House, Heart } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Play, Clock, MoreHorizontal, House, Heart, Trash2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import AddToPlaylistMenu from '../components/AddToPlaylistMenu';
 import CreatePlaylistModal from '../components/CreatePlaylistModal';
@@ -38,12 +38,16 @@ function formatDuration(ms) {
 
 const PlaylistView = () => {
   const { playlistId } = useParams();
+  const navigate = useNavigate();
   const { playSong } = usePlayer();
   const [playlist, setPlaylist] = useState(null);
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLikedPage, setIsLikedPage] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [playlistToolbarMenuOpen, setPlaylistToolbarMenuOpen] = useState(false);
+  const playlistToolbarMenuRef = useRef(null);
+  const [likedSongIds, setLikedSongIds] = useState(new Set());
 
   useEffect(() => {
     async function fetchData() {
@@ -90,6 +94,37 @@ const PlaylistView = () => {
     fetchData();
   }, [playlistId]);
 
+  // Fetch liked status for all songs
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id || songs.length === 0) return;
+    Promise.all(
+      songs.map(s =>
+        fetch(`http://localhost:9000/api/interactions/like/${user.id}/${s.id}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      const liked = new Set();
+      results.forEach((r, i) => { if (r?.isLiked) liked.add(songs[i].id); });
+      setLikedSongIds(liked);
+    });
+  }, [songs]);
+
+  useEffect(() => {
+    const handleClose = (e) => {
+      if (playlistToolbarMenuRef.current && !playlistToolbarMenuRef.current.contains(e.target)) {
+        setPlaylistToolbarMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClose);
+    return () => document.removeEventListener('mousedown', handleClose);
+  }, []);
+
+  useEffect(() => {
+    setPlaylistToolbarMenuOpen(false);
+  }, [playlistId]);
+
   const handlePlayAll = () => {
     if (songs.length === 0) return;
     const playerQueue = songs.map(s => ({
@@ -112,6 +147,41 @@ const PlaylistView = () => {
     playSong(playerSong, playerQueue);
   };
 
+  const handleToggleLike = async (songId) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) { navigate('/login'); return; }
+    try {
+      const res = await fetch('http://localhost:9000/api/interactions/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, songId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLikedSongIds(prev => {
+          const next = new Set(prev);
+          data.isLiked ? next.add(songId) : next.delete(songId);
+          return next;
+        });
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleRemoveSong = async (songId) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) return;
+    try {
+      const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}/songs/${songId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      if (res.ok) {
+        setSongs(prev => prev.filter(s => s.id !== songId));
+      }
+    } catch (err) { console.error(err); }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -125,6 +195,50 @@ const PlaylistView = () => {
   }
 
   const gradientColor = isLikedPage ? 'from-indigo-900' : 'from-[#00e6e6]/30';
+
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isPlaylistOwner =
+    !isLikedPage &&
+    playlist?.user?.id != null &&
+    Number(playlist.user.id) === Number(currentUser.id);
+
+  const copyPageLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setPlaylistToolbarMenuOpen(false);
+      alert('Đã sao chép link.');
+    } catch {
+      alert('Trình duyệt không cho phép sao chép.');
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!playlist?.id || !isPlaylistOwner || isLikedPage) return;
+    if (!window.confirm(`Xóa playlist "${playlist.title}"? Không thể hoàn tác.`)) return;
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:9000/api/playlists/${playlist.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      setPlaylistToolbarMenuOpen(false);
+      if (res.ok) {
+        navigate('/');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Không xóa được playlist.');
+      }
+    } catch {
+      alert('Lỗi kết nối.');
+    }
+  };
 
   return (
     <div className={`flex-1 bg-gradient-to-b ${gradientColor} to-[#121212] overflow-y-auto min-h-screen text-white relative`}>
@@ -172,7 +286,7 @@ const PlaylistView = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="p-8 flex items-center gap-8">
+      <div className="p-8 flex items-center gap-8 relative z-10">
         <button
           onClick={handlePlayAll}
           disabled={songs.length === 0}
@@ -180,7 +294,43 @@ const PlaylistView = () => {
         >
           <Play fill="black" size={28} />
         </button>
-        <MoreHorizontal size={32} className="text-gray-400 cursor-pointer" />
+        <div className="relative" ref={playlistToolbarMenuRef}>
+          <button
+            type="button"
+            onClick={() => setPlaylistToolbarMenuOpen((o) => !o)}
+            className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Tùy chọn playlist"
+            aria-expanded={playlistToolbarMenuOpen}
+            aria-haspopup="menu"
+          >
+            <MoreHorizontal size={32} />
+          </button>
+          {playlistToolbarMenuOpen && (
+            <div
+              role="menu"
+              className="absolute left-0 top-full mt-2 w-56 rounded-lg border border-[#333] bg-[#282828] py-1 shadow-2xl z-[80]"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10"
+                onClick={copyPageLink}
+              >
+                Sao chép link
+              </button>
+              {!isLikedPage && isPlaylistOwner && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-white/10"
+                  onClick={handleDeletePlaylist}
+                >
+                  Xóa playlist
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Danh sách bài hát */}
@@ -235,12 +385,33 @@ const PlaylistView = () => {
                     {formatDuration(song.durationMs)}
                   </td>
                   <td className="py-3">
-                    {!isLikedPage && (
-                      <AddToPlaylistMenu
-                        songId={song.id}
-                        onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
-                      />
-                    )}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleLike(song.id); }}
+                        className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                        title={likedSongIds.has(song.id) ? 'Bỏ thích' : 'Thích'}
+                      >
+                        <Heart
+                          size={16}
+                          className={`transition-colors ${likedSongIds.has(song.id) ? 'text-[#00e6e6] fill-current' : 'text-gray-400 hover:text-white'}`}
+                        />
+                      </button>
+                      {!isLikedPage && (
+                        <AddToPlaylistMenu
+                          songId={song.id}
+                          onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+                        />
+                      )}
+                      {isPlaylistOwner && !isLikedPage && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoveSong(song.id); }}
+                          className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Xóa khỏi playlist"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

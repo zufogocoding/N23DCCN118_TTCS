@@ -20,11 +20,13 @@ import {
   Mic2,
   Music,
   MoreHorizontal,
+  ListPlus,
 } from "lucide-react";
 
 import UserDropdown from "../UserDropdown";
 import NotificationDropdown from "../NotificationDropdown.jsx";
 import CreatePlaylistModal from "../CreatePlaylistModal";
+import AddToPlaylistMenu from "../AddToPlaylistMenu";
 
 function formatPlayerClock(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
@@ -91,6 +93,23 @@ export default function MainLayout() {
     Number.isFinite(duration) && duration > 0
       ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
       : 0;
+
+  const [nowPlayingMenuOpen, setNowPlayingMenuOpen] = useState(false);
+  const nowPlayingMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClose = (e) => {
+      if (nowPlayingMenuRef.current && !nowPlayingMenuRef.current.contains(e.target)) {
+        setNowPlayingMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClose);
+    return () => document.removeEventListener("mousedown", handleClose);
+  }, []);
+
+  useEffect(() => {
+    setNowPlayingMenuOpen(false);
+  }, [currentSong?.id]);
 
   const fetchPlaylists = async () => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -265,9 +284,37 @@ export default function MainLayout() {
 
         {/* CỘT 3: NOW PLAYING BÊN PHẢI */}
         <div className="w-[300px] bg-black p-4 hidden lg:flex flex-col border-l border-[#222]">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-6 relative z-20" ref={nowPlayingMenuRef}>
             <h3 className="font-bold text-sm uppercase tracking-widest text-[#00e6e6]">Đang phát</h3>
-            <MoreHorizontal size={20} className="text-[#a0a0a0] cursor-pointer" />
+            <button
+              type="button"
+              onClick={() => setNowPlayingMenuOpen((o) => !o)}
+              className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white hover:bg-white/10 transition-colors"
+              aria-label="Tùy chọn đang phát"
+              aria-expanded={nowPlayingMenuOpen}
+              aria-haspopup="menu"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {nowPlayingMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full mt-1 w-52 rounded-lg border border-[#333] bg-[#282828] py-1 shadow-2xl z-[80]"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!currentSong}
+                  className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+                  onClick={() => {
+                    setNowPlayingMenuOpen(false);
+                    if (currentSong) navigate(`/song/${currentSong.id}`);
+                  }}
+                >
+                  Xem trang bài hát
+                </button>
+              </div>
+            )}
           </div>
 
           <img
@@ -285,11 +332,31 @@ export default function MainLayout() {
                 {currentSong?.artist?.name || "Nghệ sĩ"}
               </p>
             </div>
-            <Heart
-              size={20}
-              className="text-[#00e6e6] fill-current mt-1 cursor-pointer shrink-0"
-              onClick={() => handleProtectedAction()}
-            />
+            <div className="flex items-center gap-2 mt-1 shrink-0">
+              <Heart
+                size={20}
+                className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#a0a0a0] hover:text-white"}`}
+                onClick={() => {
+                  if (!currentSong) return;
+                  const user = JSON.parse(localStorage.getItem("user") || "{}");
+                  if (!user.id) { navigate("/login"); return; }
+                  fetch("http://localhost:9000/api/interactions/like", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: user.id, songId: currentSong.id }),
+                  })
+                    .then((r) => r.json())
+                    .then((data) => setIsLiked(data.isLiked))
+                    .catch((err) => console.error(err));
+                }}
+              />
+              {currentSong && (
+                <AddToPlaylistMenu
+                  songId={currentSong.id}
+                  onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+                />
+              )}
+            </div>
           </div>
 
           <div className="bg-[#181818] p-4 rounded-xl mt-4 border border-[#333]">
@@ -380,7 +447,6 @@ export default function MainLayout() {
             <button
               type="button"
               onClick={() => {
-                handleProtectedAction();
                 togglePlay();
               }}
               className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-[1.06] active:scale-95 transition-transform shadow-md"

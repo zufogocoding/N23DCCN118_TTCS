@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
 
 /**
@@ -8,6 +9,7 @@ import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
  *   - onCreatePlaylist: callback khi user muốn tạo playlist mới (mở modal)
  */
 export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -15,6 +17,12 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
   const [addedTo, setAddedTo] = useState(new Set());
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+
+  useEffect(() => {
+    setAddedTo(new Set());
+    setSearchText('');
+    setIsOpen(false);
+  }, [songId]);
 
   // Đóng menu khi click bên ngoài
   useEffect(() => {
@@ -44,7 +52,10 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
     }
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) return;
+    if (!user.id) {
+      navigate('/login');
+      return;
+    }
 
     setIsOpen(true);
     setLoading(true);
@@ -54,6 +65,17 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
       if (res.ok) {
         const data = await res.json();
         setPlaylists(data);
+        try {
+          const memRes = await fetch(
+            `http://localhost:9000/api/playlists/user/${user.id}/song/${songId}/memberships`
+          );
+          if (memRes.ok) {
+            const { playlistIds } = await memRes.json();
+            setAddedTo(new Set(Array.isArray(playlistIds) ? playlistIds : []));
+          }
+        } catch {
+          /* bỏ qua — UI vẫn dùng được */
+        }
       } else {
         console.error('Failed to fetch playlists:', res.status);
         setPlaylists([]);
@@ -68,6 +90,10 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
 
   const handleAddToPlaylist = async (playlistId) => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) {
+      navigate('/login');
+      return;
+    }
     try {
       const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}/songs`, {
         method: 'POST',
@@ -75,16 +101,25 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
         body: JSON.stringify({ songId, userId: user.id })
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         setAddedTo(prev => new Set([...prev, playlistId]));
+        setPlaylists(prev =>
+          prev.map(pl =>
+            pl.id === playlistId
+              ? { ...pl, _count: { ...pl._count, songs: (pl._count?.songs ?? 0) + (data.alreadyInPlaylist ? 0 : 1) } }
+              : pl
+          )
+        );
+        return;
+      }
+
+      const errMsg = typeof data.error === 'string' ? data.error : '';
+      if (/đã có|trùng|duplicate|already/i.test(errMsg)) {
+        setAddedTo(prev => new Set([...prev, playlistId]));
       } else {
-        const data = await res.json();
-        // Nếu bài đã có trong playlist rồi, vẫn hiện check
-        if (data.error && data.error.includes('đã có')) {
-          setAddedTo(prev => new Set([...prev, playlistId]));
-        } else {
-          alert(data.error || 'Không thể thêm bài hát');
-        }
+        alert(errMsg || 'Không thể thêm bài hát');
       }
     } catch (err) {
       console.error(err);
