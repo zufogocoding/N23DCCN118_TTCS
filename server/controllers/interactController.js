@@ -40,6 +40,16 @@ const interactController = {
         }
       });
 
+      // Tăng playCount cho bài hát
+      await prisma.song.update({
+        where: { id: parseInt(songId) },
+        data: {
+          playCount: {
+            increment: 1
+          }
+        }
+      });
+
       res.status(200).json({ message: "Đã ghi nhận tương tác", data: interaction });
     } catch (error) {
       console.error("Lỗi trackListening:", error);
