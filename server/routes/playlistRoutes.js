@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const playlistController = require('../controllers/playlistController');
+const uploadPlaylistCover = require('../middlewares/uploadPlaylistCoverMiddleware');
 
 // Tạo playlist mới
-router.post('/api/playlists', playlistController.createPlaylist);
+router.post('/api/playlists', uploadPlaylistCover.single('cover'), playlistController.createPlaylist);
 
 // Lấy danh sách playlist của 1 user
 router.get('/api/playlists/user/:userId', playlistController.getUserPlaylists);
@@ -18,7 +19,7 @@ router.get(
 router.get('/api/playlists/:id', playlistController.getPlaylistById);
 
 // Cập nhật thông tin playlist (title, description, isPublic)
-router.put('/api/playlists/:id', playlistController.updatePlaylist);
+router.put('/api/playlists/:id', uploadPlaylistCover.single('cover'), playlistController.updatePlaylist);
 
 // Xóa playlist
 router.delete('/api/playlists/:id', playlistController.deletePlaylist);

@@ -167,8 +167,12 @@ export default function Home() {
                   onClick={() => navigate(`/playlist/${pl.id}`)}
                   className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group"
                 >
-                  <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center">
-                    <span className="text-4xl">🎵</span>
+                  <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
+                    {pl.coverArtUrl ? (
+                      <img src={`http://localhost:9000${pl.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-4xl">🎵</span>
+                    )}
                   </div>
                   <h3 className="font-bold truncate text-white">{pl.title}</h3>
                   <p className="text-xs text-[#a0a0a0] mt-1">{pl._count?.songs || 0} bài hát</p>

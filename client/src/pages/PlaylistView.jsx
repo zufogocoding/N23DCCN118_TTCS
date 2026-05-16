@@ -5,6 +5,7 @@ import { Play, Clock, MoreHorizontal, House, Heart, Trash2 } from 'lucide-react'
 import { usePlayer } from '../context/PlayerContext';
 import AddToPlaylistMenu from '../components/AddToPlaylistMenu';
 import CreatePlaylistModal from '../components/CreatePlaylistModal';
+import EditPlaylistModal from '../components/EditPlaylistModal';
 
 // Helper: lấy tên artist từ cấu trúc API response
 function getArtistName(song) {
@@ -46,53 +47,52 @@ const PlaylistView = () => {
   const [loading, setLoading] = useState(true);
   const [isLikedPage, setIsLikedPage] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [playlistToolbarMenuOpen, setPlaylistToolbarMenuOpen] = useState(false);
   const playlistToolbarMenuRef = useRef(null);
   const [likedSongIds, setLikedSongIds] = useState(new Set());
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const fetchPlaylistData = async () => {
+    setLoading(true);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (playlistId === 'liked') {
-        // Trang Liked Songs — fetch từ interaction API
-        setIsLikedPage(true);
-        if (user.id) {
-          try {
-            const res = await fetch(`http://localhost:9000/api/interactions/liked/${user.id}`);
-            if (res.ok) {
-              const data = await res.json();
-              setSongs(data);
-              setPlaylist({
-                title: 'Liked Songs',
-                user: { username: user.username },
-                songCount: data.length,
-              });
-            }
-          } catch (err) {
-            console.error('Lỗi khi lấy liked songs:', err);
-          }
-        }
-      } else {
-        // Playlist thường — fetch từ playlist API
-        setIsLikedPage(false);
+    if (playlistId === 'liked') {
+      setIsLikedPage(true);
+      if (user.id) {
         try {
-          const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}`);
+          const res = await fetch(`http://localhost:9000/api/interactions/liked/${user.id}`);
           if (res.ok) {
             const data = await res.json();
-            setPlaylist(data);
-            // Trích xuất songs từ bảng trung gian PlaylistSong
-            const extractedSongs = data.songs ? data.songs.map(ps => ps.song) : [];
-            setSongs(extractedSongs);
+            setSongs(data);
+            setPlaylist({
+              title: 'Liked Songs',
+              user: { username: user.username },
+              songCount: data.length,
+            });
           }
         } catch (err) {
-          console.error('Lỗi khi lấy playlist:', err);
+          console.error('Lỗi khi lấy liked songs:', err);
         }
       }
-      setLoading(false);
+    } else {
+      setIsLikedPage(false);
+      try {
+        const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPlaylist(data);
+          const extractedSongs = data.songs ? data.songs.map(ps => ps.song) : [];
+          setSongs(extractedSongs);
+        }
+      } catch (err) {
+        console.error('Lỗi khi lấy playlist:', err);
+      }
     }
-    fetchData();
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchPlaylistData();
   }, [playlistId]);
 
   // Fetch liked status for all songs
@@ -249,6 +249,15 @@ const PlaylistView = () => {
         isOpen={isPlaylistModalOpen}
         onClose={() => setIsPlaylistModalOpen(false)}
       />
+      
+      {!isLikedPage && isPlaylistOwner && (
+        <EditPlaylistModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={fetchPlaylistData}
+          playlist={playlist}
+        />
+      )}
 
       {/* BUTTON BACK + HOME */}
       <div className="absolute top-6 left-6 flex items-center gap-4 z-50">
@@ -272,8 +281,16 @@ const PlaylistView = () => {
           <div className="w-52 h-52 bg-gradient-to-br from-indigo-600 to-purple-800 rounded-md shadow-2xl flex items-center justify-center">
             <Heart size={80} className="text-white fill-current" />
           </div>
+        ) : playlist?.coverArtUrl ? (
+          <div className="w-52 h-52 shadow-2xl flex-shrink-0">
+            <img 
+              src={`http://localhost:9000${playlist.coverArtUrl}`} 
+              alt={playlist.title} 
+              className="w-full h-full object-cover rounded-md"
+            />
+          </div>
         ) : (
-          <div className="w-52 h-52 bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md shadow-2xl flex items-center justify-center">
+          <div className="w-52 h-52 bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md shadow-2xl flex items-center justify-center flex-shrink-0">
             <span className="text-7xl">🎵</span>
           </div>
         )}
@@ -320,14 +337,27 @@ const PlaylistView = () => {
                 Sao chép link
               </button>
               {!isLikedPage && isPlaylistOwner && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-white/10"
-                  onClick={handleDeletePlaylist}
-                >
-                  Xóa playlist
-                </button>
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10"
+                    onClick={() => {
+                      setPlaylistToolbarMenuOpen(false);
+                      setIsEditModalOpen(true);
+                    }}
+                  >
+                    Sửa thông tin
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-white/10"
+                    onClick={handleDeletePlaylist}
+                  >
+                    Xóa playlist
+                  </button>
+                </>
               )}
             </div>
           )}
