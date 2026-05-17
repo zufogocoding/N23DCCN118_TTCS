@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Image, Music, Upload, CheckCircle, Loader2, ArrowLeft, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -9,7 +9,10 @@ export default function UploadSong() {
   const [audioFile, setAudioFile] = useState(null);
   const [title, setTitle] = useState("");
   const [artistName, setArtistName] = useState("");
-  const [genre, setGenre] = useState("");
+  const [selectedGenreIds, setSelectedGenreIds] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
+  const genreRef = useRef(null);
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -18,6 +21,35 @@ export default function UploadSong() {
 
   // Duration detection
   const [durationMs, setDurationMs] = useState(0);
+
+  // Fetch genres từ API
+  useEffect(() => {
+    fetch('http://localhost:9000/api/genres')
+      .then(res => res.json())
+      .then(data => setGenres(data))
+      .catch(err => console.error('Lỗi lấy genres:', err));
+  }, []);
+
+  // Đóng dropdown khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (genreRef.current && !genreRef.current.contains(e.target)) {
+        setGenreDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleGenre = (id) => {
+    setSelectedGenreIds(prev =>
+      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+    );
+  };
+
+  const removeGenre = (id) => {
+    setSelectedGenreIds(prev => prev.filter(g => g !== id));
+  };
 
   const handleCoverChange = (e) => {
     const file = e.target.files[0];
@@ -63,7 +95,9 @@ export default function UploadSong() {
       if (coverImage) formData.append("coverImage", coverImage);
       formData.append("title", title);
       formData.append("artistName", artistName);
-      formData.append("genre", genre);
+      if (selectedGenreIds.length > 0) {
+        formData.append("genreIds", JSON.stringify(selectedGenreIds));
+      }
       formData.append("durationMs", durationMs.toString());
 
       // Sử dụng XMLHttpRequest để theo dõi progress
@@ -123,7 +157,7 @@ export default function UploadSong() {
                 setUploadSuccess(false);
                 setTitle("");
                 setArtistName("");
-                setGenre("");
+                setSelectedGenreIds([]);
                 setDescription("");
                 setCoverImage(null);
                 setCoverPreview(null);
@@ -283,26 +317,84 @@ export default function UploadSong() {
             />
           </div>
 
-          {/* GENRE */}
-          <div>
+          {/* GENRE - Multi Select */}
+          <div ref={genreRef} className="relative">
             <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
               Thể loại
             </label>
-            <select
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors text-white"
+
+            {/* Selected tags + trigger */}
+            <div
+              onClick={() => setGenreDropdownOpen(prev => !prev)}
+              className={`w-full min-h-[48px] bg-[#0a0a0a] border rounded-xl px-3 py-2 flex flex-wrap items-center gap-2 cursor-pointer transition-colors ${
+                genreDropdownOpen ? 'border-[#00e6e6]/50' : 'border-[#2a2a2a]'
+              }`}
             >
-              <option value="">Chọn thể loại</option>
-              <option value="Pop">Pop</option>
-              <option value="Rock">Rock</option>
-              <option value="Hip Hop">Hip Hop</option>
-              <option value="Lo-fi">Lo-fi</option>
-              <option value="EDM">EDM</option>
-              <option value="R&B">R&B</option>
-              <option value="Jazz">Jazz</option>
-              <option value="Classical">Classical</option>
-            </select>
+              {selectedGenreIds.length === 0 && (
+                <span className="text-[#444] text-sm">Chọn thể loại...</span>
+              )}
+              {selectedGenreIds.map(id => {
+                const g = genres.find(x => x.id === id);
+                if (!g) return null;
+                return (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1 bg-[#00e6e6]/15 text-[#00e6e6] text-xs font-semibold px-2.5 py-1 rounded-lg"
+                  >
+                    {g.genreTag}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeGenre(id); }}
+                      className="hover:text-white transition-colors ml-0.5"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                );
+              })}
+
+              {/* Chevron */}
+              <svg
+                className={`ml-auto w-4 h-4 text-[#666] transition-transform flex-shrink-0 ${
+                  genreDropdownOpen ? 'rotate-180' : ''
+                }`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+
+            {/* Dropdown list */}
+            {genreDropdownOpen && (
+              <div className="absolute z-50 mt-2 w-full max-h-60 overflow-y-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 scrollbar-thin">
+                {genres.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-[#666]">Đang tải...</div>
+                ) : (
+                  genres.map(g => {
+                    const isSelected = selectedGenreIds.includes(g.id);
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => toggleGenre(g.id)}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${
+                          isSelected
+                            ? 'bg-[#00e6e6]/10 text-[#00e6e6]'
+                            : 'text-white hover:bg-[#222]'
+                        }`}
+                      >
+                        <span>{g.genreTag}</span>
+                        {isSelected && (
+                          <svg className="w-4 h-4 text-[#00e6e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
 
           {/* DESCRIPTION */}

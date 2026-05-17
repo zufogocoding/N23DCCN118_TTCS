@@ -9,8 +9,20 @@ const songController = {
       if (!audioFile) return res.status(400).json({ error: 'Chưa chọn file nhạc!' });
 
       const savedAudioUrl = `/${audioFile.path.replace(/\\/g, '/')}`;
-      const { title, durationMs, artistName, genre } = req.body;
+      const { title, durationMs, artistName, genre, genreIds } = req.body;
       const userId = req.user.id;
+
+      // Parse genreIds: hỗ trợ cả JSON string và mảng
+      let parsedGenreIds = [];
+      if (genreIds) {
+        try {
+          parsedGenreIds = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
+          if (!Array.isArray(parsedGenreIds)) parsedGenreIds = [];
+          parsedGenreIds = parsedGenreIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+        } catch {
+          parsedGenreIds = [];
+        }
+      }
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
@@ -27,6 +39,12 @@ const songController = {
         audioUrl: savedAudioUrl,
         coverArtUrl: savedCoverUrl,
         status: 'pending', // Mặc định pending, chờ admin duyệt
+        // Liên kết genres nếu có genreIds
+        ...(parsedGenreIds.length > 0 && {
+          genres: {
+            create: parsedGenreIds.map(gId => ({ genreId: gId })),
+          },
+        }),
       };
 
       // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
