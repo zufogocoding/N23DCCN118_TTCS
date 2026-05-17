@@ -143,6 +143,30 @@ const songController = {
       console.error("Lỗi deleteSong:", error);
       res.status(500).json({ error: 'Không thể xóa' });
     }
+  },
+
+  // 6. Logic Lấy bài hát theo userId
+  getUserSongs: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const userSongs = await prisma.song.findMany({
+        where: { uploadedById: userId, isDeleted: false },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true } } }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.status(200).json(userSongs);
+    } catch (error) {
+      console.error("Lỗi getUserSongs:", error);
+      res.status(500).json({ error: 'Không lấy được danh sách bài hát của người dùng' });
+    }
   }
 };
 

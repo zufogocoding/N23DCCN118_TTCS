@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const prisma = require('../db/index');
 const songController = require('../controllers/songController');
 const multer = require('multer');
 const path = require('path');
@@ -54,13 +55,11 @@ router.delete('/api/songs/:id', songController.deleteSong);
 //libary bai hat dang tai
 router.get("/api/songs/my-uploaded",verifyToken,async(req,res)=>{
 
-const songs=await prisma.song.findMany({
-
-      where:{
-      ownerId:req.user.id
+const songs = await prisma.song.findMany({
+      where: {
+        uploadedById: req.user.id
       }
-
-      })
+});
 
       res.json(songs);
 
