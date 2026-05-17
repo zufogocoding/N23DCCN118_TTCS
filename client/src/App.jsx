@@ -21,6 +21,7 @@ import BecomeArtist from './pages/user/BecomeArtist';
 import PendingSongs from "./pages/admin/PendingSongs";
 import UploadSong from "./pages/user/UploadSong";
 import LibraryPage from "./pages/LibraryHome/LibraryPage";
+import ManageGenres from './pages/admin/ManageGenres';
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
@@ -116,7 +117,7 @@ function App() {
           <Route path="pending-songs" element={<PendingSongs />} />
           <Route path="albums" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Albums (Đang xây dựng)</div>} />
           <Route path="playlists" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Playlists (Đang xây dựng)</div>} />
-          <Route path="genres" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Genres (Đang xây dựng)</div>} />
+          <Route path="genres" element={<ManageGenres />} />
           <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
         </Route>
 

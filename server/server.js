@@ -16,6 +16,7 @@ const userRoutes = require('./routes/userRoutes.js');
 const artistRequestRoutes = require('./routes/artistRequestRoutes.js');
 const notificationRoutes = require('./routes/notificationRoutes.js');
 const searchRoutes = require('./routes/searchRoutes.js');
+const genreRoutes = require('./routes/genreRoutes.js');
  
 const app = express()
 
@@ -42,6 +43,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/artist-requests', artistRequestRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use(searchRoutes);
+app.use(genreRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
