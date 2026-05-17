@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/SongDetail";
 import PlaylistView from './pages/PlaylistView';
 
+
 // Layouts
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
@@ -19,7 +20,7 @@ import ArtistRequests from './pages/admin/ArtistRequests';
 import BecomeArtist from './pages/user/BecomeArtist';
 import PendingSongs from "./pages/admin/PendingSongs";
 import UploadSong from "./pages/user/UploadSong";
-
+import LibraryPage from "./pages/LibraryHome/LibraryPage";
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
@@ -67,14 +68,7 @@ function App() {
           <Route path="search" element={<Search />} />
 
           {/* Các trang Protected */}
-          <Route
-            path="library"
-            element={
-              <ProtectedRoute>
-                <div className="p-8 text-white text-2xl font-bold">Thư Viện Của Tôi (Đang xây dựng)</div>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/library" element={<LibraryPage />} />
           <Route
             path="profile"
             element={
