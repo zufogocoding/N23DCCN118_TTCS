@@ -25,6 +25,7 @@ import ManageGenres from './pages/admin/ManageGenres';
 import ArtistProfile from './pages/artist/ArtistProfile';
 import AlbumView from './pages/music/AlbumView';
 import AdminAlbums from './pages/admin/AdminAlbums';
+import ReleaseManager from './pages/artist/ReleaseManager';
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
@@ -99,10 +100,13 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
+          <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
 
-          {/* Song detail và Playlist view */}
+          {/* Song detail, Playlist, Album view */}
           <Route path="song/:id" element={<SongDetail />} />
           <Route path="playlist/:playlistId" element={<PlaylistView />} />
+          <Route path="album/:albumId" element={<AlbumView />} />
         </Route>
 
         {/* NHÓM ADMIN */}
