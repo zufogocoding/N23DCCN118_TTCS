@@ -37,7 +37,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const uploadFields = multer({ storage, fileFilter }).fields([
+const uploadFields = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 100 * 1024 * 1024 } // 50MB
+}).fields([
   { name: 'audioFile', maxCount: 1 },
   { name: 'coverImage', maxCount: 1 }
 ]);
@@ -53,20 +57,22 @@ router.delete('/api/songs/:id', songController.deleteSong);
 
 
 //libary bai hat dang tai
-router.get("/api/songs/my-uploaded",verifyToken,async(req,res)=>{
+router.get("/api/songs/my-uploaded", verifyToken, async (req, res) => {
 
-const songs = await prisma.song.findMany({
-      where: {
-        uploadedById: req.user.id
-      }
-});
+  const songs = await prisma.song.findMany({
 
-      res.json(songs);
+    where: {
+      ownerId: req.user.id
+    }
+
+  })
+
+  res.json(songs);
 
 })
 
 router.get(
-   "/api/songs/user/:userId",
-   songController.getUserSongs
+  "/api/songs/user/:userId",
+  songController.getUserSongs
 );
 module.exports = router;
