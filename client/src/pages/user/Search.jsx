@@ -30,7 +30,7 @@ export default function Search() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchSearchResults = async () => {
+  async function fetchSearchResults() {
     setIsLoading(true);
     try {
       const response = await fetch(`http://localhost:9000/api/search?q=${encodeURIComponent(searchQuery)}`);

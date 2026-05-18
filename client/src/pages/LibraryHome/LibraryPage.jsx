@@ -10,7 +10,7 @@ export default function LibraryPage() {
     getUploadedSongs();
   }, []);
 
-  const getUploadedSongs = async () => {
+  async function getUploadedSongs() {
     try {
       const res = await axios.get(
         "http://localhost:9000/api/songs/user/1"

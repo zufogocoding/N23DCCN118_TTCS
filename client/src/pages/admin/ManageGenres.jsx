@@ -20,7 +20,7 @@ export default function ManageGenres() {
     fetchGenres();
   }, []);
 
-  const fetchGenres = async () => {
+  async function fetchGenres() {
     setLoading(true);
     try {
       const res = await fetch('http://localhost:9000/api/genres');

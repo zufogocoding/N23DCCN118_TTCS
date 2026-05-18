@@ -89,7 +89,7 @@ export default function PendingSongs() {
     fetchPendingSongs();
   }, []);
 
-  const fetchPendingSongs = async () => {
+  async function fetchPendingSongs() {
     try {
       setLoading(true);
       const res = await fetch("http://localhost:9000/api/admin/songs/pending");
