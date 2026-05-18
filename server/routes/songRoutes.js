@@ -52,6 +52,6 @@ router.get('/api/songs', songController.getAllSongs);
 router.get('/api/songs/my-uploaded', authMiddleware, songController.getMyUploaded);
 router.get('/api/songs/user/:userId', songController.getUserSongs);
 router.get('/api/songs/:id', songController.getSongById);
-router.put('/api/songs/:id', songController.updateSong);
+router.put('/api/songs/:id', authMiddleware, uploadFields, songController.updateSong);
 router.delete('/api/songs/:id', songController.deleteSong);
 module.exports = router;
