@@ -12,17 +12,30 @@ const songController = {
       const { title, durationMs, artistName, genre, genreIds } = req.body;
       const userId = req.user.id;
 
-      // Parse genreIds: hỗ trợ cả JSON string và mảng
+      // Parse genreIds và genre: hỗ trợ cả JSON string và mảng
       let parsedGenreIds = [];
       if (genreIds) {
         try {
-          parsedGenreIds = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
-          if (!Array.isArray(parsedGenreIds)) parsedGenreIds = [];
-          parsedGenreIds = parsedGenreIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+          let parsed = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
+          if (!Array.isArray(parsed)) parsed = [parsed];
+          parsedGenreIds = parsed.map(id => parseInt(id)).filter(id => !isNaN(id));
         } catch {
-          parsedGenreIds = [];
+          // ignore
         }
       }
+      if (genre) {
+        try {
+          let parsed = typeof genre === 'string' ? JSON.parse(genre) : genre;
+          if (!Array.isArray(parsed)) parsed = [parsed];
+          const gIds = parsed.map(id => parseInt(id)).filter(id => !isNaN(id));
+          parsedGenreIds = [...parsedGenreIds, ...gIds];
+        } catch {
+          const gIds = String(genre).split(',').map(g => parseInt(g.trim())).filter(g => !isNaN(g));
+          parsedGenreIds = [...parsedGenreIds, ...gIds];
+        }
+      }
+      // Loại bỏ trùng lặp
+      parsedGenreIds = [...new Set(parsedGenreIds)];
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
@@ -49,15 +62,7 @@ const songController = {
         console.error("Không thể đọc metadata file:", err);
       }
 
-      // Xử lý multi-genre
-      let genreIds = [];
-      if (genre) {
-        try {
-          genreIds = JSON.parse(genre);
-        } catch (e) {
-          genreIds = genre.split(',').map(g => Number(g.trim())).filter(g => !isNaN(g));
-        }
-      }
+
 
       // Kiểm tra user đã có Artist record chưa (chỉ tìm, KHÔNG tự tạo)
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
@@ -78,13 +83,7 @@ const songController = {
         }),
       };
 
-      if (genreIds && Array.isArray(genreIds) && genreIds.length > 0) {
-        songData.genres = {
-          create: genreIds.map(id => ({
-            genre: { connect: { id: id } }
-          }))
-        };
-      }
+
 
       // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
       if (existingArtist) {
