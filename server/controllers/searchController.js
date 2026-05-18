@@ -4,8 +4,12 @@ const searchController = {
   searchAll: async (req, res) => {
     try {
       const query = req.query.q || '';
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+
       if (!query.trim()) {
-        return res.status(200).json({ songs: [], artists: [], playlists: [] });
+        return res.status(200).json({ songs: [], artists: [], playlists: [], hasNextPage: false });
       }
 
       const searchTerms = query.trim();
@@ -29,7 +33,8 @@ const searchController = {
             }
           }
         },
-        take: 10
+        skip,
+        take: limit + 1 // Lấy dư 1 để check hasNextPage
       });
 
       // Search Artists
@@ -44,7 +49,8 @@ const searchController = {
         include: {
           user: { select: { username: true, displayName: true } }
         },
-        take: 10
+        skip,
+        take: limit + 1
       });
 
       // Search Playlists
@@ -58,10 +64,29 @@ const searchController = {
         include: {
           user: { select: { username: true } }
         },
-        take: 10
+        skip,
+        take: limit + 1
       });
 
-      res.status(200).json({ songs, artists, playlists });
+      // Tính toán hasNextPage
+      const hasNextSongs = songs.length > limit;
+      const hasNextArtists = artists.length > limit;
+      const hasNextPlaylists = playlists.length > limit;
+      
+      const hasNextPage = hasNextSongs || hasNextArtists || hasNextPlaylists;
+
+      // Cắt bỏ phần tử dư thừa
+      if (hasNextSongs) songs.pop();
+      if (hasNextArtists) artists.pop();
+      if (hasNextPlaylists) playlists.pop();
+
+      res.status(200).json({ 
+        songs, 
+        artists, 
+        playlists,
+        page,
+        hasNextPage 
+      });
     } catch (error) {
       console.error("Lỗi searchAll:", error);
       res.status(500).json({ error: "Lỗi server" });

@@ -12,17 +12,30 @@ const songController = {
       const { title, durationMs, artistName, genre, genreIds } = req.body;
       const userId = req.user.id;
 
-      // Parse genreIds: hỗ trợ cả JSON string và mảng
+      // Parse genreIds và genre: hỗ trợ cả JSON string và mảng
       let parsedGenreIds = [];
       if (genreIds) {
         try {
-          parsedGenreIds = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
-          if (!Array.isArray(parsedGenreIds)) parsedGenreIds = [];
-          parsedGenreIds = parsedGenreIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+          let parsed = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
+          if (!Array.isArray(parsed)) parsed = [parsed];
+          parsedGenreIds = parsed.map(id => parseInt(id)).filter(id => !isNaN(id));
         } catch {
-          parsedGenreIds = [];
+          // ignore
         }
       }
+      if (genre) {
+        try {
+          let parsed = typeof genre === 'string' ? JSON.parse(genre) : genre;
+          if (!Array.isArray(parsed)) parsed = [parsed];
+          const gIds = parsed.map(id => parseInt(id)).filter(id => !isNaN(id));
+          parsedGenreIds = [...parsedGenreIds, ...gIds];
+        } catch {
+          const gIds = String(genre).split(',').map(g => parseInt(g.trim())).filter(g => !isNaN(g));
+          parsedGenreIds = [...parsedGenreIds, ...gIds];
+        }
+      }
+      // Loại bỏ trùng lặp
+      parsedGenreIds = [...new Set(parsedGenreIds)];
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
@@ -30,15 +43,37 @@ const songController = {
 
       const albumIdRaw = req.body.albumId;
       const albumIdParsed = albumIdRaw != null && albumIdRaw !== '' ? parseInt(albumIdRaw, 10) : NaN;
+      let finalTitle = title || 'Bài hát chưa đặt tên';
+      let finalDurationMs = parseInt(durationMs) || 0;
+      let finalArtistName = artistName || null;
+
+      try {
+        const mm = await import('music-metadata');
+        const metadata = await mm.parseFile(audioFile.path);
+        
+        if (!durationMs && metadata.format.duration) {
+          finalDurationMs = Math.floor(metadata.format.duration * 1000);
+        }
+        if (!title && metadata.common.title) {
+          finalTitle = metadata.common.title;
+        }
+        if (!artistName && metadata.common.artist) {
+          finalArtistName = metadata.common.artist;
+        }
+      } catch (err) {
+        console.error("Không thể đọc metadata file:", err);
+      }
+
+
 
       // Kiểm tra user đã có Artist record chưa (chỉ tìm, KHÔNG tự tạo)
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
 
       const songData = {
-        title: title || 'Bài hát chưa đặt tên',
-        artistName: artistName || null, // Lưu tên nghệ sĩ trực tiếp trên Song (metadata)
+        title: finalTitle,
+        artistName: finalArtistName, // Lưu tên nghệ sĩ trực tiếp trên Song (metadata)
         uploadedById: userId,           // Lưu ai đã upload
-        durationMs: parseInt(durationMs) || 0,
+        durationMs: finalDurationMs,
         audioUrl: savedAudioUrl,
         coverArtUrl: savedCoverUrl,
         status: 'pending', // Mặc định pending, chờ admin duyệt
@@ -49,6 +84,8 @@ const songController = {
           },
         }),
       };
+
+
 
       // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
       if (existingArtist) {
