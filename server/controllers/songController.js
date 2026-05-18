@@ -49,15 +49,7 @@ const songController = {
         console.error("Không thể đọc metadata file:", err);
       }
 
-      // Xử lý multi-genre
-      let genreIds = [];
-      if (genre) {
-        try {
-          genreIds = JSON.parse(genre);
-        } catch (e) {
-          genreIds = genre.split(',').map(g => Number(g.trim())).filter(g => !isNaN(g));
-        }
-      }
+
 
       // Kiểm tra user đã có Artist record chưa (chỉ tìm, KHÔNG tự tạo)
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
@@ -78,13 +70,7 @@ const songController = {
         }),
       };
 
-      if (genreIds && Array.isArray(genreIds) && genreIds.length > 0) {
-        songData.genres = {
-          create: genreIds.map(id => ({
-            genre: { connect: { id: id } }
-          }))
-        };
-      }
+
 
       // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
       if (existingArtist) {

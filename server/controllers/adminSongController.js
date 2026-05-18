@@ -1,4 +1,4 @@
-const prisma = require("../prisma/prisma");
+const prisma = require("../db/index");
 
 // lấy bài pending
 const getPendingSongs = async (req, res) => {
@@ -69,9 +69,27 @@ const rejectSong = async (req, res) => {
     });
   }
 };
+// get count pending
+const getPendingCount = async (req, res) => {
+  try {
+    const count = await prisma.song.count({
+      where: {
+        status: "pending",
+      },
+    });
+
+    res.json({ count });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      error: "Cannot get pending count",
+    });
+  }
+};
 
 module.exports = {
   getPendingSongs,
   approveSong,
   rejectSong,
+  getPendingCount,
 };
