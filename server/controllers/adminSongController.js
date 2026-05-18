@@ -1,4 +1,8 @@
+
 const prisma = require("../db/index");
+
+const prisma = require("../db/index.js");
+
 
 // lấy bài pending
 const getPendingSongs = async (req, res) => {
