@@ -340,7 +340,7 @@ const albumController = {
 
       const album = await prisma.album.findFirst({
         where: { id: albumId, artistId: req.user.id },
-        include: { songs: true },
+        include: { songs: { include: { song: true } } },
       });
       if (!album) return res.status(404).json({ error: 'Không tìm thấy album' });
       if (album.status === 'released') {
@@ -348,6 +348,11 @@ const albumController = {
       }
       if (album.songs.length === 0) {
         return res.status(400).json({ error: 'Album phải có ít nhất 1 bài hát' });
+      }
+
+      const hasUnapproved = album.songs.some(as => !as.song || as.song.status !== 'approved');
+      if (hasUnapproved) {
+        return res.status(400).json({ error: 'Tất cả bài hát trong album phải được phê duyệt trước khi phát hành!' });
       }
 
       await prisma.album.update({
@@ -374,7 +379,7 @@ const albumController = {
 
       const album = await prisma.album.findFirst({
         where: { id: albumId, artistId: req.user.id },
-        include: { songs: true },
+        include: { songs: { include: { song: true } } },
       });
       if (!album) return res.status(404).json({ error: 'Không tìm thấy album' });
       if (album.status === 'released') {
@@ -382,6 +387,11 @@ const albumController = {
       }
       if (album.songs.length === 0) {
         return res.status(400).json({ error: 'Album phải có ít nhất 1 bài hát' });
+      }
+
+      const hasUnapproved = album.songs.some(as => !as.song || as.song.status !== 'approved');
+      if (hasUnapproved) {
+        return res.status(400).json({ error: 'Tất cả bài hát trong album phải được phê duyệt trước khi lên lịch phát hành!' });
       }
 
       const { scheduledAt } = req.body;

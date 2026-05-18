@@ -61,6 +61,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || "Lỗi máy chủ nội bộ" });
 });
 
+const startReleaseWorker = require('./workers/releaseWorker.js');
+
 app.listen(9000, '0.0.0.0', () => {
   console.log('The server is now live and pretty much acessable')
+  startReleaseWorker();
 })
