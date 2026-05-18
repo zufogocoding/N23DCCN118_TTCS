@@ -28,7 +28,7 @@ const [user, setUser] = useState({});
   }, []);
 
   const getInitial = () => {
-    const displayName = user.artistName || user.username;
+    const displayName = user.artistName || user.displayName || user.username;
     if (displayName) return displayName.charAt(0).toUpperCase();
     if (user.email) return user.email.charAt(0).toUpperCase();
     return '?';
@@ -76,7 +76,7 @@ const [user, setUser] = useState({});
     : null;
 
   // Hiển thị artistName nếu là nghệ sĩ, ngược lại hiển thị username
-  const displayName = user.isArtist && user.artistName ? user.artistName : user.username;
+  const displayName = user.isArtist && user.artistName ? user.artistName : (user.displayName || user.username);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -133,6 +133,16 @@ const [user, setUser] = useState({});
               >
                 Hồ sơ
               </Link>
+
+              {user.isArtist && (
+                <Link
+                  to={`/artist/${user.id}`}
+                  onClick={() => setIsOpen(false)}
+                  className="flex justify-between items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors text-[#1db954]"
+                >
+                  Kênh nghệ sĩ
+                </Link>
+              )}
               
               {/* Chỉ hiện "Trở thành Nghệ sĩ" nếu KHÔNG phải admin VÀ CHƯA là nghệ sĩ */}
               {!user.isAdmin && !user.isArtist && (

@@ -11,10 +11,14 @@ const authMiddleware = (req, res, next) => {
     
     // Giải mã token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
-    
-    // Gắn thông tin userId vào req để các controller phía sau sử dụng
+
+    const userId = decoded.userId ?? decoded.id;
+    if (userId == null) {
+      return res.status(401).json({ error: 'Token không hợp lệ' });
+    }
+
     req.user = {
-      id: decoded.userId
+      id: userId
     };
 
     next();

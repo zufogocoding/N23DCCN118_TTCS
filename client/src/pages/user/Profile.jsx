@@ -33,7 +33,7 @@ export default function Profile() {
         const data = await res.json();
         setUser(data);
         setFormData({
-          username: data.username || '',
+          displayName: data.displayName || data.username || '',
           dob: data.dob ? new Date(data.dob).toISOString().split('T')[0] : '',
           country: data.country || ''
         });
@@ -43,6 +43,7 @@ export default function Profile() {
         localStorage.setItem('user', JSON.stringify({
           ...lsUser,
           username: data.username,
+          displayName: data.displayName,
           avatarUrl: data.avatarUrl,
           isArtist: data.isArtist,
           artistName: data.artistName
@@ -100,7 +101,7 @@ export default function Profile() {
     try {
       const token = localStorage.getItem('token');
       const submitData = new FormData();
-      submitData.append('username', formData.username);
+      submitData.append('displayName', formData.displayName);
       if (formData.dob) submitData.append('dob', formData.dob);
       if (formData.country) submitData.append('country', formData.country);
       if (selectedFile) submitData.append('avatar', selectedFile);
@@ -140,7 +141,7 @@ export default function Profile() {
     setPreviewImage(null);
     setSelectedFile(null);
     setFormData({
-      username: user.username || '',
+      displayName: user.displayName || user.username || '',
       dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : '',
       country: user.country || ''
     });
@@ -184,7 +185,7 @@ export default function Profile() {
           <h4 className="uppercase text-xs font-bold tracking-[0.2em] text-[#a0a0a0] mb-2">Hồ sơ người dùng</h4>
           <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-[#a0a0a0]">
-              {user?.isArtist && user?.artistName ? user.artistName : user?.username}
+              {user?.artistName || user?.displayName || user?.username}
             </h1>
             {user?.isArtist && (
               <div className="flex items-center gap-1.5 bg-[#1db954]/10 border border-[#1db954]/30 px-3 py-1.5 rounded-full self-center">
@@ -235,12 +236,25 @@ export default function Profile() {
                   <UserIcon className="absolute left-3 top-3.5 text-[#666]" size={18} />
                   <input
                     type="text"
-                    name="username"
-                    value={formData.username}
+                    name="displayName"
+                    value={formData.displayName}
                     onChange={handleInputChange}
                     className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
                     placeholder="Nhập tên hiển thị"
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-[#a0a0a0]">Tên đăng nhập (Không thể thay đổi)</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-3.5 text-[#666]" size={18} />
+                  <input
+                    type="text"
+                    value={user?.username}
+                    disabled
+                    className="w-full bg-[#222] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-[#666] cursor-not-allowed"
                   />
                 </div>
               </div>

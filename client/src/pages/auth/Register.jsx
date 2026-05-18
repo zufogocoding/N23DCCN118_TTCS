@@ -111,7 +111,7 @@ export default function Register() {
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
               <input
-                type="text" placeholder="Tên hiển thị (Username)"
+                type="text" placeholder="Tên đăng nhập"
                 className={`w-full py-3 pl-10 pr-4 rounded-lg bg-[#0f0f0f] border ${errors.username ? 'border-[#ff4d4f]' : 'border-[#333] focus:border-[#00e6e6]'} outline-none transition-all text-sm`}
                 {...register("username")}
               />

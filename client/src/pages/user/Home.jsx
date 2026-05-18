@@ -6,11 +6,12 @@ import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/CreatePlaylistModal';
 import UploadButton from "../../components/layout/UploadButton";
+import { getPrimaryArtistUserId } from '../../utils/artistNav';
 
 // Helper: lấy tên artist từ cấu trúc API response
 function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
+    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
   }
   // Fallback: lấy từ trường artistName trực tiếp trên Song (do người upload nhập)
   if (song.artistName) return song.artistName;
@@ -139,7 +140,7 @@ export default function Home() {
           <h1 className="text-4xl font-black text-[#5e9ca0] mb-1 uppercase tracking-wider">
             {user.username ? 'Welcome Back' : 'Welcome to Soundwave'}
           </h1>
-          {user.username && <h2 className="text-xl font-bold">{user.username}</h2>}
+          {user.username && <h2 className="text-xl font-bold">{user.artistName || user.displayName || user.username}</h2>}
         </div>
 
         {/* Section: My Library - User Playlists từ DB */}
@@ -222,7 +223,17 @@ export default function Home() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1" onClick={() => handlePlaySong(song)}>
                       <h3 className="font-bold text-white truncate text-base mb-1">{song.title}</h3>
-                      <p className="text-sm text-[#a0a0a0] truncate">{getArtistName(song)}</p>
+                      <p
+                        role={getPrimaryArtistUserId(song) ? 'link' : undefined}
+                        className={`text-sm text-[#a0a0a0] truncate ${getPrimaryArtistUserId(song) ? 'hover:text-white hover:underline cursor-pointer' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const uid = getPrimaryArtistUserId(song);
+                          if (uid) navigate(`/artist/${uid}`);
+                        }}
+                      >
+                        {getArtistName(song)}
+                      </p>
                     </div>
                     <AddToPlaylistMenu
                       songId={song.id}

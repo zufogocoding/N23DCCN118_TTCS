@@ -42,7 +42,7 @@ const searchController = {
           ]
         },
         include: {
-          user: { select: { username: true } }
+          user: { select: { username: true, displayName: true } }
         },
         take: 10
       });

@@ -19,17 +19,21 @@ datasource db {
 model User {
   id         Int       @id @default(autoincrement())
   username   String    @db.VarChar(100)
+  displayName String?  @db.VarChar(100)
   email      String    @unique @db.VarChar(255)
   password   String    @db.VarChar(255)
   dob        DateTime? @db.Date
   country    String?   @db.VarChar(100)
-  avatarUrl  String?   @db.VarChar(500)
-  isAdmin    Boolean   @default(false)
-  isActive   Boolean   @default(true)
-  role       String    @default("user") // phan quyen user - admin
-  isVerified Boolean   @default(false) // xac thuc account
-  createdAt  DateTime  @default(now())
-  lastLogin  DateTime?                    // lan dang nhap gan nhat
+  avatarUrl     String?   @db.VarChar(500)
+  coverImageUrl String?   @db.VarChar(500)
+  bio           String?   @db.Text
+  socialLinks   Json      @default("[]")
+  isAdmin       Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  role          String    @default("user") // phan quyen user - admin
+  isVerified    Boolean   @default(false) // xac thuc account
+  createdAt     DateTime  @default(now())
+  lastLogin     DateTime?                    // lan dang nhap gan nhat
 
   // Vector lưu trữ User Factors từ ALS (Giả sử số chiều k = 64)
   alsFeature Unsupported("vector(64)")?
@@ -55,9 +59,6 @@ model Artist {
   verifiedTick Boolean @default(false)
 
   followerCount Int @default(0) // hien fl cho frontend
-  facebookUrl String? @db.VarChar(500) // social links
-  instagramUrl String? @db.VarChar(500)
-  youtubeUrl String? @db.VarChar(500)
   status String @default("active") // trang thai artist active -banned - pending
   albums Album[]
   songs  ArtistSong[]
@@ -210,8 +211,9 @@ model ArtistSong {
 }
 
 model AlbumSong {
-  albumId Int
-  songId  Int
+  albumId  Int
+  songId   Int
+  position Int @default(0)
 
   album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
   song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)

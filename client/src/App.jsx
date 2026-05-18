@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import SongDetail from "./pages/SongDetail";
-import PlaylistView from './pages/PlaylistView';
+import SongDetail from "./pages/music/SongDetail";
+import PlaylistView from './pages/music/PlaylistView';
 
 
 // Layouts
@@ -19,9 +19,13 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ArtistRequests from './pages/admin/ArtistRequests';
 import BecomeArtist from './pages/user/BecomeArtist';
 import PendingSongs from "./pages/admin/PendingSongs";
-import UploadSong from "./pages/user/UploadSong";
+import UploadSong from "./pages/artist/UploadSong";
 import LibraryPage from "./pages/LibraryHome/LibraryPage";
 import ManageGenres from './pages/admin/ManageGenres';
+import ArtistProfile from './pages/artist/ArtistProfile';
+import AlbumView from './pages/music/AlbumView';
+import AdminAlbums from './pages/admin/AdminAlbums';
+
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
@@ -67,6 +71,7 @@ function App() {
           {/* Các trang Public */}
           <Route index element={<Home />} />
           <Route path="search" element={<Search />} />
+          <Route path="artist/:id" element={<ArtistProfile />} />
 
           {/* Các trang Protected */}
           <Route path="/library" element={<LibraryPage />} />
@@ -115,7 +120,7 @@ function App() {
           <Route path="artists" element={<ArtistRequests />} />
           <Route path="songs" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Songs (Đang xây dựng)</div>} />
           <Route path="pending-songs" element={<PendingSongs />} />
-          <Route path="albums" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Albums (Đang xây dựng)</div>} />
+          <Route path="albums" element={<AdminAlbums />} />
           <Route path="playlists" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Playlists (Đang xây dựng)</div>} />
           <Route path="genres" element={<ManageGenres />} />
           <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />

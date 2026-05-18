@@ -98,6 +98,7 @@ const signup = async (req, res) => {
     const newUser = await prisma.user.create({
       data: {
         username,
+        displayName: username,
         email,
         password: hashedPassword,
       }
@@ -164,6 +165,7 @@ const login = async (req, res) => {
       message: "Đăng nhập thành công",
       user: {
         ...userWithoutPassword,
+        displayName: user.displayName,
         isArtist: !!artist,
         artistName: artist?.artistName || null
       },

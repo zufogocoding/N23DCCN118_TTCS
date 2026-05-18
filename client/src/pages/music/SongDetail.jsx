@@ -1,15 +1,16 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Play, Heart } from "lucide-react";
-import { usePlayer } from "../context/PlayerContext";
-import AddToPlaylistMenu from "../components/AddToPlaylistMenu";
-import CreatePlaylistModal from "../components/CreatePlaylistModal";
+import { usePlayer } from "../../context/PlayerContext";
+import AddToPlaylistMenu from "../../components/AddToPlaylistMenu";
+import CreatePlaylistModal from "../../components/CreatePlaylistModal";
+import { getPrimaryArtistUserId } from "../../utils/artistNav";
 
 // Helper: lấy tên artist
 function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
+    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
   }
   if (song.artistName) return song.artistName;
   return 'Unknown Artist';
@@ -39,6 +40,7 @@ function formatDuration(ms) {
 
 const SongDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { playSong } = usePlayer();
   const [song, setSong] = useState(null);
   const [liked, setLiked] = useState(false);
@@ -85,7 +87,7 @@ const SongDetail = () => {
 
   const handleToggleLike = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) return;
+    if (!user.id || !song) return;
 
     try {
       const res = await fetch('http://localhost:9000/api/interactions/like', {
@@ -120,6 +122,7 @@ const SongDetail = () => {
 
   const artistName = getArtistName(song);
   const coverArt = getCoverArt(song);
+  const artistUserId = getPrimaryArtistUserId(song);
   const colors = ['from-pink-900', 'from-cyan-900', 'from-purple-900', 'from-emerald-900', 'from-amber-900'];
   const gradientColor = colors[(song.id - 1) % colors.length];
 
@@ -142,7 +145,17 @@ const SongDetail = () => {
           <p className="uppercase text-sm mb-3 font-bold text-white/70">Song</p>
           <h1 className="text-4xl md:text-6xl font-black leading-tight mb-4">{song.title}</h1>
           <div className="flex items-center gap-2 text-gray-200 justify-center md:justify-start flex-wrap">
-            <span className="font-bold">{artistName}</span>
+            {artistUserId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/artist/${artistUserId}`)}
+                className="font-bold hover:underline text-left"
+              >
+                {artistName}
+              </button>
+            ) : (
+              <span className="font-bold">{artistName}</span>
+            )}
             <span>•</span>
             <span>{formatDuration(song.durationMs)}</span>
             {song.playCount > 0 && (
@@ -197,7 +210,16 @@ const SongDetail = () => {
           <h3 className="font-bold text-lg mb-2">Thông tin bài hát</h3>
           <div className="space-y-2 text-sm text-gray-300">
             <p><span className="text-gray-500">Tiêu đề:</span> {song.title}</p>
-            <p><span className="text-gray-500">Nghệ sĩ:</span> {artistName}</p>
+            <p>
+              <span className="text-gray-500">Nghệ sĩ:</span>{' '}
+              {artistUserId ? (
+                <button type="button" className="text-white hover:underline" onClick={() => navigate(`/artist/${artistUserId}`)}>
+                  {artistName}
+                </button>
+              ) : (
+                artistName
+              )}
+            </p>
             <p><span className="text-gray-500">Thời lượng:</span> {formatDuration(song.durationMs)}</p>
             {song.playCount > 0 && (
               <p><span className="text-gray-500">Lượt nghe:</span> {song.playCount.toLocaleString()}</p>
