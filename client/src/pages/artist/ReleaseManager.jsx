@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload } from 'lucide-react';
 import TrackEditModal from '../../components/TrackEditModal';
 
 const ALBUM_TYPES = ['Single', 'EP', 'Album', 'Mixtape'];
@@ -40,6 +40,14 @@ export default function ReleaseManager() {
   const [coverPreview, setCoverPreview] = useState(null);
   const [scheduledAt, setScheduledAt] = useState('');
   const coverRef = useRef(null);
+
+  // Direct Audio Upload state
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+  const audioInputRef = useRef(null);
+
+  // Search state for Add Tracks modal
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Drag state
   const dragItem = useRef(null);
@@ -128,7 +136,7 @@ export default function ReleaseManager() {
     finally { setSaving(false); }
   };
 
-  // Add track
+  // Add track (existing)
   const handleAddTrack = async (songId) => {
     try {
       const res = await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
@@ -137,6 +145,63 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); setShowAddTracks(false); }
     } catch {}
+  };
+
+  // Direct Audio Upload
+  const handleDirectAudioUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Tự động detect duration
+    const audio = new Audio();
+    audio.src = URL.createObjectURL(file);
+    audio.addEventListener('loadedmetadata', async () => {
+      const durationMs = Math.round(audio.duration * 1000);
+      
+      setIsUploadingAudio(true);
+      setAudioUploadProgress(0);
+
+      try {
+        const formData = new FormData();
+        formData.append('audioFile', file);
+        // Tên mặc định là tên file bỏ đuôi mở rộng
+        const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
+        formData.append('title', defaultTitle);
+        formData.append('artistName', currentUser.displayName || currentUser.username || 'Unknown Artist');
+        formData.append('durationMs', durationMs.toString());
+        
+        // XMLHttpRequest để lấy progress
+        const xhr = new XMLHttpRequest();
+        const uploadedSong = await new Promise((resolve, reject) => {
+          xhr.upload.addEventListener('progress', (ev) => {
+            if (ev.lengthComputable) setAudioUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+          });
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
+            else reject(new Error('Upload thất bại'));
+          });
+          xhr.addEventListener('error', () => reject(new Error('Lỗi kết nối')));
+          xhr.open('POST', 'http://localhost:9000/api/songs/upload');
+          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          xhr.send(formData);
+        });
+
+        // Nối bài hát vừa tạo vào album
+        await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
+          method: 'POST',
+          headers: { ...authH, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ songId: uploadedSong.id }),
+        });
+        
+        // Làm mới dữ liệu album để hiển thị bài vừa up
+        loadAlbum();
+      } catch (err) {
+        alert(err.message || 'Lỗi upload trực tiếp');
+      } finally {
+        setIsUploadingAudio(false);
+        if (audioInputRef.current) audioInputRef.current.value = '';
+      }
+    });
   };
 
   // Remove track
@@ -224,6 +289,10 @@ export default function ReleaseManager() {
   const addableSongs = myUploads.filter(s =>
     !trackIds.has(s.id) && !(s.albums || []).some(a => a.album && a.album.id !== album?.id)
   );
+  
+  const filteredAddableSongs = addableSongs.filter(s => 
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const isReleased = album?.status === 'released';
   const isScheduled = album?.status === 'scheduled';
@@ -241,7 +310,7 @@ export default function ReleaseManager() {
     <div className="min-h-screen bg-[#0a0a0a] text-white px-6 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[#a0a0a0] hover:text-white mb-6 text-sm">
+        <button onClick={() => navigate(currentUser.id ? `/artist/${currentUser.id}` : '/')} className="flex items-center gap-2 text-[#a0a0a0] hover:text-white mb-6 text-sm">
           <ArrowLeft size={18} /> Quay lại
         </button>
 
@@ -330,10 +399,18 @@ export default function ReleaseManager() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">Danh sách bài hát ({tracks.length})</h2>
               {!isReleased && (
-                <button onClick={() => setShowAddTracks(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] text-sm font-semibold hover:bg-[#00e6e6]/20">
-                  <Plus size={16} /> Thêm bài
-                </button>
+                <div className="flex items-center gap-2">
+                  <input type="file" accept="audio/*" className="hidden" ref={audioInputRef} onChange={handleDirectAudioUpload} />
+                  <button onClick={() => audioInputRef.current?.click()} disabled={isUploadingAudio}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 disabled:opacity-50">
+                    {isUploadingAudio ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                    {isUploadingAudio ? `${audioUploadProgress}%` : 'Upload nhạc'}
+                  </button>
+                  <button onClick={() => setShowAddTracks(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] text-sm font-semibold hover:bg-[#00e6e6]/20">
+                    <Plus size={16} /> Chọn bài
+                  </button>
+                </div>
               )}
             </div>
 
@@ -439,11 +516,22 @@ export default function ReleaseManager() {
               <button onClick={() => setShowAddTracks(false)} className="text-[#666] hover:text-white"><X size={22} /></button>
             </div>
             <div className="p-4 overflow-y-auto flex-1">
-              {addableSongs.length === 0 ? (
-                <p className="text-[#666] text-sm text-center py-8">Không còn bài hát để thêm.</p>
+              <div className="mb-4">
+                <input 
+                  type="text" 
+                  placeholder="Tìm kiếm bài hát..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#222] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-[#00e6e6]/50" 
+                />
+              </div>
+              {filteredAddableSongs.length === 0 ? (
+                <p className="text-[#666] text-sm text-center py-8">
+                  {searchQuery ? 'Không tìm thấy bài hát nào.' : 'Không còn bài hát để thêm.'}
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {addableSongs.map(s => (
+                  {filteredAddableSongs.map(s => (
                     <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#222]">
                       <img src={getCover(s.coverArtUrl) || ''} alt="" className="w-10 h-10 rounded object-cover bg-[#222]" />
                       <div className="flex-1 min-w-0">
