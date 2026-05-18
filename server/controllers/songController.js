@@ -41,6 +41,8 @@ const songController = {
       const coverFile = req.files?.coverImage?.[0];
       const savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
 
+      const albumIdRaw = req.body.albumId;
+      const albumIdParsed = albumIdRaw != null && albumIdRaw !== '' ? parseInt(albumIdRaw, 10) : NaN;
       let finalTitle = title || 'Bài hát chưa đặt tên';
       let finalDurationMs = parseInt(durationMs) || 0;
       let finalArtistName = artistName || null;
@@ -95,6 +97,26 @@ const songController = {
       }
 
       const newSong = await prisma.song.create({ data: songData });
+
+      if (!Number.isNaN(albumIdParsed)) {
+        const album = await prisma.album.findFirst({
+          where: { id: albumIdParsed, artistId: userId },
+        });
+        if (album) {
+          const clash = await prisma.albumSong.findFirst({ where: { songId: newSong.id } });
+          if (!clash) {
+            const agg = await prisma.albumSong.aggregate({
+              where: { albumId: album.id },
+              _max: { position: true },
+            });
+            const position = (agg._max.position ?? -1) + 1;
+            await prisma.albumSong.create({
+              data: { albumId: album.id, songId: newSong.id, position },
+            });
+          }
+        }
+      }
+
       res.status(201).json({ message: 'Upload thành công! Bài hát đang chờ admin duyệt.', song: newSong });
     } catch (error) {
       console.error("Lỗi uploadSong:", error);
@@ -198,6 +220,33 @@ const songController = {
     } catch (error) {
       console.error("Lỗi deleteSong:", error);
       res.status(500).json({ error: 'Không thể xóa' });
+    }
+  },
+
+  // 6b. Bài đã upload của user đang đăng nhập (mọi trạng thái, chưa xóa mềm)
+  getMyUploaded: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const songs = await prisma.song.findMany({
+        where: { uploadedById: userId, isDeleted: false },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true, displayName: true } } }
+              }
+            }
+          },
+          albums: {
+            include: { album: { select: { id: true, title: true, coverArtUrl: true } } }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.status(200).json(songs);
+    } catch (error) {
+      console.error('Lỗi getMyUploaded:', error);
+      res.status(500).json({ error: 'Không lấy được danh sách bài đã upload' });
     }
   },
 

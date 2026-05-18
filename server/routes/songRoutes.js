@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../db/index');
 const songController = require('../controllers/songController');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const verifyToken = require("../middleware/verifyToken");
 // Setup multer cho multi-file upload (audio + cover image)
 const uploadDir = 'uploads/songs';
 const coverDir = 'uploads/covers';
@@ -51,6 +49,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
 // Định tuyến các yêu cầu vào routers xử lý
 router.post('/api/songs/upload', authMiddleware, uploadFields, songController.uploadSong);
 router.get('/api/songs', songController.getAllSongs);
+router.get('/api/songs/my-uploaded', authMiddleware, songController.getMyUploaded);
+router.get('/api/songs/user/:userId', songController.getUserSongs);
 router.get('/api/songs/:id', songController.getSongById);
 router.put('/api/songs/:id', songController.updateSong);
 router.delete('/api/songs/:id', songController.deleteSong);

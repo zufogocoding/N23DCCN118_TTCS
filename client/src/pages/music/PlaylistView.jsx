@@ -2,15 +2,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Play, Clock, MoreHorizontal, House, Heart, Trash2 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
-import AddToPlaylistMenu from '../components/AddToPlaylistMenu';
-import CreatePlaylistModal from '../components/CreatePlaylistModal';
-import EditPlaylistModal from '../components/EditPlaylistModal';
+import { usePlayer } from '../../context/PlayerContext';
+import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
+import CreatePlaylistModal from '../../components/CreatePlaylistModal';
+import EditPlaylistModal from '../../components/EditPlaylistModal';
 
 // Helper: lấy tên artist từ cấu trúc API response
 function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
+    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
   }
   if (song.artistName) return song.artistName;
   return 'Unknown Artist';
@@ -66,7 +66,7 @@ const PlaylistView = () => {
             setSongs(data);
             setPlaylist({
               title: 'Liked Songs',
-              user: { username: user.username },
+              user: { username: user.artistName || user.displayName || user.username },
               songCount: data.length,
             });
           }
@@ -298,7 +298,7 @@ const PlaylistView = () => {
           <p className="text-xs font-bold uppercase">Playlist</p>
           <h1 className="text-5xl md:text-7xl font-black my-2">{playlist.title}</h1>
           <p className="text-gray-300 text-sm font-bold">
-            {playlist.user?.username || 'Unknown'} • {songs.length} bài hát
+            {playlist.user?.displayName || playlist.user?.username || 'Unknown'} • {songs.length} bài hát
           </p>
         </div>
       </div>

@@ -18,6 +18,8 @@ export default function UploadSong() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [myAlbums, setMyAlbums] = useState([]);
+  const [selectedAlbumId, setSelectedAlbumId] = useState("");
 
   // Duration detection
   const [durationMs, setDurationMs] = useState(0);
@@ -28,6 +30,18 @@ export default function UploadSong() {
       .then(res => res.json())
       .then(data => setGenres(data))
       .catch(err => console.error('Lỗi lấy genres:', err));
+  }, []);
+
+  useEffect(() => {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!u.id || !u.isArtist) {
+      setMyAlbums([]);
+      return;
+    }
+    fetch(`http://localhost:9000/api/artists/${u.id}/albums`)
+      .then((r) => (r.ok ? r.json() : { albums: [] }))
+      .then((data) => setMyAlbums(data.albums || []))
+      .catch(() => setMyAlbums([]));
   }, []);
 
   // Đóng dropdown khi click bên ngoài
@@ -99,6 +113,9 @@ export default function UploadSong() {
         formData.append("genreIds", JSON.stringify(selectedGenreIds));
       }
       formData.append("durationMs", durationMs.toString());
+      if (selectedAlbumId) {
+        formData.append("albumId", selectedAlbumId);
+      }
 
       // Sử dụng XMLHttpRequest để theo dõi progress
       const xhr = new XMLHttpRequest();
@@ -164,6 +181,7 @@ export default function UploadSong() {
                 setAudioFile(null);
                 setDurationMs(0);
                 setUploadProgress(0);
+                setSelectedAlbumId("");
               }}
               className="px-6 py-3 rounded-full bg-[#222] text-white font-semibold hover:bg-[#333] transition-colors"
             >
@@ -316,6 +334,29 @@ export default function UploadSong() {
               className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
             />
           </div>
+
+          {myAlbums.length > 0 && (
+            <div>
+              <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
+                Thêm vào album (tùy chọn)
+              </label>
+              <select
+                value={selectedAlbumId}
+                onChange={(e) => setSelectedAlbumId(e.target.value)}
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 text-white"
+              >
+                <option value="">— Không chọn —</option>
+                {myAlbums.map((al) => (
+                  <option key={al.id} value={al.id}>
+                    {al.title}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-[#666] mt-1">
+                Bài sau khi được duyệt sẽ hiển thị trong album (nếu đã gán).
+              </p>
+            </div>
+          )}
 
           {/* GENRE - Multi Select */}
           <div ref={genreRef} className="relative">

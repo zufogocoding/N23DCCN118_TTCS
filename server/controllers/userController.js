@@ -1,3 +1,4 @@
+// Force restart
 const prisma = require('../db/index');
 const fs = require('fs');
 
@@ -5,12 +6,13 @@ const fs = require('fs');
 const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
         username: true,
+        displayName: true,
         email: true,
         dob: true,
         country: true,
@@ -46,14 +48,14 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { username, dob, country } = req.body;
+    const { displayName, dob, country } = req.body;
     let avatarUrl = undefined;
 
     // Nếu có file ảnh được upload
     if (req.file) {
       // Lưu URL tương đối để FE có thể nối vào localhost:9000
       avatarUrl = `/uploads/avatars/${req.file.filename}`;
-      
+
       // Xóa ảnh cũ (tùy chọn)
       const oldUser = await prisma.user.findUnique({ where: { id: userId } });
       if (oldUser && oldUser.avatarUrl && oldUser.avatarUrl.startsWith('/uploads/avatars/')) {
@@ -65,7 +67,7 @@ const updateProfile = async (req, res) => {
     }
 
     const updatedData = {};
-    if (username !== undefined) updatedData.username = username;
+    if (displayName !== undefined) updatedData.displayName = displayName;
     if (dob !== undefined) {
       updatedData.dob = dob ? new Date(dob) : null;
     }
@@ -78,6 +80,7 @@ const updateProfile = async (req, res) => {
       select: {
         id: true,
         username: true,
+        displayName: true,
         email: true,
         dob: true,
         country: true,

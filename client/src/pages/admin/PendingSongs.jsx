@@ -7,7 +7,7 @@ import {
 // Helper: lấy tên artist
 function getArtistName(song) {
   if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.username || 'Unknown').join(', ');
+    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
   }
   if (song.artistName) return song.artistName;
   return 'Unknown Artist';
@@ -89,7 +89,7 @@ export default function PendingSongs() {
     fetchPendingSongs();
   }, []);
 
-  const fetchPendingSongs = async () => {
+  async function fetchPendingSongs() {
     try {
       setLoading(true);
       const res = await fetch("http://localhost:9000/api/admin/songs/pending");

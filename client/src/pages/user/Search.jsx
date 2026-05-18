@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getPrimaryArtistUserId } from '../../utils/artistNav';
 import VirtualSongList from '../../components/VirtualSongList';
 
 export default function Search() {
@@ -138,16 +139,59 @@ export default function Search() {
               </div>
             ) : (
               <div className="flex flex-col gap-10">
-                
+                {/* BÀI HÁT */}
+                {searchResults.songs.length > 0 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-4">Bài hát</h2>
+                    <div className="flex flex-col gap-2">
+                      {searchResults.songs.map((song, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer" onClick={() => playSong(song, searchResults.songs)}>
+                          <div className="flex items-center gap-4">
+                            <img src={song.coverArtUrl ? `http://localhost:9000${song.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-12 h-12 rounded-sm object-cover" />
+                            <div>
+                              <h4 className="text-white font-semibold group-hover:underline">{song.title}</h4>
+                              <p
+                                className={`text-sm text-[#a0a0a0] ${getPrimaryArtistUserId(song) ? 'hover:underline hover:text-white cursor-pointer' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const uid = getPrimaryArtistUserId(song);
+                                  if (uid) navigate(`/artist/${uid}`);
+                                }}
+                              >
+                                {song.artistName || (song.artists && (song.artists[0]?.artist?.artistName || song.artists[0]?.artist?.user?.displayName || song.artists[0]?.artist?.user?.username)) || 'Unknown Artist'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Heart size={20} className="text-[#a0a0a0] hover:text-white" />
+                            <button className="w-10 h-10 rounded-full bg-[#1ed760] flex items-center justify-center text-black hover:scale-105 transition-transform">
+                              <Play size={20} fill="currentColor" className="ml-1" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* NGHỆ SĨ */}
                 {searchResults.artists.length > 0 && (
                   <div>
                     <h2 className="text-2xl font-bold text-white mb-4">Nghệ sĩ</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-                      {searchResults.artists.map((artist, index) => (
-                        <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer flex flex-col items-center text-center group">
+                      {searchResults.artists.map((artist) => (
+                        <div
+                          key={artist.userId}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') navigate(`/artist/${artist.userId}`);
+                          }}
+                          onClick={() => navigate(`/artist/${artist.userId}`)}
+                          className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer flex flex-col items-center text-center group"
+                        >
                           <img src={artist.avatarUrl ? `http://localhost:9000${artist.avatarUrl}` : '/default-avatar.png'} alt="avatar" className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg" />
-                          <h3 className="font-bold text-white truncate w-full mb-1">{artist.artistName || artist.user?.username}</h3>
+                          <h3 className="font-bold text-white truncate w-full mb-1">{artist.artistName || artist.user?.displayName || artist.user?.username}</h3>
                           <p className="text-sm text-[#a0a0a0]">Nghệ sĩ</p>
                         </div>
                       ))}
@@ -164,7 +208,7 @@ export default function Search() {
                         <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group" onClick={() => navigate(`/playlist/${playlist.id}`)}>
                           <img src={playlist.coverArtUrl ? `http://localhost:9000${playlist.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" />
                           <h3 className="font-bold text-white truncate text-base mb-1">{playlist.title}</h3>
-                          <p className="text-sm text-[#a0a0a0] truncate">{playlist.user?.username}</p>
+                          <p className="text-sm text-[#a0a0a0] truncate">{playlist.user?.displayName || playlist.user?.username}</p>
                         </div>
                       ))}
                     </div>

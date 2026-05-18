@@ -47,7 +47,7 @@ const searchController = {
           ]
         },
         include: {
-          user: { select: { username: true } }
+          user: { select: { username: true, displayName: true } }
         },
         skip,
         take: limit + 1

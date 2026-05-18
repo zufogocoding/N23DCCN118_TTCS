@@ -99,10 +99,10 @@ const artistRequestController = {
           }
         });
 
-        // 3. Cập nhật role của User thành "artist" (giữ nguyên username)
+        // 3. Cập nhật role của User thành "artist" và set isVerified = true
         await tx.user.update({
           where: { id: request.userId },
-          data: { role: 'artist' }
+          data: { role: 'artist', isVerified: true }
         });
 
         // 4. Tạo thông báo cho user
