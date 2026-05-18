@@ -37,7 +37,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const uploadFields = multer({ storage, fileFilter }).fields([
+const uploadFields = multer({ 
+  storage, 
+  fileFilter,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+}).fields([
   { name: 'audioFile', maxCount: 1 },
   { name: 'coverImage', maxCount: 1 }
 ]);

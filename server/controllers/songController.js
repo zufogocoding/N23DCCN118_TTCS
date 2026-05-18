@@ -28,14 +28,45 @@ const songController = {
       const coverFile = req.files?.coverImage?.[0];
       const savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
 
+      let finalTitle = title || 'Bài hát chưa đặt tên';
+      let finalDurationMs = parseInt(durationMs) || 0;
+      let finalArtistName = artistName || null;
+
+      try {
+        const mm = await import('music-metadata');
+        const metadata = await mm.parseFile(audioFile.path);
+        
+        if (!durationMs && metadata.format.duration) {
+          finalDurationMs = Math.floor(metadata.format.duration * 1000);
+        }
+        if (!title && metadata.common.title) {
+          finalTitle = metadata.common.title;
+        }
+        if (!artistName && metadata.common.artist) {
+          finalArtistName = metadata.common.artist;
+        }
+      } catch (err) {
+        console.error("Không thể đọc metadata file:", err);
+      }
+
+      // Xử lý multi-genre
+      let genreIds = [];
+      if (genre) {
+        try {
+          genreIds = JSON.parse(genre);
+        } catch (e) {
+          genreIds = genre.split(',').map(g => Number(g.trim())).filter(g => !isNaN(g));
+        }
+      }
+
       // Kiểm tra user đã có Artist record chưa (chỉ tìm, KHÔNG tự tạo)
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
 
       const songData = {
-        title: title || 'Bài hát chưa đặt tên',
-        artistName: artistName || null, // Lưu tên nghệ sĩ trực tiếp trên Song (metadata)
+        title: finalTitle,
+        artistName: finalArtistName, // Lưu tên nghệ sĩ trực tiếp trên Song (metadata)
         uploadedById: userId,           // Lưu ai đã upload
-        durationMs: parseInt(durationMs) || 0,
+        durationMs: finalDurationMs,
         audioUrl: savedAudioUrl,
         coverArtUrl: savedCoverUrl,
         status: 'pending', // Mặc định pending, chờ admin duyệt
@@ -46,6 +77,14 @@ const songController = {
           },
         }),
       };
+
+      if (genreIds && Array.isArray(genreIds) && genreIds.length > 0) {
+        songData.genres = {
+          create: genreIds.map(id => ({
+            genre: { connect: { id: id } }
+          }))
+        };
+      }
 
       // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
       if (existingArtist) {
