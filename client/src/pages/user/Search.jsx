@@ -1,26 +1,29 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Search as SearchIcon, Play, Heart } from 'lucide-react';
-import { usePlayer } from '../../context/PlayerContext';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import VirtualSongList from '../../components/VirtualSongList';
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Khởi tạo state trống, chuẩn bị sẵn để fetch từ DB sau này
   const [suggestions] = useState([]);
   const [searchResults, setSearchResults] = useState({
     songs: [],
     playlists: [],
     artists: []
   });
+  
   const [isLoading, setIsLoading] = useState(false);
-  const { playSong } = usePlayer();
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const navigate = useNavigate();
 
+  // Reset page when query changes
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.trim() !== '') {
-        fetchSearchResults();
+        setPage(1);
+        fetchSearchResults(1, true);
       } else {
         setSearchResults({ songs: [], playlists: [], artists: [] });
       }
@@ -29,17 +32,27 @@ export default function Search() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchSearchResults = async () => {
+  const fetchSearchResults = async (pageNum, isReset = false) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:9000/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`http://localhost:9000/api/search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&limit=20`);
       if (response.ok) {
         const data = await response.json();
-        setSearchResults({
-          songs: data.songs || [],
-          artists: data.artists || [],
-          playlists: data.playlists || []
-        });
+        setHasNextPage(data.hasNextPage);
+        
+        if (isReset) {
+          setSearchResults({
+            songs: data.songs || [],
+            artists: data.artists || [],
+            playlists: data.playlists || []
+          });
+        } else {
+          setSearchResults(prev => ({
+            songs: [...prev.songs, ...(data.songs || [])],
+            artists: [...prev.artists, ...(data.artists || [])],
+            playlists: [...prev.playlists, ...(data.playlists || [])]
+          }));
+        }
       }
     } catch (error) {
       console.error("Lỗi khi tìm kiếm:", error);
@@ -48,10 +61,18 @@ export default function Search() {
     }
   };
 
+  const loadMore = () => {
+    if (!isLoading && hasNextPage) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchSearchResults(nextPage, false);
+    }
+  };
+
   const hasResults = searchResults.songs.length > 0 || searchResults.playlists.length > 0 || searchResults.artists.length > 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* HEADER TÌM KIẾM */}
       <div className="sticky top-0 bg-[#121212]/90 backdrop-blur-md z-10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4 w-full">
@@ -78,10 +99,19 @@ export default function Search() {
       </div>
 
       {/* NỘI DUNG CUỘN */}
-      <div className="p-6 pt-4 flex-1 overflow-y-auto">
+      <div 
+        id="search-scroll-container" 
+        className="p-6 pt-4 flex-1 overflow-y-auto"
+        onScroll={(e) => {
+          const { scrollTop, scrollHeight, clientHeight } = e.target;
+          if (scrollHeight - scrollTop <= clientHeight + 100) {
+            loadMore();
+          }
+        }}
+      >
         
         {!searchQuery ? (
-          /* TRẠNG THÁI GỢI Ý (KHI CHƯA NHẬP TỪ KHÓA) */
+          /* TRẠNG THÁI GỢI Ý */
           <div>
             <h2 className="text-2xl font-bold text-white mb-6">Duyệt tìm tất cả</h2>
             {suggestions.length === 0 ? (
@@ -99,45 +129,16 @@ export default function Search() {
             )}
           </div>
         ) : (
-          /* TRẠNG THÁI TÌM KIẾM (KHI CÓ TỪ KHÓA) */
+          /* TRẠNG THÁI TÌM KIẾM */
           <div>
             {!hasResults && !isLoading ? (
               <div className="flex flex-col items-center justify-center h-64 text-center mt-10">
                 <h3 className="text-2xl font-bold text-white mb-4">Không tìm thấy kết quả cho "{searchQuery}"</h3>
                 <p className="text-[#a0a0a0] text-sm">Vui lòng kiểm tra lại chính tả hoặc dùng từ khóa khác.</p>
               </div>
-            ) : isLoading ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center mt-10">
-                <p className="text-[#a0a0a0] text-sm">Đang tìm kiếm...</p>
-              </div>
             ) : (
               <div className="flex flex-col gap-10">
-                {/* BÀI HÁT */}
-                {searchResults.songs.length > 0 && (
-                  <div>
-                    <h2 className="text-2xl font-bold text-white mb-4">Bài hát</h2>
-                    <div className="flex flex-col gap-2">
-                      {searchResults.songs.map((song, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer" onClick={() => playSong(song, searchResults.songs)}>
-                          <div className="flex items-center gap-4">
-                            <img src={song.coverArtUrl ? `http://localhost:9000${song.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-12 h-12 rounded-sm object-cover" />
-                            <div>
-                              <h4 className="text-white font-semibold group-hover:underline">{song.title}</h4>
-                              <p className="text-sm text-[#a0a0a0] hover:underline">{song.artistName || (song.artists && song.artists[0]?.artist?.user?.username) || 'Unknown Artist'}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Heart size={20} className="text-[#a0a0a0] hover:text-white" />
-                            <button className="w-10 h-10 rounded-full bg-[#1ed760] flex items-center justify-center text-black hover:scale-105 transition-transform">
-                              <Play size={20} fill="currentColor" className="ml-1" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
+                
                 {/* NGHỆ SĨ */}
                 {searchResults.artists.length > 0 && (
                   <div>
@@ -169,6 +170,28 @@ export default function Search() {
                     </div>
                   </div>
                 )}
+
+                {/* BÀI HÁT (ẢO HÓA DOM) */}
+                {searchResults.songs.length > 0 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-4">Bài hát</h2>
+                    <div className="flex flex-col gap-2 min-h-[400px]">
+                      <VirtualSongList 
+                        songs={searchResults.songs} 
+                        scrollContainerId="search-scroll-container"
+                        // loadMore={loadMore} // Đã dùng onScroll của div tổng
+                        // hasMore={hasNextPage}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {isLoading && (
+                  <div className="flex justify-center py-4">
+                    <div className="w-6 h-6 border-2 border-[#1ed760] border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+
               </div>
             )}
           </div>
