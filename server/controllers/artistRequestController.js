@@ -94,15 +94,18 @@ const artistRequestController = {
         const newArtist = await tx.artist.create({
           data: {
             userId: request.userId,
-            artistName: request.artistName,
             verifiedTick: true
           }
         });
 
-        // 3. Cập nhật role của User thành "artist" và set isVerified = true
+        // 3. Cập nhật role của User thành "artist", set isVerified = true và cập nhật displayName
         await tx.user.update({
           where: { id: request.userId },
-          data: { role: 'artist', isVerified: true }
+          data: { 
+            role: 'artist', 
+            isVerified: true,
+            displayName: request.artistName
+          }
         });
 
         // 4. Tạo thông báo cho user
@@ -164,11 +167,14 @@ const artistRequestController = {
       const userId = req.user.id;
 
       // Kiểm tra xem user đã là nghệ sĩ chưa
-      const artist = await prisma.artist.findUnique({ where: { userId } });
+      const artist = await prisma.artist.findUnique({ 
+        where: { userId },
+        include: { user: true }
+      });
       if (artist) {
         return res.status(200).json({ 
           status: 'IS_ARTIST', 
-          artistName: artist.artistName,
+          artistName: artist.user.displayName,
           message: 'Bạn đã là nghệ sĩ!' 
         });
       }

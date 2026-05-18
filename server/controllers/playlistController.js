@@ -162,7 +162,7 @@ const playlistController = {
                   artists: {
                     include: {
                       artist: {
-                        include: { user: { select: { username: true } } }
+                        include: { user: { select: { username: true, displayName: true } } }
                       }
                     }
                   }

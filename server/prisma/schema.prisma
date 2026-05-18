@@ -52,7 +52,6 @@ model User {
 model Artist {
   userId       Int     @id
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  artistName   String? @db.VarChar(255)
   artistBio    String? @db.Text
   avatarUrl    String? @db.VarChar(500)
   bannerUrl    String? @db.VarChar(500)

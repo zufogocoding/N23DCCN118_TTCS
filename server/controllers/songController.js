@@ -133,7 +133,7 @@ const songController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           }
@@ -157,7 +157,7 @@ const songController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           },
@@ -260,7 +260,7 @@ const songController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           }

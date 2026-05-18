@@ -138,9 +138,7 @@ const login = async (req, res) => {
         ]
       },
       include: {
-        artist: {
-          select: { artistName: true }
-        }
+        artist: true
       }
     });
 
@@ -166,8 +164,7 @@ const login = async (req, res) => {
       user: {
         ...userWithoutPassword,
         displayName: user.displayName,
-        isArtist: !!artist,
-        artistName: artist?.artistName || null
+        isArtist: !!artist
       },
       token
     });

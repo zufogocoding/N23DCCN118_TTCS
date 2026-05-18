@@ -109,7 +109,6 @@ const artistController = {
         ...user,
         artist: {
           userId: artistOnly.userId,
-          artistName: artistOnly.artistName,
           artistBio: artistOnly.artistBio,
           avatarUrl: artistOnly.avatarUrl,
           bannerUrl: artistOnly.bannerUrl,
