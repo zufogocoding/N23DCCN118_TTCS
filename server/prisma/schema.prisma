@@ -84,6 +84,8 @@ model Album {
   type         String?   @db.VarChar(50)
   coverArtUrl  String?   @db.VarChar(500)
   releasedDate DateTime? @db.Date
+  scheduledAt  DateTime?
+  status       String    @default("draft") @db.VarChar(50) // draft, scheduled, released
   createdAt    DateTime  @default(now())
   artistId     Int
   artist       Artist    @relation(fields: [artistId], references: [userId], onDelete: Cascade)
