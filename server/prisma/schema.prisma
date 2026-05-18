@@ -52,7 +52,6 @@ model User {
 model Artist {
   userId       Int     @id
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  artistName   String? @db.VarChar(255)
   artistBio    String? @db.Text
   avatarUrl    String? @db.VarChar(500)
   bannerUrl    String? @db.VarChar(500)
@@ -85,6 +84,8 @@ model Album {
   type         String?   @db.VarChar(50)
   coverArtUrl  String?   @db.VarChar(500)
   releasedDate DateTime? @db.Date
+  scheduledAt  DateTime?
+  status       String    @default("draft") @db.VarChar(50) // draft, scheduled, released
   createdAt    DateTime  @default(now())
   artistId     Int
   artist       Artist    @relation(fields: [artistId], references: [userId], onDelete: Cascade)

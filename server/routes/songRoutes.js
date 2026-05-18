@@ -52,27 +52,6 @@ router.get('/api/songs', songController.getAllSongs);
 router.get('/api/songs/my-uploaded', authMiddleware, songController.getMyUploaded);
 router.get('/api/songs/user/:userId', songController.getUserSongs);
 router.get('/api/songs/:id', songController.getSongById);
-router.put('/api/songs/:id', songController.updateSong);
+router.put('/api/songs/:id', authMiddleware, uploadFields, songController.updateSong);
 router.delete('/api/songs/:id', songController.deleteSong);
-
-
-//libary bai hat dang tai
-router.get("/api/songs/my-uploaded", verifyToken, async (req, res) => {
-
-  const songs = await prisma.song.findMany({
-
-    where: {
-      ownerId: req.user.id
-    }
-
-  })
-
-  res.json(songs);
-
-})
-
-router.get(
-  "/api/songs/user/:userId",
-  songController.getUserSongs
-);
 module.exports = router;

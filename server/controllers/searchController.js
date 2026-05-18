@@ -28,7 +28,7 @@ const searchController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           }
@@ -42,7 +42,7 @@ const searchController = {
         where: {
           status: 'active',
           OR: [
-            { artistName: { contains: searchTerms, mode: 'insensitive' } },
+            { user: { displayName: { contains: searchTerms, mode: 'insensitive' } } },
             { user: { username: { contains: searchTerms, mode: 'insensitive' } } }
           ]
         },

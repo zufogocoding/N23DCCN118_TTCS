@@ -109,7 +109,6 @@ const artistController = {
         ...user,
         artist: {
           userId: artistOnly.userId,
-          artistName: artistOnly.artistName,
           artistBio: artistOnly.artistBio,
           avatarUrl: artistOnly.avatarUrl,
           bannerUrl: artistOnly.bannerUrl,
@@ -228,7 +227,7 @@ const artistController = {
     }
   },
 
-  // PUT /api/artists/:id/profile — authMiddleware
+  // PUT /api/artists/:id/profile — authMiddleware + multer (avatarFile, bannerFile)
   updateArtistProfile: async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);
@@ -236,17 +235,23 @@ const artistController = {
         return res.status(403).json({ error: 'Chỉ được sửa hồ sơ của chính bạn' });
       }
 
-      const { bio, avatarUrl, coverImageUrl, socialLinks, artistBio, bannerUrl } = req.body;
+      const { bio, artistBio, socialLinks } = req.body;
 
+      // Parse socialLinks (arrives as JSON string from FormData)
       let parsedSocialLinks = undefined;
       if (socialLinks !== undefined) {
-        if (!Array.isArray(socialLinks)) {
-          return res.status(400).json({ error: 'socialLinks phải là một mảng' });
+        try {
+          const parsed = typeof socialLinks === 'string' ? JSON.parse(socialLinks) : socialLinks;
+          if (!Array.isArray(parsed)) {
+            return res.status(400).json({ error: 'socialLinks phải là một mảng' });
+          }
+          if (parsed.length > 5) {
+            return res.status(400).json({ error: 'Tối đa chỉ được 5 social links' });
+          }
+          parsedSocialLinks = parsed;
+        } catch {
+          return res.status(400).json({ error: 'socialLinks không hợp lệ' });
         }
-        if (socialLinks.length > 5) {
-          return res.status(400).json({ error: 'Tối đa chỉ được 5 social links' });
-        }
-        parsedSocialLinks = socialLinks;
       }
 
       const user = await prisma.user.findUnique({ where: { id } });
@@ -254,15 +259,42 @@ const artistController = {
         return res.status(404).json({ error: 'Không tìm thấy user/nghệ sĩ' });
       }
 
+      // Handle file uploads
+      const avatarFile = req.files?.avatarFile?.[0];
+      const bannerFile = req.files?.bannerFile?.[0];
+
       const updateData = {};
       if (bio !== undefined) updateData.bio = bio;
-      if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
-      if (coverImageUrl !== undefined) updateData.coverImageUrl = coverImageUrl;
       if (parsedSocialLinks !== undefined) updateData.socialLinks = parsedSocialLinks;
+
+      // Avatar: prefer uploaded file, fallback to text URL from body
+      if (avatarFile) {
+        updateData.avatarUrl = `/${avatarFile.path.replace(/\\/g, '/')}`;
+      } else if (req.body.avatarUrl !== undefined) {
+        updateData.avatarUrl = req.body.avatarUrl;
+      }
+
+      // CoverImage: prefer uploaded file (same as banner for user model)
+      if (bannerFile) {
+        updateData.coverImageUrl = `/${bannerFile.path.replace(/\\/g, '/')}`;
+      } else if (req.body.coverImageUrl !== undefined) {
+        updateData.coverImageUrl = req.body.coverImageUrl;
+      }
 
       const artistUpdate = {};
       if (artistBio !== undefined) artistUpdate.artistBio = artistBio;
-      if (bannerUrl !== undefined) artistUpdate.bannerUrl = bannerUrl;
+
+      // Banner for artist model
+      if (bannerFile) {
+        artistUpdate.bannerUrl = `/${bannerFile.path.replace(/\\/g, '/')}`;
+      } else if (req.body.bannerUrl !== undefined) {
+        artistUpdate.bannerUrl = req.body.bannerUrl;
+      }
+
+      // Also set artist avatar if file uploaded
+      if (avatarFile) {
+        artistUpdate.avatarUrl = `/${avatarFile.path.replace(/\\/g, '/')}`;
+      }
 
       const updatedUser = await prisma.user.update({
         where: { id },

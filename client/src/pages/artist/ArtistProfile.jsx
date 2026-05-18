@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Play,
@@ -65,11 +65,14 @@ export default function ArtistProfile() {
   const [editForm, setEditForm] = useState({
     bio: '',
     artistBio: '',
-    avatarUrl: '',
-    coverImageUrl: '',
-    bannerUrl: '',
     socialLinks: [],
   });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState(null);
+  const avatarInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -195,29 +198,50 @@ export default function ArtistProfile() {
     setEditForm({
       bio: profile.bio || '',
       artistBio: profile.artist?.artistBio || '',
-      avatarUrl: profile.avatarUrl || '',
-      coverImageUrl: profile.coverImageUrl || '',
-      bannerUrl: profile.artist?.bannerUrl || '',
       socialLinks: Array.isArray(profile.socialLinks) ? [...profile.socialLinks] : [],
     });
+    // Set existing image previews
+    const existingAvatar = profile.artist?.avatarUrl || profile.avatarUrl;
+    setAvatarPreview(existingAvatar ? (existingAvatar.startsWith('http') ? existingAvatar : `http://localhost:9000${existingAvatar}`) : null);
+    setAvatarFile(null);
+    const existingBanner = profile.artist?.bannerUrl || profile.coverImageUrl;
+    setBannerPreview(existingBanner ? (existingBanner.startsWith('http') ? existingBanner : `http://localhost:9000${existingBanner}`) : null);
+    setBannerFile(null);
     setIsEditModalOpen(true);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleBannerChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setBannerFile(file);
+      setBannerPreview(URL.createObjectURL(file));
+    }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append('bio', editForm.bio);
+      formData.append('artistBio', editForm.artistBio);
+      formData.append('socialLinks', JSON.stringify(editForm.socialLinks));
+      if (avatarFile) formData.append('avatarFile', avatarFile);
+      if (bannerFile) formData.append('bannerFile', bannerFile);
+
+      const token = localStorage.getItem('token');
       const res = await fetch(`http://localhost:9000/api/artists/${id}/profile`, {
         method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          bio: editForm.bio,
-          artistBio: editForm.artistBio,
-          avatarUrl: editForm.avatarUrl,
-          coverImageUrl: editForm.coverImageUrl,
-          bannerUrl: editForm.bannerUrl,
-          socialLinks: editForm.socialLinks,
-        }),
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
       });
 
       if (res.ok) {
@@ -450,13 +474,12 @@ export default function ArtistProfile() {
         </button>
         {currentUser.id === parseInt(id, 10) && currentUser.isArtist && (
           <>
-            <button
-              type="button"
-              onClick={() => setIsCreateAlbumOpen(true)}
+            <Link
+              to="/release/new"
               className="px-5 py-2 rounded-full border border-white/30 text-sm font-bold hover:bg-white/10"
             >
-              Tạo album
-            </button>
+              New Release
+            </Link>
             <Link
               to="/upload-song"
               className="px-5 py-2 rounded-full bg-white/10 text-sm font-bold hover:bg-white/20"
@@ -483,7 +506,7 @@ export default function ArtistProfile() {
               return (
                 <Link
                   key={al.id}
-                  to={`/album/${al.id}`}
+                  to={currentUser.id === parseInt(id, 10) ? `/release/${al.id}` : `/album/${al.id}`}
                   className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition group"
                 >
                   <img src={cov} alt="" className="w-full aspect-square object-cover rounded-md mb-3 shadow-lg" />
@@ -607,7 +630,7 @@ export default function ArtistProfile() {
 
       {/* Create album modal */}
       {isCreateAlbumOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#121212] border border-[#333] rounded-2xl w-full max-w-md p-6">
             <h2 className="text-xl font-bold mb-4">Tạo album mới</h2>
             <form onSubmit={handleCreateAlbum} className="space-y-4">
@@ -640,7 +663,7 @@ export default function ArtistProfile() {
 
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#121212] border border-[#333] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#333] bg-black/50 shrink-0">
               <h2 className="text-xl font-bold">Sửa Hồ Sơ</h2>
@@ -651,33 +674,63 @@ export default function ArtistProfile() {
 
             <form onSubmit={handleEditSubmit} className="p-6 overflow-y-auto flex-1">
               <div className="space-y-5">
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Link Ảnh Đại Diện (User)</label>
-                  <input
-                    type="text"
-                    value={editForm.avatarUrl}
-                    onChange={(e) => setEditForm({ ...editForm, avatarUrl: e.target.value })}
-                    className="w-full bg-black border border-[#333] rounded-xl px-4 py-3 text-sm text-white"
-                  />
+                {/* Image uploads */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Avatar upload */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Ảnh đại diện</label>
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                    <div
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="relative border-2 border-dashed border-[#333] hover:border-[#00e6e6]/50 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group"
+                    >
+                      {avatarPreview ? (
+                        <>
+                          <img src={avatarPreview} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Edit2 size={20} className="text-white" />
+                            <span className="text-sm text-white ml-2 font-medium">Đổi ảnh</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-[#00e6e6]/10 flex items-center justify-center mb-2">
+                            <Plus size={20} className="text-[#00e6e6]" />
+                          </div>
+                          <p className="text-xs text-[#666]">Chọn ảnh</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Banner upload */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Ảnh banner</label>
+                    <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
+                    <div
+                      onClick={() => bannerInputRef.current?.click()}
+                      className="relative border-2 border-dashed border-[#333] hover:border-[#00e6e6]/50 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group"
+                    >
+                      {bannerPreview ? (
+                        <>
+                          <img src={bannerPreview} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Edit2 size={20} className="text-white" />
+                            <span className="text-sm text-white ml-2 font-medium">Đổi ảnh</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-[#00e6e6]/10 flex items-center justify-center mb-2">
+                            <Plus size={20} className="text-[#00e6e6]" />
+                          </div>
+                          <p className="text-xs text-[#666]">Chọn ảnh</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Link Ảnh Bìa / Banner kênh (User cover)</label>
-                  <input
-                    type="text"
-                    value={editForm.coverImageUrl}
-                    onChange={(e) => setEditForm({ ...editForm, coverImageUrl: e.target.value })}
-                    className="w-full bg-black border border-[#333] rounded-xl px-4 py-3 text-sm text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Banner nghệ sĩ (URL, tùy chọn)</label>
-                  <input
-                    type="text"
-                    value={editForm.bannerUrl}
-                    onChange={(e) => setEditForm({ ...editForm, bannerUrl: e.target.value })}
-                    className="w-full bg-black border border-[#333] rounded-xl px-4 py-3 text-sm text-white"
-                  />
-                </div>
+
                 <div>
                   <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Bio (hồ sơ user)</label>
                   <textarea

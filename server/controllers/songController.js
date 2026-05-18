@@ -133,7 +133,7 @@ const songController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           }
@@ -157,7 +157,7 @@ const songController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           },
@@ -174,25 +174,75 @@ const songController = {
     }
   },
 
-  // 4. Logic Đổi tên
+  // 4. Logic Chỉnh sửa bài hát (title, artistName, genreIds, coverImage)
   updateSong: async (req, res) => {
     try {
       const songId = parseInt(req.params.id);
-      const { newTitle } = req.body;
+      const userId = req.user.id;
 
-      // Kiểm tra bài hát tồn tại và chưa bị xóa
+      // Kiểm tra bài hát tồn tại, chưa bị xóa, và thuộc về user
       const existing = await prisma.song.findFirst({
-        where: { id: songId, isDeleted: false }
+        where: { id: songId, isDeleted: false, uploadedById: userId }
       });
       if (!existing) {
-        return res.status(404).json({ error: 'Không tìm thấy bài hát này!' });
+        return res.status(404).json({ error: 'Không tìm thấy bài hát hoặc bạn không có quyền chỉnh sửa!' });
+      }
+
+      const { title, newTitle, artistName, genreIds } = req.body;
+      const data = {};
+
+      // Support both 'title' and 'newTitle' for backward compatibility
+      const finalTitle = title || newTitle;
+      if (finalTitle !== undefined) data.title = String(finalTitle).trim();
+      if (artistName !== undefined) data.artistName = artistName || null;
+
+      // Handle cover image upload
+      const coverFile = req.files?.coverImage?.[0];
+      if (coverFile) {
+        data.coverArtUrl = `/${coverFile.path.replace(/\\/g, '/')}`;
       }
 
       const updatedSong = await prisma.song.update({
         where: { id: songId },
-        data: { title: newTitle }
+        data
       });
-      res.status(200).json({ message: 'Đổi tên thành công!', song: updatedSong });
+
+      // Handle genre updates if provided
+      if (genreIds !== undefined) {
+        let parsedGenreIds = [];
+        try {
+          let parsed = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
+          if (!Array.isArray(parsed)) parsed = [parsed];
+          parsedGenreIds = parsed.map(id => parseInt(id)).filter(id => !isNaN(id));
+        } catch {
+          // ignore
+        }
+
+        // Delete existing genre associations and recreate
+        await prisma.songGenre.deleteMany({ where: { songId } });
+        if (parsedGenreIds.length > 0) {
+          await prisma.songGenre.createMany({
+            data: parsedGenreIds.map(genreId => ({ songId, genreId })),
+          });
+        }
+      }
+
+      // Fetch updated song with relations
+      const fullSong = await prisma.song.findUnique({
+        where: { id: songId },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true, displayName: true } } }
+              }
+            }
+          },
+          genres: { include: { genre: true } }
+        }
+      });
+
+      res.status(200).json({ message: 'Cập nhật thành công!', song: fullSong });
     } catch (error) {
       console.error("Lỗi updateSong:", error);
       res.status(500).json({ error: 'Không thể sửa bài hát' });
@@ -260,7 +310,7 @@ const songController = {
           artists: {
             include: {
               artist: {
-                include: { user: { select: { username: true } } }
+                include: { user: { select: { username: true, displayName: true } } }
               }
             }
           }

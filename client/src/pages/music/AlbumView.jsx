@@ -96,6 +96,8 @@ export default function AlbumView() {
       title: s.title,
       artist: { name: getArtistName(s) },
       coverImage: getCoverArt(s),
+      audioUrl: s.audioUrl?.startsWith('http') ? s.audioUrl : `http://localhost:9000${s.audioUrl}`,
+      durationMs: s.durationMs,
     }));
     const playerSong = queue.find((q) => q.id === song.id) || queue[0];
     if (playerSong) playSong(playerSong, queue);

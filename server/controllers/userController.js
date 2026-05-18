@@ -21,9 +21,7 @@ const getProfile = async (req, res) => {
         isActive: true,
         role: true,
         createdAt: true,
-        artist: {
-          select: { artistName: true }
-        }
+        artist: true
       }
     });
 
@@ -35,8 +33,7 @@ const getProfile = async (req, res) => {
 
     res.status(200).json({
       ...userData,
-      isArtist: !!artist,
-      artistName: artist?.artistName || null
+      isArtist: !!artist
     });
   } catch (error) {
     console.error("Lỗi getProfile:", error);
