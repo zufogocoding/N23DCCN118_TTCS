@@ -7,7 +7,7 @@ import VirtualSongList from '../../components/VirtualSongList';
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [suggestions] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [searchResults, setSearchResults] = useState({
     songs: [],
     playlists: [],
@@ -18,6 +18,21 @@ export default function Search() {
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const response = await fetch('http://localhost:9000/api/genres');
+        if (response.ok) {
+          const data = await response.json();
+          setSuggestions(data.map(g => ({ title: g.genreTag, id: g.id })));
+        }
+      } catch (error) {
+        console.error("Lỗi lấy genres:", error);
+      }
+    };
+    fetchGenres();
+  }, []);
 
   // Reset page when query changes
   useEffect(() => {
@@ -122,7 +137,11 @@ export default function Search() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {suggestions.map((item, index) => (
-                  <div key={index} className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg p-4 h-48 relative overflow-hidden cursor-pointer hover:scale-105 transition-transform">
+                  <div 
+                    key={index} 
+                    className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg p-4 h-48 relative overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => setSearchQuery(item.title)}
+                  >
                     <h3 className="font-bold text-xl text-white">{item.title}</h3>
                   </div>
                 ))}
@@ -139,40 +158,7 @@ export default function Search() {
               </div>
             ) : (
               <div className="flex flex-col gap-10">
-                {/* BÀI HÁT */}
-                {searchResults.songs.length > 0 && (
-                  <div>
-                    <h2 className="text-2xl font-bold text-white mb-4">Bài hát</h2>
-                    <div className="flex flex-col gap-2">
-                      {searchResults.songs.map((song, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer" onClick={() => playSong(song, searchResults.songs)}>
-                          <div className="flex items-center gap-4">
-                            <img src={song.coverArtUrl ? `http://localhost:9000${song.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-12 h-12 rounded-sm object-cover" />
-                            <div>
-                              <h4 className="text-white font-semibold group-hover:underline">{song.title}</h4>
-                              <p
-                                className={`text-sm text-[#a0a0a0] ${getPrimaryArtistUserId(song) ? 'hover:underline hover:text-white cursor-pointer' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const uid = getPrimaryArtistUserId(song);
-                                  if (uid) navigate(`/artist/${uid}`);
-                                }}
-                              >
-                                {song.artistName || (song.artists && (song.artists[0]?.artist?.artistName || song.artists[0]?.artist?.user?.displayName || song.artists[0]?.artist?.user?.username)) || 'Unknown Artist'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Heart size={20} className="text-[#a0a0a0] hover:text-white" />
-                            <button className="w-10 h-10 rounded-full bg-[#1ed760] flex items-center justify-center text-black hover:scale-105 transition-transform">
-                              <Play size={20} fill="currentColor" className="ml-1" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
 
                 {/* NGHỆ SĨ */}
                 {searchResults.artists.length > 0 && (
