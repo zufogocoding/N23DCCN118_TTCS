@@ -1,1 +1,54 @@
 @import "tailwindcss";
+
+/* LIGHT THEME OVERRIDES (Cool Blue / Slate Theme - Thiên thanh dịu mát) */
+html.light-theme, html.light-theme body {
+  background-color: #f0f4f8 !important; /* Xanh xám cực nhạt, rất dịu và hiện đại */
+  color: #1e293b !important; /* Xanh than sẫm thay cho màu đen */
+}
+
+/* Backgrounds */
+/* Main wrapper / header */
+html.light-theme .bg-\[\#121212\],
+html.light-theme .bg-\[\#121212\]\/90 {
+  background-color: #e2e8f0 !important; /* Xanh xám nhạt (Slate-200) */
+}
+
+/* Cards, sidebars, dropdowns */
+html.light-theme .bg-\[\#181818\],
+html.light-theme .bg-\[\#282828\],
+html.light-theme .bg-\[\#222\] {
+  background-color: #ffffff !important; /* Nền thẻ trắng tinh để tạo độ nổi */
+  box-shadow: 0 4px 6px -1px rgba(30, 41, 59, 0.05); /* Bóng đổ màu xanh than rất nhẹ */
+}
+
+/* Nút đen -> Nút xanh xám */
+html.light-theme .bg-black {
+  background-color: #cbd5e1 !important; /* Xanh xám (Slate-300) */
+  color: #1e293b !important;
+}
+
+/* Text Colors */
+html.light-theme .text-white {
+  color: #0f172a !important; /* Xanh than đậm (Slate-900) */
+}
+html.light-theme .text-\[\#a0a0a0\] {
+  color: #64748b !important; /* Xanh xám vừa (Slate-500) */
+}
+
+/* Borders */
+html.light-theme .border-\[\#333\],
+html.light-theme .border-\[\#3e3e3e\] {
+  border-color: #cbd5e1 !important; /* Viền xanh xám nhạt */
+}
+
+/* Preserve primary colors */
+html.light-theme .bg-\[\#1ed760\] {
+  background-color: #0ea5e9 !important; /* Đổi nút xanh lá -> Xanh ngọc lục bảo/Cyan (Sky-500) cho hợp tone lạnh */
+  color: #ffffff !important;
+}
+html.light-theme .text-\[\#1ed760\] {
+  color: #0284c7 !important; /* (Sky-600) */
+}
+html.light-theme .text-black {
+  color: #ffffff !important;
+}
