@@ -11,7 +11,7 @@ export default function UploadSong() {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const isArtistUser = !!currentUser.isArtist;
 
-  const [artistName, setArtistName] = useState(isArtistUser ? currentUser.displayName : "");
+  const [artistName, setArtistName] = useState(isArtistUser ? (currentUser.displayName || currentUser.username || "") : "");
   const [selectedGenreIds, setSelectedGenreIds] = useState([]);
   const [genres, setGenres] = useState([]);
   const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
@@ -178,7 +178,7 @@ export default function UploadSong() {
               onClick={() => {
                 setUploadSuccess(false);
                 setTitle("");
-                setArtistName(isArtistUser ? currentUser.displayName : "");
+                setArtistName(isArtistUser ? (currentUser.displayName || currentUser.username || "") : "");
                 setSelectedGenreIds([]);
                 setDescription("");
                 setCoverImage(null);
@@ -333,40 +333,33 @@ export default function UploadSong() {
               Nghệ sĩ
             </label>
 
-            {isArtistUser && (
-              <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
-                <input
-                  type="checkbox"
-                  checked={isOriginal}
-                  onChange={(e) => {
-                    setIsOriginal(e.target.checked);
-                    if (e.target.checked) {
-                      setArtistName(currentUser.displayName || "");
-                    } else {
-                      setArtistName("");
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-[#2a2a2a] bg-[#0a0a0a] text-[#00e6e6] focus:ring-[#00e6e6]"
-                />
-                <span className="text-sm text-white">Tôi là tác giả gốc (OG)</span>
-              </label>
-            )}
-
-            {(!isArtistUser || !isOriginal) && (
+            <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
               <input
-                type="text"
-                placeholder="Nhập tên nghệ sĩ (hoặc các nghệ sĩ hợp tác)"
-                value={artistName}
-                onChange={(e) => setArtistName(e.target.value)}
-                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
+                type="checkbox"
+                checked={isOriginal}
+                onChange={(e) => {
+                  setIsOriginal(e.target.checked);
+                  if (e.target.checked) {
+                    setArtistName(currentUser.displayName || currentUser.username || "");
+                  }
+                }}
+                className="w-4 h-4 rounded border-[#2a2a2a] bg-[#0a0a0a] text-[#00e6e6] focus:ring-[#00e6e6]"
               />
-            )}
+              <span className="text-sm text-white">Tôi là tác giả gốc (OG)</span>
+            </label>
 
-            {isArtistUser && isOriginal && (
-              <div className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm text-[#a0a0a0] cursor-not-allowed">
-                {artistName || currentUser.displayName || "Tên nghệ sĩ của bạn"}
-              </div>
-            )}
+            <input
+              type="text"
+              placeholder={isArtistUser ? "Nhập tên nghệ sĩ (hoặc các nghệ sĩ hợp tác)" : "Nhập tên user"}
+              value={isOriginal ? (artistName || currentUser.displayName || currentUser.username || "Tên nghệ sĩ") : artistName}
+              onChange={(e) => setArtistName(e.target.value)}
+              disabled={isOriginal}
+              className={`w-full border rounded-xl px-4 py-3.5 text-sm outline-none transition-colors placeholder-[#444] ${
+                isOriginal 
+                  ? 'bg-[#1a1a1a] border-[#333] text-[#666] cursor-not-allowed' 
+                  : 'bg-[#0a0a0a] border-[#2a2a2a] focus:border-[#00e6e6]/50 text-white'
+              }`}
+            />
           </div>
 
           {myAlbums.length > 0 && (
