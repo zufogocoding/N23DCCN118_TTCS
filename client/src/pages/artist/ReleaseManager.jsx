@@ -67,14 +67,14 @@ export default function ReleaseManager() {
 
   // Load genres
   useEffect(() => {
-    fetch('http://localhost:9000/api/genres').then(r => r.json()).then(setGenres).catch(() => {});
+    fetch('http://localhost:9000/api/genres').then(r => r.json()).then(setGenres).catch(() => { });
   }, []);
 
   // Load my uploads
   useEffect(() => {
     if (!currentUser.id) return;
     fetch('http://localhost:9000/api/songs/my-uploaded', { headers: authH })
-      .then(r => r.ok ? r.json() : []).then(setMyUploads).catch(() => {});
+      .then(r => r.ok ? r.json() : []).then(setMyUploads).catch(() => { });
   }, [currentUser.id]);
 
   // Load album data
@@ -144,7 +144,7 @@ export default function ReleaseManager() {
         body: JSON.stringify({ songId }),
       });
       if (res.ok) { loadAlbum(); setShowAddTracks(false); }
-    } catch {}
+    } catch { }
   };
 
   // Direct Audio Upload
@@ -157,7 +157,7 @@ export default function ReleaseManager() {
     audio.src = URL.createObjectURL(file);
     audio.addEventListener('loadedmetadata', async () => {
       const durationMs = Math.round(audio.duration * 1000);
-      
+
       setIsUploadingAudio(true);
       setAudioUploadProgress(0);
 
@@ -169,7 +169,7 @@ export default function ReleaseManager() {
         formData.append('title', defaultTitle);
         formData.append('artistName', currentUser.displayName || currentUser.username || 'Unknown Artist');
         formData.append('durationMs', durationMs.toString());
-        
+
         // XMLHttpRequest để lấy progress
         const xhr = new XMLHttpRequest();
         const uploadedSong = await new Promise((resolve, reject) => {
@@ -192,7 +192,7 @@ export default function ReleaseManager() {
           headers: { ...authH, 'Content-Type': 'application/json' },
           body: JSON.stringify({ songId: uploadedSong.id }),
         });
-        
+
         // Làm mới dữ liệu album để hiển thị bài vừa up
         loadAlbum();
       } catch (err) {
@@ -212,7 +212,7 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       loadAlbum();
-    } catch {}
+    } catch { }
   };
 
   // Drag & drop reorder
@@ -233,7 +233,7 @@ export default function ReleaseManager() {
         method: 'PUT', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songIds: items.map(t => t.id) }),
       });
-    } catch {}
+    } catch { }
   };
 
   // Release now
@@ -246,7 +246,7 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch {} finally { setActionBusy(''); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Schedule
@@ -260,7 +260,7 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch {} finally { setActionBusy(''); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Unschedule
@@ -271,7 +271,7 @@ export default function ReleaseManager() {
         method: 'POST', headers: authH,
       });
       if (res.ok) { loadAlbum(); }
-    } catch {} finally { setActionBusy(''); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Delete album
@@ -282,15 +282,17 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       if (res.ok) navigate(`/artist/${currentUser.id}`);
-    } catch {}
+    } catch { }
   };
 
   const trackIds = new Set(tracks.map(t => t.id));
   const addableSongs = myUploads.filter(s =>
-    !trackIds.has(s.id) && !(s.albums || []).some(a => a.album && a.album.id !== album?.id)
+    !trackIds.has(s.id) && 
+    !(s.albums || []).some(a => a.album && a.album.id !== album?.id) &&
+    s.status !== 'rejected'
   );
-  
-  const filteredAddableSongs = addableSongs.filter(s => 
+
+  const filteredAddableSongs = addableSongs.filter(s =>
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -320,11 +322,10 @@ export default function ReleaseManager() {
 
         {album && (
           <div className="flex items-center gap-2 mb-6">
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-              isReleased ? 'bg-emerald-500/20 text-emerald-400' :
-              isScheduled ? 'bg-amber-500/20 text-amber-400' :
-              'bg-[#333] text-[#a0a0a0]'
-            }`}>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isReleased ? 'bg-emerald-500/20 text-emerald-400' :
+                isScheduled ? 'bg-amber-500/20 text-amber-400' :
+                  'bg-[#333] text-[#a0a0a0]'
+              }`}>
               {isReleased ? '✓ Đã phát hành' : isScheduled ? '⏳ Đã lên lịch' : '📝 Bản nháp'}
             </span>
           </div>
@@ -338,9 +339,8 @@ export default function ReleaseManager() {
             <div>
               <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
               <div onClick={() => !isReleased && coverRef.current?.click()}
-                className={`relative border-2 border-dashed rounded-xl aspect-square flex items-center justify-center overflow-hidden group ${
-                  isReleased ? 'border-[#222] cursor-default' : 'border-[#333] hover:border-[#00e6e6]/50 cursor-pointer'
-                }`}>
+                className={`relative border-2 border-dashed rounded-xl aspect-square flex items-center justify-center overflow-hidden group ${isReleased ? 'border-[#222] cursor-default' : 'border-[#333] hover:border-[#00e6e6]/50 cursor-pointer'
+                  }`}>
                 {coverPreview ? (
                   <>
                     <img src={coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -400,12 +400,6 @@ export default function ReleaseManager() {
               <h2 className="text-lg font-bold">Danh sách bài hát ({tracks.length})</h2>
               {!isReleased && (
                 <div className="flex items-center gap-2">
-                  <input type="file" accept="audio/*" className="hidden" ref={audioInputRef} onChange={handleDirectAudioUpload} />
-                  <button onClick={() => audioInputRef.current?.click()} disabled={isUploadingAudio}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 disabled:opacity-50">
-                    {isUploadingAudio ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                    {isUploadingAudio ? `${audioUploadProgress}%` : 'Upload nhạc'}
-                  </button>
                   <button onClick={() => setShowAddTracks(true)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] text-sm font-semibold hover:bg-[#00e6e6]/20">
                     <Plus size={16} /> Chọn bài
@@ -440,11 +434,10 @@ export default function ReleaseManager() {
                       <p className="font-medium text-sm truncate">{song.title}</p>
                       <p className="text-xs text-[#666] truncate">{song.artistName || 'Unknown Artist'}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      song.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
-                      song.status === 'pending' ? 'bg-amber-500/15 text-amber-400' :
-                      'bg-red-500/15 text-red-400'
-                    }`}>{song.status}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${song.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
+                        song.status === 'pending' ? 'bg-amber-500/15 text-amber-400' :
+                          'bg-red-500/15 text-red-400'
+                      }`}>{song.status}</span>
                     <span className="text-xs text-[#666] w-12 text-right">{formatDuration(song.durationMs)}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
                       <button onClick={() => setEditingSong(song)} className="p-1.5 rounded hover:bg-white/10 text-[#a0a0a0]" title="Sửa">
@@ -464,13 +457,13 @@ export default function ReleaseManager() {
         )}
 
         {album && !isReleased && tracks.length === 0 && (
-            <div className="mb-4 text-center">
-              <button onClick={() => setShowAddTracks(true)}
-                className="px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] hover:bg-[#00e6e6]/20">
-                Thêm bài hát vào album
-              </button>
-            </div>
-          )}
+          <div className="mb-4 text-center">
+            <button onClick={() => setShowAddTracks(true)}
+              className="px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] hover:bg-[#00e6e6]/20">
+              Thêm bài hát vào album
+            </button>
+          </div>
+        )}
 
         {/* Release Actions */}
         {album && !isReleased && (
@@ -517,12 +510,12 @@ export default function ReleaseManager() {
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               <div className="mb-4">
-                <input 
-                  type="text" 
-                  placeholder="Tìm kiếm bài hát..." 
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm bài hát..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#222] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-[#00e6e6]/50" 
+                  className="w-full bg-[#222] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-[#00e6e6]/50"
                 />
               </div>
               {filteredAddableSongs.length === 0 ? (

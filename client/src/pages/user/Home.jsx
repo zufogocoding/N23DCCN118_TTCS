@@ -121,11 +121,11 @@ export default function Home() {
       <div className="sticky top-0 bg-[#121212]/90 backdrop-blur-md z-10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => {
                 if (searchQuery.trim()) setSearchQuery('');
                 else navigate(-1);
-              }} 
+              }}
               className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white hover:bg-[#333] transition-colors"
             >
               <ChevronLeft size={20} />
