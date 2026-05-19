@@ -8,12 +8,16 @@ export default function UploadSong() {
   const [coverPreview, setCoverPreview] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [title, setTitle] = useState("");
-  const [artistName, setArtistName] = useState("");
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isArtistUser = !!currentUser.isArtist;
+
+  const [artistName, setArtistName] = useState(isArtistUser ? currentUser.displayName : "");
   const [selectedGenreIds, setSelectedGenreIds] = useState([]);
   const [genres, setGenres] = useState([]);
   const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
   const genreRef = useRef(null);
   const [description, setDescription] = useState("");
+  const [isOriginal, setIsOriginal] = useState(isArtistUser);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -116,6 +120,7 @@ export default function UploadSong() {
       if (selectedAlbumId) {
         formData.append("albumId", selectedAlbumId);
       }
+      formData.append("isOriginal", isOriginal);
 
       // Sử dụng XMLHttpRequest để theo dõi progress
       const xhr = new XMLHttpRequest();
@@ -173,7 +178,7 @@ export default function UploadSong() {
               onClick={() => {
                 setUploadSuccess(false);
                 setTitle("");
-                setArtistName("");
+                setArtistName(isArtistUser ? currentUser.displayName : "");
                 setSelectedGenreIds([]);
                 setDescription("");
                 setCoverImage(null);
@@ -182,6 +187,7 @@ export default function UploadSong() {
                 setDurationMs(0);
                 setUploadProgress(0);
                 setSelectedAlbumId("");
+                setIsOriginal(isArtistUser);
               }}
               className="px-6 py-3 rounded-full bg-[#222] text-white font-semibold hover:bg-[#333] transition-colors"
             >
@@ -326,13 +332,41 @@ export default function UploadSong() {
             <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
               Nghệ sĩ
             </label>
-            <input
-              type="text"
-              placeholder="Nhập tên nghệ sĩ"
-              value={artistName}
-              onChange={(e) => setArtistName(e.target.value)}
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
-            />
+
+            {isArtistUser && (
+              <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={isOriginal}
+                  onChange={(e) => {
+                    setIsOriginal(e.target.checked);
+                    if (e.target.checked) {
+                      setArtistName(currentUser.displayName || "");
+                    } else {
+                      setArtistName("");
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-[#2a2a2a] bg-[#0a0a0a] text-[#00e6e6] focus:ring-[#00e6e6]"
+                />
+                <span className="text-sm text-white">Tôi là tác giả gốc (OG)</span>
+              </label>
+            )}
+
+            {(!isArtistUser || !isOriginal) && (
+              <input
+                type="text"
+                placeholder="Nhập tên nghệ sĩ (hoặc các nghệ sĩ hợp tác)"
+                value={artistName}
+                onChange={(e) => setArtistName(e.target.value)}
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
+              />
+            )}
+
+            {isArtistUser && isOriginal && (
+              <div className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm text-[#a0a0a0] cursor-not-allowed">
+                {artistName || currentUser.displayName || "Tên nghệ sĩ của bạn"}
+              </div>
+            )}
           </div>
 
           {myAlbums.length > 0 && (

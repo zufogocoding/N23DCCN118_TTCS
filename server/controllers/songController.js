@@ -39,7 +39,7 @@ const songController = {
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
-      const savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
+      let savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
 
       const albumIdRaw = req.body.albumId;
       const albumIdParsed = albumIdRaw != null && albumIdRaw !== '' ? parseInt(albumIdRaw, 10) : NaN;
@@ -60,14 +60,28 @@ const songController = {
         if (!artistName && metadata.common.artist) {
           finalArtistName = metadata.common.artist;
         }
+
+        if (!savedCoverUrl && metadata.common.picture && metadata.common.picture.length > 0) {
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const picture = metadata.common.picture[0];
+          const extension = picture.format === 'image/png' ? 'png' : 'jpg';
+          const fileName = `cover_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${extension}`;
+          const coverPath = path.join('uploads', 'covers', fileName);
+          if (!fs.existsSync(path.join('uploads', 'covers'))) {
+            fs.mkdirSync(path.join('uploads', 'covers'), { recursive: true });
+          }
+          fs.writeFileSync(coverPath, picture.data);
+          savedCoverUrl = `/${coverPath.replace(/\\/g, '/')}`;
+        }
       } catch (err) {
         console.error("Không thể đọc metadata file:", err);
       }
 
-
-
       // Kiểm tra user đã có Artist record chưa (chỉ tìm, KHÔNG tự tạo)
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
+      const isOriginal = req.body.isOriginal === 'true' || req.body.isOriginal === true;
 
       const songData = {
         title: finalTitle,
@@ -87,8 +101,8 @@ const songController = {
 
 
 
-      // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest)
-      if (existingArtist) {
+      // Chỉ liên kết ArtistSong nếu user ĐÃ là nghệ sĩ (đã được duyệt qua ArtistRequest) và tick OG
+      if (existingArtist && isOriginal) {
         songData.artists = {
           create: {
             artistId: userId
