@@ -93,7 +93,10 @@ export default function Search() {
       <div className="sticky top-0 bg-[#121212]/90 backdrop-blur-md z-10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4 w-full">
           <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-[#a0a0a0] cursor-not-allowed">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white hover:bg-[#333] transition-colors"
+            >
               <ChevronLeft size={20} />
             </button>
             <button className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-[#a0a0a0] cursor-not-allowed">
