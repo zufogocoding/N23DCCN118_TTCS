@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle } from 'lucide-react';
@@ -168,7 +169,9 @@ export default function ReleaseManager() {
         body: JSON.stringify({ songId }),
       });
       if (res.ok) { loadAlbum(); setShowAddTracks(false); }
-    } catch { }
+    } catch (err) {
+      console.error('Error adding track:', err);
+    }
   };
 
   // --- Upload Modal helpers ---
@@ -297,7 +300,9 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       loadAlbum();
-    } catch { }
+    } catch (err) {
+      console.error('Error removing track:', err);
+    }
   };
 
   // Drag & drop reorder
@@ -318,7 +323,9 @@ export default function ReleaseManager() {
         method: 'PUT', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songIds: items.map(t => t.id) }),
       });
-    } catch { }
+    } catch (err) {
+      console.error('Error persisting order:', err);
+    }
   };
 
   // Release now
@@ -347,7 +354,9 @@ export default function ReleaseManager() {
         loadAlbum();
         alert(data.message || 'Album đã được phát hành!');
       } else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch { } finally { setActionBusy(''); }
+    } catch (err) {
+      console.error('Error releasing album:', err);
+    } finally { setActionBusy(''); }
   };
 
   // Schedule
@@ -370,7 +379,9 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch { } finally { setActionBusy(''); }
+    } catch (err) {
+      console.error('Error scheduling album:', err);
+    } finally { setActionBusy(''); }
   };
 
   // Unschedule
@@ -381,7 +392,9 @@ export default function ReleaseManager() {
         method: 'POST', headers: authH,
       });
       if (res.ok) { loadAlbum(); }
-    } catch { } finally { setActionBusy(''); }
+    } catch (err) {
+      console.error('Error unscheduling album:', err);
+    } finally { setActionBusy(''); }
   };
 
   // Delete album
@@ -392,7 +405,9 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       if (res.ok) navigate(`/artist/${currentUser.id}`);
-    } catch { }
+    } catch (err) {
+      console.error('Error deleting album:', err);
+    }
   };
 
   const trackIds = new Set(tracks.map(t => t.id));

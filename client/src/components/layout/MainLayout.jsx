@@ -20,7 +20,6 @@ import {
   Mic2,
   Music,
   MoreHorizontal,
-  ListPlus,
 } from "lucide-react";
 
 import UserDropdown from "../UserDropdown";

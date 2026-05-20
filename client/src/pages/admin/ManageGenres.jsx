@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, X, Loader2 } from 'lucide-react';
 
 export default function ManageGenres() {

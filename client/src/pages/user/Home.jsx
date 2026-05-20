@@ -74,15 +74,6 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const handleProtectedAction = (action) => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      navigate('/login');
-    } else if (action) {
-      action();
-    }
-  };
-
   const handlePlaySong = (song, queueList) => {
     const playerSong = {
       id: song.id,
