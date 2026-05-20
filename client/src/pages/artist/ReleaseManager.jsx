@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle } from 'lucide-react';
@@ -168,7 +169,9 @@ export default function ReleaseManager() {
         body: JSON.stringify({ songId }),
       });
       if (res.ok) { loadAlbum(); setShowAddTracks(false); }
-    } catch { }
+    } catch (err) {
+      console.error('Error adding track:', err);
+    }
   };
 
   // --- Upload Modal helpers ---
@@ -297,7 +300,9 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       loadAlbum();
-    } catch { }
+    } catch (err) {
+      console.error('Error removing track:', err);
+    }
   };
 
   // Drag & drop reorder
@@ -318,25 +323,54 @@ export default function ReleaseManager() {
         method: 'PUT', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songIds: items.map(t => t.id) }),
       });
-    } catch { }
+    } catch (err) {
+      console.error('Error persisting order:', err);
+    }
   };
 
   // Release now
   const handleRelease = async () => {
-    if (!confirm('Phát hành album ngay bây giờ?')) return;
+    // Kiểm tra có bài pending không để hiển warning
+    const pendingTracks = tracks.filter(t => t.status === 'pending');
+    const approvedTracks = tracks.filter(t => t.status === 'approved');
+
+    if (approvedTracks.length === 0) {
+      alert('Cần ít nhất 1 bài hát đã được duyệt để phát hành album!');
+      return;
+    }
+
+    const msg = pendingTracks.length > 0
+      ? `Phát hành album với ${approvedTracks.length} bài đã duyệt? ${pendingTracks.length} bài đang chờ duyệt sẽ tự xuất hiện sau khi được phê duyệt (giống cách Spotify hoạt động).`
+      : 'Phát hành album ngay bây giờ?';
+
+    if (!confirm(msg)) return;
     setActionBusy('release');
     try {
       const res = await fetch(`http://localhost:9000/api/albums/${album.id}/release`, {
         method: 'POST', headers: authH,
       });
-      if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
-      else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch { } finally { setActionBusy(''); }
+      if (res.ok) {
+        const data = await res.json();
+        loadAlbum();
+        alert(data.message || 'Album đã được phát hành!');
+      } else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
+    } catch (err) {
+      console.error('Error releasing album:', err);
+    } finally { setActionBusy(''); }
   };
 
   // Schedule
   const handleSchedule = async () => {
     if (!scheduledAt) { alert('Chọn thời gian phát hành'); return; }
+
+    const pendingTracks = tracks.filter(t => t.status === 'pending');
+    const approvedTracks = tracks.filter(t => t.status === 'approved');
+
+    if (approvedTracks.length === 0) {
+      alert('Cần ít nhất 1 bài hát đã được duyệt để lên lịch phát hành!');
+      return;
+    }
+
     setActionBusy('schedule');
     try {
       const res = await fetch(`http://localhost:9000/api/albums/${album.id}/schedule`, {
@@ -345,7 +379,9 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch { } finally { setActionBusy(''); }
+    } catch (err) {
+      console.error('Error scheduling album:', err);
+    } finally { setActionBusy(''); }
   };
 
   // Unschedule
@@ -356,7 +392,9 @@ export default function ReleaseManager() {
         method: 'POST', headers: authH,
       });
       if (res.ok) { loadAlbum(); }
-    } catch { } finally { setActionBusy(''); }
+    } catch (err) {
+      console.error('Error unscheduling album:', err);
+    } finally { setActionBusy(''); }
   };
 
   // Delete album
@@ -367,12 +405,16 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       if (res.ok) navigate(`/artist/${currentUser.id}`);
-    } catch { }
+    } catch (err) {
+      console.error('Error deleting album:', err);
+    }
   };
 
   const trackIds = new Set(tracks.map(t => t.id));
   const addableSongs = myUploads.filter(s =>
-    !trackIds.has(s.id) && !(s.albums || []).some(a => a.album && a.album.id !== album?.id)
+    !trackIds.has(s.id) && 
+    !(s.albums || []).some(a => a.album && a.album.id !== album?.id) &&
+    s.status !== 'rejected'
   );
 
   const filteredAddableSongs = addableSongs.filter(s =>
@@ -407,7 +449,7 @@ export default function ReleaseManager() {
           <div className="flex items-center gap-2 mb-6">
             <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isReleased ? 'bg-emerald-500/20 text-emerald-400' :
               isScheduled ? 'bg-amber-500/20 text-amber-400' :
-                'bg-[#333] text-[#a0a0a0]'
+              'bg-[#333] text-[#a0a0a0]'
               }`}>
               {isReleased ? '✓ Đã phát hành' : isScheduled ? '⏳ Đã lên lịch' : '📝 Bản nháp'}
             </span>
@@ -523,7 +565,7 @@ export default function ReleaseManager() {
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${song.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
                       song.status === 'pending' ? 'bg-amber-500/15 text-amber-400' :
-                        'bg-red-500/15 text-red-400'
+                      'bg-red-500/15 text-red-400'
                       }`}>{song.status}</span>
                     <span className="text-xs text-[#666] w-12 text-right">{formatDuration(song.durationMs)}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">

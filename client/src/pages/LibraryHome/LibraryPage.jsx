@@ -23,7 +23,7 @@ export default function LibraryPage() {
     }
   };
 
-    
+
   const toggleMenu = (id) => {
 
     setOpenMenu(
@@ -50,39 +50,39 @@ export default function LibraryPage() {
 
   const updateSong = async () => {
 
-  try {
+    try {
 
-    await axios.put(
+      await axios.put(
 
-      `http://localhost:9000/api/songs/${selectedSong.id}`,
+        `http://localhost:9000/api/songs/${selectedSong.id}`,
 
-      {
+        {
 
-        title:selectedSong.title,
-        artistName:selectedSong.artistName,
-        genre:selectedSong.genre,
-        description:selectedSong.description
+          title: selectedSong.title,
+          artistName: selectedSong.artistName,
+          genre: selectedSong.genre,
+          description: selectedSong.description
 
-      }
+        }
 
-    );
+      );
 
-    setSelectedSong(null);
+      setSelectedSong(null);
 
-    getUploadedSongs();
+      getUploadedSongs();
 
-  }
+    }
 
-  catch(err){
+    catch (err) {
 
-    console.log(
-      "Lỗi update:",
-      err
-    );
+      console.log(
+        "Lỗi update:",
+        err
+      );
 
-  }
+    }
 
-};
+  };
 
 
   const deleteSong = async (id) => {
@@ -204,7 +204,7 @@ export default function LibraryPage() {
                     "
                     onClick={() => openEdit(song)}
                   >
-                     Chỉnh sửa
+                    Chỉnh sửa
                   </button>
 
 
@@ -221,7 +221,7 @@ export default function LibraryPage() {
                       deleteSong(song.id)
                     }
                   >
-                     Xóa
+                    Xóa
                   </button>
 
                 </div>

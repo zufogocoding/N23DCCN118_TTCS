@@ -1,7 +1,8 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState, useRef } from "react";
 import { 
   Play, Pause, CheckCircle, XCircle, Music, Clock, 
-  Search, Volume2, VolumeX, ChevronDown 
+  Search, Volume2, VolumeX 
 } from "lucide-react";
 
 // Helper: lấy tên artist
@@ -84,11 +85,6 @@ export default function PendingSongs() {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
-  // Fetch pending songs
-  useEffect(() => {
-    fetchPendingSongs();
-  }, []);
-
   async function fetchPendingSongs() {
     try {
       setLoading(true);
@@ -100,7 +96,12 @@ export default function PendingSongs() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  // Fetch pending songs
+  useEffect(() => {
+    fetchPendingSongs();
+  }, []);
 
   // Play/Pause song
   const togglePlaySong = (songId) => {

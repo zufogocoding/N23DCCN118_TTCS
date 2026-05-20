@@ -11,6 +11,8 @@ const dashboardRoutes = require('./routes/dashboardRoutes.js');
  
 const uploadRoutes = require('./routes/uploadRoutes');
 const adminSongRoutes = require("./routes/adminSongRoutes");
+const adminUserRoutes = require('./routes/adminUserRoute.js');
+const adminAlbumRoutes = require('./routes/adminAlbumRoutes.js');
 
 const userRoutes = require('./routes/userRoutes.js');
 const artistRequestRoutes = require('./routes/artistRequestRoutes.js');
@@ -40,8 +42,10 @@ app.use(dashboardRoutes);
  
 app.use(uploadRoutes);
 app.use(adminSongRoutes);
+app.use(adminAlbumRoutes);
 
 app.use('/api/users', userRoutes);
+app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/artist-requests', artistRequestRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use(searchRoutes);

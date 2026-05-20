@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/music/SongDetail";
 import PlaylistView from './pages/music/PlaylistView';
@@ -28,6 +28,8 @@ import ArtistProfile from './pages/artist/ArtistProfile';
 import AlbumView from './pages/music/AlbumView';
 import AdminAlbums from './pages/admin/AdminAlbums';
 import ReleaseManager from './pages/artist/ReleaseManager';
+import AdminUsers from './pages/admin/adminUser';
+import ManageSongs from './pages/admin/ManageSongs';
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
@@ -140,9 +142,9 @@ function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Users (Đang xây dựng)</div>} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="artists" element={<ArtistRequests />} />
-          <Route path="songs" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Songs (Đang xây dựng)</div>} />
+          <Route path="songs" element={<ManageSongs />} />
           <Route path="pending-songs" element={<PendingSongs />} />
           <Route path="albums" element={<AdminAlbums />} />
           <Route path="playlists" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Playlists (Đang xây dựng)</div>} />

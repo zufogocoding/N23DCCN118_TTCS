@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getPrimaryArtistUserId } from '../../utils/artistNav';
 import VirtualSongList from '../../components/VirtualSongList';
 
 export default function Search() {
@@ -48,7 +47,7 @@ export default function Search() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchSearchResults = async (pageNum, isReset = false) => {
+  async function fetchSearchResults(pageNum, isReset = false) {
     setIsLoading(true);
     try {
       const response = await fetch(`http://localhost:9000/api/search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&limit=20`);
@@ -75,7 +74,7 @@ export default function Search() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   const loadMore = () => {
     if (!isLoading && hasNextPage) {

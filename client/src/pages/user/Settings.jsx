@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, User, Lock, Trash2, Moon, Sun, Monitor, Info, 
+  ArrowLeft, User, Lock, Moon, Sun, Monitor, Info, 
   ShieldAlert, CheckCircle2, AlertTriangle, Loader2 
 } from 'lucide-react';
 

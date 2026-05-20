@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
 
