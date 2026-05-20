@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle } from 'lucide-react';
 import TrackEditModal from '../../components/TrackEditModal';
 
 const ALBUM_TYPES = ['Single', 'EP', 'Album', 'Mixtape'];
@@ -41,10 +41,23 @@ export default function ReleaseManager() {
   const [scheduledAt, setScheduledAt] = useState('');
   const coverRef = useRef(null);
 
-  // Direct Audio Upload state
+  // Upload Modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadAudioFile, setUploadAudioFile] = useState(null);
+  const [uploadCoverFile, setUploadCoverFile] = useState(null);
+  const [uploadCoverPreview, setUploadCoverPreview] = useState(null);
+  const [songTitle, setSongTitle] = useState('');
+  const [songArtistName, setSongArtistName] = useState('');
+  const [songGenreIds, setSongGenreIds] = useState([]);
+  const [songDescription, setSongDescription] = useState('');
+  const [songDurationMs, setSongDurationMs] = useState(0);
+  const [songIsOriginal, setSongIsOriginal] = useState(true);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [audioUploadProgress, setAudioUploadProgress] = useState(0);
-  const audioInputRef = useRef(null);
+  const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
+  const genreRef = useRef(null);
+  const uploadAudioInputRef = useRef(null);
+  const uploadCoverInputRef = useRef(null);
 
   // Search state for Add Tracks modal
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,15 +80,26 @@ export default function ReleaseManager() {
 
   // Load genres
   useEffect(() => {
-    fetch('http://localhost:9000/api/genres').then(r => r.json()).then(setGenres).catch(() => {});
+    fetch('http://localhost:9000/api/genres').then(r => r.json()).then(setGenres).catch(() => { });
   }, []);
 
   // Load my uploads
   useEffect(() => {
     if (!currentUser.id) return;
     fetch('http://localhost:9000/api/songs/my-uploaded', { headers: authH })
-      .then(r => r.ok ? r.json() : []).then(setMyUploads).catch(() => {});
+      .then(r => r.ok ? r.json() : []).then(setMyUploads).catch(() => { });
   }, [currentUser.id]);
+
+  // Đóng dropdown genre khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (genreRef.current && !genreRef.current.contains(e.target)) {
+        setGenreDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load album data
   const loadAlbum = useCallback(async () => {
@@ -144,64 +168,125 @@ export default function ReleaseManager() {
         body: JSON.stringify({ songId }),
       });
       if (res.ok) { loadAlbum(); setShowAddTracks(false); }
-    } catch {}
+    } catch { }
   };
 
-  // Direct Audio Upload
-  const handleDirectAudioUpload = async (e) => {
+  // --- Upload Modal helpers ---
+
+  const resetUploadModal = () => {
+    setUploadAudioFile(null);
+    setUploadCoverFile(null);
+    setUploadCoverPreview(null);
+    setSongTitle('');
+    setSongArtistName(currentUser.displayName || currentUser.username || '');
+    setSongGenreIds([]);
+    setSongDescription('');
+    setSongDurationMs(0);
+    setSongIsOriginal(true);
+    setAudioUploadProgress(0);
+    if (uploadAudioInputRef.current) uploadAudioInputRef.current.value = '';
+    if (uploadCoverInputRef.current) uploadCoverInputRef.current.value = '';
+  };
+
+  const openUploadModal = () => {
+    setSongArtistName(currentUser.displayName || currentUser.username || '');
+    setSongIsOriginal(true);
+    setShowUploadModal(true);
+  };
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    resetUploadModal();
+  };
+
+  const handleUploadAudioChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
+    setUploadAudioFile(file);
     // Tự động detect duration
     const audio = new Audio();
     audio.src = URL.createObjectURL(file);
-    audio.addEventListener('loadedmetadata', async () => {
-      const durationMs = Math.round(audio.duration * 1000);
-      
-      setIsUploadingAudio(true);
-      setAudioUploadProgress(0);
-
-      try {
-        const formData = new FormData();
-        formData.append('audioFile', file);
-        // Tên mặc định là tên file bỏ đuôi mở rộng
-        const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
-        formData.append('title', defaultTitle);
-        formData.append('artistName', currentUser.displayName || currentUser.username || 'Unknown Artist');
-        formData.append('durationMs', durationMs.toString());
-        
-        // XMLHttpRequest để lấy progress
-        const xhr = new XMLHttpRequest();
-        const uploadedSong = await new Promise((resolve, reject) => {
-          xhr.upload.addEventListener('progress', (ev) => {
-            if (ev.lengthComputable) setAudioUploadProgress(Math.round((ev.loaded / ev.total) * 100));
-          });
-          xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-            else reject(new Error('Upload thất bại'));
-          });
-          xhr.addEventListener('error', () => reject(new Error('Lỗi kết nối')));
-          xhr.open('POST', 'http://localhost:9000/api/songs/upload');
-          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          xhr.send(formData);
-        });
-
-        // Nối bài hát vừa tạo vào album
-        await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
-          method: 'POST',
-          headers: { ...authH, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ songId: uploadedSong.id }),
-        });
-        
-        // Làm mới dữ liệu album để hiển thị bài vừa up
-        loadAlbum();
-      } catch (err) {
-        alert(err.message || 'Lỗi upload trực tiếp');
-      } finally {
-        setIsUploadingAudio(false);
-        if (audioInputRef.current) audioInputRef.current.value = '';
-      }
+    audio.addEventListener('loadedmetadata', () => {
+      setSongDurationMs(Math.round(audio.duration * 1000));
     });
+    // Tên mặc định từ tên file
+    const defaultTitle = file.name.replace(/\.[^/.]+$/, '');
+    setSongTitle(defaultTitle);
+  };
+
+  const handleUploadCoverChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadCoverFile(file);
+      setUploadCoverPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const toggleSongGenre = (id) => {
+    setSongGenreIds(prev =>
+      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+    );
+  };
+
+  const removeSongGenre = (id) => {
+    setSongGenreIds(prev => prev.filter(g => g !== id));
+  };
+
+  // Upload from modal
+  const handleModalUpload = async () => {
+    if (!uploadAudioFile) { alert('Vui lòng chọn file nhạc!'); return; }
+    if (!songTitle.trim()) { alert('Vui lòng nhập tên bài hát!'); return; }
+
+    setIsUploadingAudio(true);
+    setAudioUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('audioFile', uploadAudioFile);
+      if (uploadCoverFile) formData.append('coverImage', uploadCoverFile);
+      formData.append('title', songTitle.trim());
+      formData.append('artistName', songArtistName || currentUser.displayName || currentUser.username || 'Unknown Artist');
+      formData.append('durationMs', songDurationMs.toString());
+      if (songGenreIds.length > 0) {
+        formData.append('genreIds', JSON.stringify(songGenreIds));
+      }
+      formData.append('isOriginal', songIsOriginal);
+      if (songDescription.trim()) {
+        formData.append('description', songDescription.trim());
+      }
+
+      // XMLHttpRequest để lấy progress
+      const xhr = new XMLHttpRequest();
+      const uploadedSong = await new Promise((resolve, reject) => {
+        xhr.upload.addEventListener('progress', (ev) => {
+          if (ev.lengthComputable) setAudioUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+        });
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
+          else reject(new Error('Upload thất bại'));
+        });
+        xhr.addEventListener('error', () => reject(new Error('Lỗi kết nối')));
+        xhr.open('POST', 'http://localhost:9000/api/songs/upload');
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.send(formData);
+      });
+
+      // Nối bài hát vừa tạo vào album
+      await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
+        method: 'POST',
+        headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songId: uploadedSong.song?.id || uploadedSong.id }),
+      });
+
+      // Làm mới dữ liệu album
+      loadAlbum();
+      closeUploadModal();
+      alert('Upload bài hát thành công!');
+    } catch (err) {
+      alert(err.message || 'Lỗi upload');
+    } finally {
+      setIsUploadingAudio(false);
+    }
   };
 
   // Remove track
@@ -212,7 +297,7 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       loadAlbum();
-    } catch {}
+    } catch { }
   };
 
   // Drag & drop reorder
@@ -233,7 +318,7 @@ export default function ReleaseManager() {
         method: 'PUT', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songIds: items.map(t => t.id) }),
       });
-    } catch {}
+    } catch { }
   };
 
   // Release now
@@ -246,7 +331,7 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch {} finally { setActionBusy(''); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Schedule
@@ -260,7 +345,7 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch {} finally { setActionBusy(''); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Unschedule
@@ -271,7 +356,7 @@ export default function ReleaseManager() {
         method: 'POST', headers: authH,
       });
       if (res.ok) { loadAlbum(); }
-    } catch {} finally { setActionBusy(''); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Delete album
@@ -282,15 +367,15 @@ export default function ReleaseManager() {
         method: 'DELETE', headers: authH,
       });
       if (res.ok) navigate(`/artist/${currentUser.id}`);
-    } catch {}
+    } catch { }
   };
 
   const trackIds = new Set(tracks.map(t => t.id));
   const addableSongs = myUploads.filter(s =>
     !trackIds.has(s.id) && !(s.albums || []).some(a => a.album && a.album.id !== album?.id)
   );
-  
-  const filteredAddableSongs = addableSongs.filter(s => 
+
+  const filteredAddableSongs = addableSongs.filter(s =>
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -320,11 +405,10 @@ export default function ReleaseManager() {
 
         {album && (
           <div className="flex items-center gap-2 mb-6">
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-              isReleased ? 'bg-emerald-500/20 text-emerald-400' :
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isReleased ? 'bg-emerald-500/20 text-emerald-400' :
               isScheduled ? 'bg-amber-500/20 text-amber-400' :
-              'bg-[#333] text-[#a0a0a0]'
-            }`}>
+                'bg-[#333] text-[#a0a0a0]'
+              }`}>
               {isReleased ? '✓ Đã phát hành' : isScheduled ? '⏳ Đã lên lịch' : '📝 Bản nháp'}
             </span>
           </div>
@@ -338,9 +422,8 @@ export default function ReleaseManager() {
             <div>
               <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
               <div onClick={() => !isReleased && coverRef.current?.click()}
-                className={`relative border-2 border-dashed rounded-xl aspect-square flex items-center justify-center overflow-hidden group ${
-                  isReleased ? 'border-[#222] cursor-default' : 'border-[#333] hover:border-[#00e6e6]/50 cursor-pointer'
-                }`}>
+                className={`relative border-2 border-dashed rounded-xl aspect-square flex items-center justify-center overflow-hidden group ${isReleased ? 'border-[#222] cursor-default' : 'border-[#333] hover:border-[#00e6e6]/50 cursor-pointer'
+                  }`}>
                 {coverPreview ? (
                   <>
                     <img src={coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -400,11 +483,9 @@ export default function ReleaseManager() {
               <h2 className="text-lg font-bold">Danh sách bài hát ({tracks.length})</h2>
               {!isReleased && (
                 <div className="flex items-center gap-2">
-                  <input type="file" accept="audio/*" className="hidden" ref={audioInputRef} onChange={handleDirectAudioUpload} />
-                  <button onClick={() => audioInputRef.current?.click()} disabled={isUploadingAudio}
+                  <button onClick={openUploadModal} disabled={isUploadingAudio}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 disabled:opacity-50">
-                    {isUploadingAudio ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                    {isUploadingAudio ? `${audioUploadProgress}%` : 'Upload nhạc'}
+                    <Upload size={16} /> Upload nhạc
                   </button>
                   <button onClick={() => setShowAddTracks(true)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] text-sm font-semibold hover:bg-[#00e6e6]/20">
@@ -440,11 +521,10 @@ export default function ReleaseManager() {
                       <p className="font-medium text-sm truncate">{song.title}</p>
                       <p className="text-xs text-[#666] truncate">{song.artistName || 'Unknown Artist'}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      song.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${song.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
                       song.status === 'pending' ? 'bg-amber-500/15 text-amber-400' :
-                      'bg-red-500/15 text-red-400'
-                    }`}>{song.status}</span>
+                        'bg-red-500/15 text-red-400'
+                      }`}>{song.status}</span>
                     <span className="text-xs text-[#666] w-12 text-right">{formatDuration(song.durationMs)}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
                       <button onClick={() => setEditingSong(song)} className="p-1.5 rounded hover:bg-white/10 text-[#a0a0a0]" title="Sửa">
@@ -464,13 +544,13 @@ export default function ReleaseManager() {
         )}
 
         {album && !isReleased && tracks.length === 0 && (
-            <div className="mb-4 text-center">
-              <button onClick={() => setShowAddTracks(true)}
-                className="px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] hover:bg-[#00e6e6]/20">
-                Thêm bài hát vào album
-              </button>
-            </div>
-          )}
+          <div className="mb-4 text-center">
+            <button onClick={() => setShowAddTracks(true)}
+              className="px-4 py-2 rounded-full bg-[#00e6e6]/10 text-[#00e6e6] hover:bg-[#00e6e6]/20">
+              Thêm bài hát vào album
+            </button>
+          </div>
+        )}
 
         {/* Release Actions */}
         {album && !isReleased && (
@@ -517,12 +597,12 @@ export default function ReleaseManager() {
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               <div className="mb-4">
-                <input 
-                  type="text" 
-                  placeholder="Tìm kiếm bài hát..." 
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm bài hát..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#222] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-[#00e6e6]/50" 
+                  className="w-full bg-[#222] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-[#00e6e6]/50"
                 />
               </div>
               {filteredAddableSongs.length === 0 ? (
@@ -554,6 +634,258 @@ export default function ReleaseManager() {
       {/* Track edit modal */}
       {editingSong && (
         <TrackEditModal song={editingSong} genres={genres} onClose={() => setEditingSong(null)} onSaved={() => loadAlbum()} />
+      )}
+
+      {/* Upload Song Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#181818] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#333] sticky top-0 bg-[#181818] z-10">
+              <h2 className="text-lg font-bold">Upload bài hát vào album</h2>
+              <button onClick={closeUploadModal} disabled={isUploadingAudio} className="text-[#666] hover:text-white">
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Audio file */}
+              <div>
+                <input
+                  ref={uploadAudioInputRef}
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={handleUploadAudioChange}
+                />
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">File nhạc <span className="text-red-400">*</span></label>
+                <div
+                  onClick={() => uploadAudioInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${uploadAudioFile
+                    ? 'border-emerald-500/50 bg-emerald-500/5'
+                    : 'border-[#333] hover:border-[#00e6e6]/50 hover:bg-[#00e6e6]/5'
+                    }`}
+                >
+                  {uploadAudioFile ? (
+                    <>
+                      <CheckCircle size={28} className="text-emerald-400 mb-2" />
+                      <p className="text-sm font-medium text-emerald-400">File đã chọn</p>
+                      <p className="text-xs text-[#a0a0a0] mt-1 truncate max-w-full">{uploadAudioFile.name}</p>
+                      {songDurationMs > 0 && (
+                        <p className="text-[#666] text-xs mt-1">
+                          Thời lượng: {Math.floor(songDurationMs / 60000)}:{String(Math.floor((songDurationMs % 60000) / 1000)).padStart(2, '0')}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Music size={28} className="text-[#00e6e6] mb-2" />
+                      <p className="text-sm font-medium">Chọn file nhạc</p>
+                      <p className="text-xs text-[#666] mt-1">MP3, WAV, ...</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Cover image */}
+              <div>
+                <input
+                  ref={uploadCoverInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUploadCoverChange}
+                />
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">Ảnh bìa (tùy chọn)</label>
+                <div
+                  onClick={() => uploadCoverInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${uploadCoverPreview
+                    ? 'border-[#00e6e6]/50'
+                    : 'border-[#333] hover:border-[#00e6e6]/50 hover:bg-[#00e6e6]/5'
+                    }`}
+                >
+                  {uploadCoverPreview ? (
+                    <div className="relative w-full flex items-center gap-3">
+                      <img src={uploadCoverPreview} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                      <div>
+                        <p className="text-sm font-medium text-[#00e6e6]">Đã chọn ảnh bìa</p>
+                        <p className="text-xs text-[#666]">Click để đổi</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Image size={24} className="text-[#00e6e6] mb-1" />
+                      <p className="text-sm font-medium">Chọn ảnh bìa</p>
+                      <p className="text-xs text-[#666] mt-1">PNG, JPG (tùy chọn)</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Song title */}
+              <div>
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">Tên bài hát <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên bài hát"
+                  value={songTitle}
+                  onChange={e => setSongTitle(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00e6e6]/50 placeholder-[#444]"
+                />
+              </div>
+
+              {/* Artist */}
+              <div>
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">Nghệ sĩ</label>
+                <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    checked={songIsOriginal}
+                    onChange={(e) => {
+                      setSongIsOriginal(e.target.checked);
+                      if (e.target.checked) {
+                        setSongArtistName(currentUser.displayName || currentUser.username || '');
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-[#333] bg-[#0a0a0a] text-[#00e6e6] focus:ring-[#00e6e6]"
+                  />
+                  <span className="text-sm text-white">Tôi là tác giả gốc (OG)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên nghệ sĩ"
+                  value={songIsOriginal ? (songArtistName || currentUser.displayName || currentUser.username || 'Tên nghệ sĩ') : songArtistName}
+                  onChange={e => setSongArtistName(e.target.value)}
+                  disabled={songIsOriginal}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm outline-none placeholder-[#444] ${songIsOriginal
+                    ? 'bg-[#1a1a1a] border-[#333] text-[#666] cursor-not-allowed'
+                    : 'bg-[#0a0a0a] border-[#333] focus:border-[#00e6e6]/50 text-white'
+                    }`}
+                />
+              </div>
+
+              {/* Genre - Multi Select */}
+              <div ref={genreRef} className="relative">
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">Thể loại</label>
+                <div
+                  onClick={() => setGenreDropdownOpen(prev => !prev)}
+                  className={`w-full min-h-[48px] bg-[#0a0a0a] border rounded-xl px-3 py-2 flex flex-wrap items-center gap-2 cursor-pointer transition-colors ${genreDropdownOpen ? 'border-[#00e6e6]/50' : 'border-[#333]'
+                    }`}
+                >
+                  {songGenreIds.length === 0 && (
+                    <span className="text-[#444] text-sm">Chọn thể loại...</span>
+                  )}
+                  {songGenreIds.map(id => {
+                    const g = genres.find(x => x.id === id);
+                    if (!g) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 bg-[#00e6e6]/15 text-[#00e6e6] text-xs font-semibold px-2.5 py-1 rounded-lg"
+                      >
+                        {g.genreTag}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeSongGenre(id); }}
+                          className="hover:text-white transition-colors ml-0.5"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  <svg
+                    className={`ml-auto w-4 h-4 text-[#666] transition-transform flex-shrink-0 ${genreDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                {genreDropdownOpen && (
+                  <div className="absolute z-50 mt-2 w-full max-h-60 overflow-y-auto bg-[#1a1a1a] border border-[#333] rounded-xl shadow-2xl py-1">
+                    {genres.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-[#666]">Đang tải...</div>
+                    ) : (
+                      genres.map(g => {
+                        const isSelected = songGenreIds.includes(g.id);
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => toggleSongGenre(g.id)}
+                            className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${isSelected
+                              ? 'bg-[#00e6e6]/10 text-[#00e6e6]'
+                              : 'text-white hover:bg-[#222]'
+                              }`}
+                          >
+                            <span>{g.genreTag}</span>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-[#00e6e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">Mô tả (tùy chọn)</label>
+                <textarea
+                  rows="3"
+                  placeholder="Viết gì đó về bài hát..."
+                  value={songDescription}
+                  onChange={e => setSongDescription(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00e6e6]/50 placeholder-[#444] resize-none"
+                />
+              </div>
+
+              {/* Progress bar */}
+              {isUploadingAudio && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#a0a0a0]">Đang upload...</span>
+                    <span className="text-[#00e6e6] font-semibold">{audioUploadProgress}%</span>
+                  </div>
+                  <div className="h-2 bg-[#222] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#00e6e6] to-[#00b8d4] rounded-full transition-all duration-300"
+                      style={{ width: `${audioUploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Submit button */}
+              <button
+                onClick={handleModalUpload}
+                disabled={isUploadingAudio || !uploadAudioFile || !songTitle.trim()}
+                className={`w-full flex items-center justify-center gap-3 font-bold text-base px-6 py-3.5 rounded-xl transition-all ${isUploadingAudio
+                  ? 'bg-[#333] text-[#666] cursor-not-allowed'
+                  : 'bg-gradient-to-r from-[#00e6e6] to-[#00b8d4] text-black hover:shadow-lg hover:shadow-[#00e6e6]/20'
+                  }`}
+              >
+                {isUploadingAudio ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Đang upload...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={20} />
+                    Upload & thêm vào album
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
