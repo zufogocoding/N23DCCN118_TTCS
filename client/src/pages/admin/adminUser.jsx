@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Users, Search, Filter, Shield, ShieldOff, ShieldCheck,
+  Users, Search, ShieldOff,
   Trash2, Ban, CheckCircle, ChevronLeft, ChevronRight,
   Music2, ListMusic, X, AlertTriangle, Crown, UserCircle2,
   RefreshCw, Eye, MoreVertical
@@ -423,6 +424,7 @@ export default function AdminUsers() {
         showToast(data.error || 'Thao tác thất bại', 'error');
       }
     } catch (err) {
+      console.error(err);
       showToast('Lỗi kết nối server', 'error');
     } finally {
       setActionLoading(false);

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { X, Image, Loader2 } from 'lucide-react';
 
 export default function TrackEditModal({ song, genres = [], onClose, onSaved }) {
@@ -49,7 +49,7 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
         const err = await res.json().catch(() => ({}));
         setError(err.error || 'Lỗi cập nhật');
       }
-    } catch (err) { setError('Lỗi kết nối'); }
+    } catch (err) { console.error(err); setError('Lỗi kết nối'); }
     finally { setSaving(false); }
   };
 
