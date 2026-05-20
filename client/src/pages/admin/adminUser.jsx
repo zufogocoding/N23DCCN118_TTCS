@@ -240,8 +240,9 @@ function UserDetailDrawer({ userId, onClose, onAction }) {
 
 // ── Row Action Menu ─────────────────────────────────────────────────────────
 
-function ActionMenu({ user, onAction, onViewDetail }) {
+function ActionMenu({ user, onAction, onViewDetail, index, total }) {
   const [open, setOpen] = useState(false);
+  const openUpward = total === 1 ? true : (index >= total - 2);
 
   return (
     <div className="relative">
@@ -255,7 +256,7 @@ function ActionMenu({ user, onAction, onViewDetail }) {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-40 w-44 bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl overflow-hidden py-1">
+          <div className={`absolute right-0 z-40 w-44 bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl overflow-hidden py-1 ${openUpward ? 'bottom-8' : 'top-8'}`}>
             <button
               onClick={() => { setOpen(false); onViewDetail(user.id); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#ccc] hover:bg-[#2a2a2a] hover:text-white transition-colors"
@@ -506,9 +507,9 @@ export default function AdminUsers() {
         </div>
 
         {/* Table */}
-        <div className="bg-[#121212] border border-[#2a2a2a] rounded-2xl overflow-hidden">
+        <div className="bg-[#121212] border border-[#2a2a2a] rounded-2xl">
           {/* Table Header */}
-          <div className="grid grid-cols-[2.5fr_2fr_1fr_1fr_1fr_1fr_40px] gap-3 px-5 py-3 border-b border-[#2a2a2a] text-[10px] font-bold uppercase tracking-widest text-[#555]">
+          <div className="grid grid-cols-[2.5fr_2fr_1fr_1fr_1fr_1fr_40px] gap-3 px-5 py-3 border-b border-[#2a2a2a] text-[10px] font-bold uppercase tracking-widest text-[#555] rounded-t-2xl">
             <span>Người dùng</span>
             <span>Email</span>
             <span>Vai trò</span>
@@ -520,20 +521,22 @@ export default function AdminUsers() {
 
           {/* Rows */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20 rounded-b-2xl">
               <RefreshCw size={28} className="text-[#00e6e6] animate-spin" />
             </div>
           ) : users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-[#555]">
+            <div className="flex flex-col items-center justify-center py-20 text-[#555] rounded-b-2xl">
               <Users size={40} className="mb-3 opacity-40" />
               <p className="text-sm">Không tìm thấy người dùng nào</p>
             </div>
           ) : (
             <div className="divide-y divide-[#1e1e1e]">
-              {users.map(user => (
+              {users.map((user, index) => (
                 <div
                   key={user.id}
-                  className="grid grid-cols-[2.5fr_2fr_1fr_1fr_1fr_1fr_40px] gap-3 px-5 py-3.5 items-center hover:bg-[#161616] transition-colors group"
+                  className={`grid grid-cols-[2.5fr_2fr_1fr_1fr_1fr_1fr_40px] gap-3 px-5 py-3.5 items-center hover:bg-[#161616] transition-colors group ${
+                    index === users.length - 1 && pagination.totalPages <= 1 ? 'rounded-b-2xl' : ''
+                  }`}
                 >
                   {/* User info */}
                   <div
@@ -559,6 +562,8 @@ export default function AdminUsers() {
                     user={user}
                     onAction={handleAction}
                     onViewDetail={setDetailUserId}
+                    index={index}
+                    total={users.length}
                   />
                 </div>
               ))}
@@ -567,7 +572,7 @@ export default function AdminUsers() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="border-t border-[#2a2a2a] px-5 py-4 flex items-center justify-between">
+            <div className="border-t border-[#2a2a2a] px-5 py-4 flex items-center justify-between rounded-b-2xl">
               <p className="text-[#555] text-xs">
                 Trang {pagination.page} / {pagination.totalPages} &nbsp;·&nbsp; {pagination.total.toLocaleString()} kết quả
               </p>
