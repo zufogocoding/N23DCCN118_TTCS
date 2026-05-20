@@ -323,20 +323,45 @@ export default function ReleaseManager() {
 
   // Release now
   const handleRelease = async () => {
-    if (!confirm('Phát hành album ngay bây giờ?')) return;
+    // Kiểm tra có bài pending không để hiển warning
+    const pendingTracks = tracks.filter(t => t.status === 'pending');
+    const approvedTracks = tracks.filter(t => t.status === 'approved');
+
+    if (approvedTracks.length === 0) {
+      alert('Cần ít nhất 1 bài hát đã được duyệt để phát hành album!');
+      return;
+    }
+
+    const msg = pendingTracks.length > 0
+      ? `Phát hành album với ${approvedTracks.length} bài đã duyệt? ${pendingTracks.length} bài đang chờ duyệt sẽ tự xuất hiện sau khi được phê duyệt (giống cách Spotify hoạt động).`
+      : 'Phát hành album ngay bây giờ?';
+
+    if (!confirm(msg)) return;
     setActionBusy('release');
     try {
       const res = await fetch(`http://localhost:9000/api/albums/${album.id}/release`, {
         method: 'POST', headers: authH,
       });
-      if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
-      else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
+      if (res.ok) {
+        const data = await res.json();
+        loadAlbum();
+        alert(data.message || 'Album đã được phát hành!');
+      } else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
     } catch { } finally { setActionBusy(''); }
   };
 
   // Schedule
   const handleSchedule = async () => {
     if (!scheduledAt) { alert('Chọn thời gian phát hành'); return; }
+
+    const pendingTracks = tracks.filter(t => t.status === 'pending');
+    const approvedTracks = tracks.filter(t => t.status === 'approved');
+
+    if (approvedTracks.length === 0) {
+      alert('Cần ít nhất 1 bài hát đã được duyệt để lên lịch phát hành!');
+      return;
+    }
+
     setActionBusy('schedule');
     try {
       const res = await fetch(`http://localhost:9000/api/albums/${album.id}/schedule`, {
