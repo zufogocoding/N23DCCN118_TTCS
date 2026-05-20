@@ -28,6 +28,7 @@ import ArtistProfile from './pages/artist/ArtistProfile';
 import AlbumView from './pages/music/AlbumView';
 import AdminAlbums from './pages/admin/AdminAlbums';
 import ReleaseManager from './pages/artist/ReleaseManager';
+import AdminUsers from './pages/admin/adminUser';
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
@@ -140,7 +141,7 @@ function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Users (Đang xây dựng)</div>} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="artists" element={<ArtistRequests />} />
           <Route path="songs" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Songs (Đang xây dựng)</div>} />
           <Route path="pending-songs" element={<PendingSongs />} />
