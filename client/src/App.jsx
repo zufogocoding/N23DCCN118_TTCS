@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/music/SongDetail";
 import PlaylistView from './pages/music/PlaylistView';
@@ -15,6 +16,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import Home from './pages/user/Home';
 import Search from './pages/user/Search';
 import Profile from './pages/user/Profile';
+import Settings from './pages/user/Settings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ArtistRequests from './pages/admin/ArtistRequests';
 import BecomeArtist from './pages/user/BecomeArtist';
@@ -55,6 +57,16 @@ const AdminRoute = ({ children }) => {
 };
 
 function App() {
+  // Initialize theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -81,6 +93,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />

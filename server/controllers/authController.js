@@ -258,10 +258,65 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// 5. Đổi mật khẩu khi đã đăng nhập
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: "Vui lòng cung cấp mật khẩu cũ và mật khẩu mới" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "Người dùng không tồn tại" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Mật khẩu hiện tại không đúng" });
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    res.status(200).json({ message: "Đổi mật khẩu thành công" });
+  } catch (error) {
+    console.error("Lỗi tại changePassword:", error);
+    res.status(500).json({ error: "Lỗi server khi đổi mật khẩu" });
+  }
+};
+
+// 6. Xóa tài khoản
+const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Prisma on cascade delete should handle related rows (songs, playlists, etc.)
+    // if configured properly in schema.prisma.
+    await prisma.user.delete({
+      where: { id: userId }
+    });
+
+    res.status(200).json({ message: "Xóa tài khoản thành công" });
+  } catch (error) {
+    console.error("Lỗi tại deleteAccount:", error);
+    res.status(500).json({ error: "Lỗi server khi xóa tài khoản" });
+  }
+};
+
 module.exports = {
   requestRegisterOtp,
   signup,
   login,
   requestForgotPasswordOtp,
-  resetPassword
+  resetPassword,
+  changePassword,
+  deleteAccount
 };
