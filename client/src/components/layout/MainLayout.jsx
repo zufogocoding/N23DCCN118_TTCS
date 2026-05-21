@@ -26,6 +26,9 @@ import UserDropdown from "../UserDropdown";
 import NotificationDropdown from "../NotificationDropdown.jsx";
 import CreatePlaylistModal from "../CreatePlaylistModal";
 import AddToPlaylistMenu from "../AddToPlaylistMenu";
+import { api } from "../../utils/api";
+import { getCoverArt } from "../../utils/songHelpers";
+import useClickOutside from "../../hooks/useClickOutside";
 
 function formatPlayerClock(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
@@ -96,15 +99,7 @@ export default function MainLayout() {
   const [nowPlayingMenuOpen, setNowPlayingMenuOpen] = useState(false);
   const nowPlayingMenuRef = useRef(null);
 
-  useEffect(() => {
-    const handleClose = (e) => {
-      if (nowPlayingMenuRef.current && !nowPlayingMenuRef.current.contains(e.target)) {
-        setNowPlayingMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClose);
-    return () => document.removeEventListener("mousedown", handleClose);
-  }, []);
+  useClickOutside(nowPlayingMenuRef, () => setNowPlayingMenuOpen(false));
 
   useEffect(() => {
     setNowPlayingMenuOpen(false);
@@ -115,15 +110,15 @@ export default function MainLayout() {
 
     if (user.id) {
       try {
-        const res = await fetch(
-          `http://localhost:9000/api/playlists/user/${user.id}`
+        const res = await api.get(
+          `/api/playlists/user/${user.id}`
         );
 
         if (res.ok) {
           const data = await res.json();
           setUserPlaylists(data);
         }
-      } catch (error) { console.error(error);
+      } catch (error) {
         console.error("Lỗi khi lấy playlist:", error);
       }
     }
@@ -144,7 +139,7 @@ export default function MainLayout() {
       return;
     }
     let cancelled = false;
-    fetch(`http://localhost:9000/api/interactions/like/${user.id}/${currentSong.id}`)
+    api.get(`/api/interactions/like-status/${currentSong.id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled && data) setIsLiked(!!data.isLiked);
@@ -317,7 +312,7 @@ export default function MainLayout() {
           </div>
 
           <img
-            src={currentSong?.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"}
+            src={getCoverArt(currentSong) || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"}
             alt="Now Playing"
             className="w-full aspect-square object-cover rounded-xl mb-4 shadow-2xl shadow-[#00e6e6]/10"
           />
@@ -339,11 +334,7 @@ export default function MainLayout() {
                   if (!currentSong) return;
                   const user = JSON.parse(localStorage.getItem("user") || "{}");
                   if (!user.id) { navigate("/login"); return; }
-                  fetch("http://localhost:9000/api/interactions/like", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userId: user.id, songId: currentSong.id }),
-                  })
+                  api.post("/api/interactions/like", { songId: currentSong.id })
                     .then((r) => r.json())
                     .then((data) => setIsLiked(data.isLiked))
                     .catch((err) => console.error(err));
@@ -376,9 +367,9 @@ export default function MainLayout() {
         <div className="flex items-center gap-3 min-w-0 flex-[1.1] max-w-[28vw]">
           {currentSong ? (
             <>
-              {currentSong.coverImage ? (
+              {getCoverArt(currentSong) ? (
                 <img
-                  src={currentSong.coverImage}
+                  src={getCoverArt(currentSong)}
                   alt=""
                   className="w-14 h-14 rounded object-cover shadow-md shrink-0 bg-[#282828]"
                 />
@@ -400,11 +391,7 @@ export default function MainLayout() {
                       navigate("/login");
                       return;
                     }
-                    fetch("http://localhost:9000/api/interactions/like", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ userId: user.id, songId: currentSong.id }),
-                    })
+                    api.post("/api/interactions/like", { songId: currentSong.id })
                       .then((r) => r.json())
                       .then((data) => setIsLiked(data.isLiked))
                       .catch((err) => console.error(err));

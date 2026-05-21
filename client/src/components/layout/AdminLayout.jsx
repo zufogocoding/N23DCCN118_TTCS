@@ -1,7 +1,7 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell, ArrowLeft, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { api } from '../../utils/api';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export default function AdminLayout() {
   // Fetch pending count
   const fetchPendingCount = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/admin/songs/pending/count');
+      const res = await api.get('/api/admin/songs/pending/count');
       if (res.ok) {
         const data = await res.json();
         setPendingCount(data.count);
