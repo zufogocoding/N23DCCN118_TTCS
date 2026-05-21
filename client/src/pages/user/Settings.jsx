@@ -4,6 +4,7 @@ import {
   ArrowLeft, User, Lock, Moon, Sun, Monitor, Info, 
   ShieldAlert, CheckCircle2, AlertTriangle, Loader2 
 } from 'lucide-react';
+import { api } from '../../utils/api';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -31,17 +32,9 @@ export default function Settings() {
     setIsSubmitting(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:9000/api/auth/change-password', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          oldPassword: passwordForm.old,
-          newPassword: passwordForm.new
-        })
+      const response = await api.put('/api/auth/change-password', {
+        oldPassword: passwordForm.old,
+        newPassword: passwordForm.new
       });
       
       const data = await response.json();
@@ -69,13 +62,7 @@ export default function Settings() {
     setIsSubmitting(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:9000/api/auth/delete-account', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.delete('/api/auth/delete-account');
       
       const data = await response.json();
       

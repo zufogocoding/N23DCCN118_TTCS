@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, Search, ShieldOff,
@@ -6,8 +5,7 @@ import {
   Music2, ListMusic, X, AlertTriangle, Crown, UserCircle2,
   RefreshCw, Eye, MoreVertical
 } from 'lucide-react';
-
-const API = 'http://localhost:9000';
+import { api, getMediaUrl } from '../../utils/api';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -19,7 +17,7 @@ function fmtDate(d) {
 function Avatar({ url, name, size = 9 }) {
   const initials = (name || '?').slice(0, 2).toUpperCase();
   return url
-    ? <img src={`${API}${url}`} alt={name} className={`w-${size} h-${size} rounded-full object-cover ring-2 ring-[#333]`} />
+    ? <img src={getMediaUrl(url)} alt={name} className={`w-${size} h-${size} rounded-full object-cover ring-2 ring-[#333]`} />
     : (
       <div className={`w-${size} h-${size} rounded-full bg-gradient-to-br from-[#00e6e6]/30 to-[#006666]/30 border border-[#00e6e6]/30 flex items-center justify-center text-[#00e6e6] text-xs font-bold select-none`}>
         {initials}
@@ -89,8 +87,7 @@ function UserDetailDrawer({ userId, onClose, onAction }) {
   useEffect(() => {
     if (!userId) return;
     setLoading(true);
-    const token = localStorage.getItem('token');
-    fetch(`${API}/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
+    api.get(`/api/admin/users/${userId}`)
       .then(r => r.json())
       .then(d => { setUser(d); setLoading(false); })
       .catch(() => setLoading(false));
@@ -356,14 +353,11 @@ export default function AdminUsers() {
   const fetchUsers = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams({
         page, limit: 15,
         search, status: statusFilter, role: roleFilter,
       });
-      const res = await fetch(`${API}/api/admin/users?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/api/admin/users?${params}`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users);
@@ -400,20 +394,19 @@ export default function AdminUsers() {
   const executeAction = async () => {
     if (!confirm) return;
     const { action, user } = confirm;
-    const token = localStorage.getItem('token');
     setActionLoading(true);
 
     const actionMap = {
-      ban: { method: 'PUT', url: `/api/admin/users/${user.id}/ban` },
-      unban: { method: 'PUT', url: `/api/admin/users/${user.id}/unban` },
-      delete: { method: 'DELETE', url: `/api/admin/users/${user.id}` },
-      promote: { method: 'PUT', url: `/api/admin/users/${user.id}/promote` },
-      demote: { method: 'PUT', url: `/api/admin/users/${user.id}/demote` },
+      ban: { method: 'put', url: `/api/admin/users/${user.id}/ban` },
+      unban: { method: 'put', url: `/api/admin/users/${user.id}/unban` },
+      delete: { method: 'delete', url: `/api/admin/users/${user.id}` },
+      promote: { method: 'put', url: `/api/admin/users/${user.id}/promote` },
+      demote: { method: 'put', url: `/api/admin/users/${user.id}/demote` },
     };
 
     try {
       const { method, url } = actionMap[action];
-      const res = await fetch(`${API}${url}`, { method, headers: { Authorization: `Bearer ${token}` } });
+      const res = await api[method](url);
       const data = await res.json();
       if (res.ok) {
         showToast(data.message || 'Thao tác thành công');

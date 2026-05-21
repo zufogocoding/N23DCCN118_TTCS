@@ -6,37 +6,10 @@ import { usePlayer } from "../../context/PlayerContext";
 import AddToPlaylistMenu from "../../components/AddToPlaylistMenu";
 import CreatePlaylistModal from "../../components/CreatePlaylistModal";
 import { getPrimaryArtistUserId } from "../../utils/artistNav";
+import { api } from "../../utils/api";
+import { getArtistName, getCoverArt, formatDuration } from "../../utils/songHelpers";
 
-// Helper: lấy tên artist
-function getArtistName(song) {
-  if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
-  }
-  if (song.artistName) return song.artistName;
-  return 'Unknown Artist';
-}
 
-// Helper: cover art URL
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=600&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=600&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=600&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
-
-// Format duration
-function formatDuration(ms) {
-  if (!ms) return '0:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
 
 const SongDetail = () => {
   const { id } = useParams();
@@ -50,7 +23,7 @@ const SongDetail = () => {
   useEffect(() => {
     async function fetchSong() {
       try {
-        const res = await fetch(`http://localhost:9000/api/songs/${id}`);
+        const res = await api.get(`/api/songs/${id}`);
         if (res.ok) {
           const data = await res.json();
           setSong(data);
@@ -58,7 +31,7 @@ const SongDetail = () => {
           // Kiểm tra trạng thái like
           const user = JSON.parse(localStorage.getItem('user') || '{}');
           if (user.id) {
-            const likeRes = await fetch(`http://localhost:9000/api/interactions/like/${user.id}/${id}`);
+            const likeRes = await api.get(`/api/interactions/like-status/${id}`);
             if (likeRes.ok) {
               const likeData = await likeRes.json();
               setLiked(likeData.isLiked);
@@ -90,11 +63,7 @@ const SongDetail = () => {
     if (!user.id || !song) return;
 
     try {
-      const res = await fetch('http://localhost:9000/api/interactions/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, songId: song.id })
-      });
+      const res = await api.post('/api/interactions/like', { songId: song.id });
       if (res.ok) {
         const data = await res.json();
         setLiked(data.isLiked);

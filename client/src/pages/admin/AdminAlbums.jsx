@@ -6,8 +6,7 @@ import {
   ArrowDown, Ban, RotateCcw, Music, SlidersHorizontal, ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
-
-const API = 'http://localhost:9000';
+import { api, getMediaUrl } from '../../utils/api';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,7 +66,7 @@ function TypeBadge({ type }) {
 
 function CoverImage({ url, title }) {
   const [err, setErr] = useState(false);
-  const src = url ? (url.startsWith('http') ? url : `${API}${url}`) : null;
+  const src = getMediaUrl(url);
   if (!src || err) {
     return (
       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
@@ -161,7 +160,7 @@ function AlbumDetailDrawer({ album, onClose, onTakedown, onRestore, actionLoadin
             <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-[#2a2a2a] bg-[#1a1a2e] flex items-center justify-center">
               {album.coverArtUrl ? (
                 <img
-                  src={album.coverArtUrl.startsWith('http') ? album.coverArtUrl : `${API}${album.coverArtUrl}`}
+                  src={getMediaUrl(album.coverArtUrl)}
                   alt={album.title}
                   className="w-full h-full object-cover"
                 />
@@ -406,15 +405,12 @@ export default function AdminAlbums() {
   const fetchAlbums = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams({
         page, limit: 15,
         search, status: statusFilter, type: typeFilter,
         sortBy, sortOrder, dateFrom, dateTo,
       });
-      const res = await fetch(`${API}/api/admin/albums?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/api/admin/albums?${params}`);
       if (res.ok) {
         const data = await res.json();
         setAlbums(data.albums ?? []);
@@ -442,10 +438,7 @@ export default function AdminAlbums() {
     setDetailAlbum({ ...album, tracks: [], stats: {} });
     setDetailLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/admin/albums/${album.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/api/admin/albums/${album.id}`);
       if (res.ok) {
         const data = await res.json();
         setDetailAlbum({ ...data.album, tracks: data.tracks, stats: data.stats });
@@ -480,17 +473,13 @@ export default function AdminAlbums() {
   const executeAction = async () => {
     if (!confirm) return;
     const { type, album } = confirm;
-    const token = localStorage.getItem('token');
     setActionLoading(true);
     try {
       const endpoint = type === 'takedown'
-        ? `${API}/api/admin/albums/${album.id}/takedown`
-        : `${API}/api/admin/albums/${album.id}/restore`;
+        ? `/api/admin/albums/${album.id}/takedown`
+        : `/api/admin/albums/${album.id}/restore`;
 
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.patch(endpoint);
       const data = await res.json();
       if (res.ok) {
         showToast(data.message || 'Thao tác thành công');

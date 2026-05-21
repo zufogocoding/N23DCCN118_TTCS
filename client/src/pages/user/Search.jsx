@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Search as SearchIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import VirtualSongList from '../../components/VirtualSongList';
+import { api, getMediaUrl } from '../../utils/api';
+import useDebounce from '../../hooks/useDebounce';
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,7 +23,7 @@ export default function Search() {
   useEffect(() => {
     const fetchGenres = async () => {
       try {
-        const response = await fetch('http://localhost:9000/api/genres');
+        const response = await api.get('/api/genres');
         if (response.ok) {
           const data = await response.json();
           setSuggestions(data.map(g => ({ title: g.genreTag, id: g.id })));
@@ -33,24 +35,22 @@ export default function Search() {
     fetchGenres();
   }, []);
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
   // Reset page when query changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery.trim() !== '') {
-        setPage(1);
-        fetchSearchResults(1, true);
-      } else {
-        setSearchResults({ songs: [], playlists: [], artists: [] });
-      }
-    }, 500);
+    if (debouncedSearchQuery.trim() !== '') {
+      setPage(1);
+      fetchSearchResults(debouncedSearchQuery, 1, true);
+    } else {
+      setSearchResults({ songs: [], playlists: [], artists: [] });
+    }
+  }, [debouncedSearchQuery]);
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  async function fetchSearchResults(pageNum, isReset = false) {
+  async function fetchSearchResults(query, pageNum, isReset = false) {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:9000/api/search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&limit=20`);
+      const response = await api.get(`/api/search?q=${encodeURIComponent(query)}&page=${pageNum}&limit=20`);
       if (response.ok) {
         const data = await response.json();
         setHasNextPage(data.hasNextPage);
@@ -80,7 +80,7 @@ export default function Search() {
     if (!isLoading && hasNextPage) {
       const nextPage = page + 1;
       setPage(nextPage);
-      fetchSearchResults(nextPage, false);
+      fetchSearchResults(debouncedSearchQuery, nextPage, false);
     }
   };
 
@@ -178,7 +178,7 @@ export default function Search() {
                           onClick={() => navigate(`/artist/${artist.userId}`)}
                           className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer flex flex-col items-center text-center group"
                         >
-                          <img src={artist.avatarUrl ? `http://localhost:9000${artist.avatarUrl}` : '/default-avatar.png'} alt="avatar" className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg" />
+                          <img src={artist.avatarUrl ? getMediaUrl(artist.avatarUrl) : '/default-avatar.png'} alt="avatar" className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg" />
                           <h3 className="font-bold text-white truncate w-full mb-1">{artist.artistName || artist.user?.displayName || artist.user?.username}</h3>
                           <p className="text-sm text-[#a0a0a0]">Nghệ sĩ</p>
                         </div>
@@ -194,7 +194,7 @@ export default function Search() {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
                       {searchResults.playlists.map((playlist, index) => (
                         <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group" onClick={() => navigate(`/playlist/${playlist.id}`)}>
-                          <img src={playlist.coverArtUrl ? `http://localhost:9000${playlist.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" />
+                          <img src={playlist.coverArtUrl ? getMediaUrl(playlist.coverArtUrl) : '/default-cover.png'} alt="cover" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" />
                           <h3 className="font-bold text-white truncate text-base mb-1">{playlist.title}</h3>
                           <p className="text-sm text-[#a0a0a0] truncate">{playlist.user?.displayName || playlist.user?.username}</p>
                         </div>

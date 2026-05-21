@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Image, Music, Upload, CheckCircle, Loader2, ArrowLeft, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../../utils/api";
 
 export default function UploadSong() {
   const navigate = useNavigate();
@@ -31,8 +32,8 @@ export default function UploadSong() {
 
   // Fetch genres từ API
   useEffect(() => {
-    fetch('http://localhost:9000/api/genres')
-      .then(res => res.json())
+    api.get('/api/genres')
+      .then(res => res.ok ? res.json() : [])
       .then(data => setGenres(data))
       .catch(err => console.error('Lỗi lấy genres:', err));
   }, []);
@@ -43,7 +44,7 @@ export default function UploadSong() {
       setMyAlbums([]);
       return;
     }
-    fetch(`http://localhost:9000/api/artists/${u.id}/albums`)
+    api.get(`/api/artists/${u.id}/albums`)
       .then((r) => (r.ok ? r.json() : { albums: [] }))
       .then((data) => setMyAlbums(data.albums || []))
       .catch(() => setMyAlbums([]));
@@ -145,7 +146,7 @@ export default function UploadSong() {
         xhr.addEventListener("error", () => reject(new Error("Lỗi kết nối")));
 
         const token = localStorage.getItem("token");
-        xhr.open("POST", "http://localhost:9000/api/songs/upload");
+        xhr.open("POST", "/api/songs/upload");
         if (token) {
           xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
