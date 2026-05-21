@@ -123,6 +123,8 @@ model Song {
 
   // Tối ưu câu lệnh WHERE isDeleted = false khi quét toàn bộ bảng
   @@index([isDeleted])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Genre {
@@ -188,6 +190,8 @@ model Interaction {
   @@id([userId, songId, timeStamp])
 
   @@index([userId, timeStamp])
+  @@index([userId, songId])
+  @@index([timeStamp])
 }
 
 model PlaylistSong {
