@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useRef, useEffect } from 'react';
+import { api } from '../utils/api';
 
 const PlayerContext = createContext();
 
@@ -62,7 +63,7 @@ export const PlayerProvider = ({ children }) => {
     setCurrentIndex(playlist.findIndex(s => s.id === song.id));
 
     // Sử dụng streaming API endpoint
-    const streamUrl = `http://localhost:9000/api/songs/${song.id}/stream`;
+    const streamUrl = `/api/songs/${song.id}/stream`;
     audioRef.current.src = streamUrl;
     audioRef.current.play().catch(() => {
       // Nếu lỗi (ví dụ file không tồn tại), vẫn set state đúng
@@ -73,21 +74,11 @@ export const PlayerProvider = ({ children }) => {
     // Call API để tracking lượt nghe
     const userStr = localStorage.getItem('user');
     if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        fetch('http://localhost:9000/api/interactions/listen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            songId: song.id,
-            durationPlayed: 0, // Tạm thời gửi 0, chỉ để tăng playCount
-            isSkipped: false
-          })
-        }).catch(err => console.error('Track listen error:', err));
-      } catch (e) {
-        console.error(e);
-      }
+      api.post('/api/interactions/listen', {
+        songId: song.id,
+        durationPlayed: 0, // Tạm thời gửi 0, chỉ để tăng playCount
+        isSkipped: false
+      }).catch(err => console.error('Track listen error:', err));
     }
   }
 
