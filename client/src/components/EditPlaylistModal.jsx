@@ -1,6 +1,6 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useEffect } from 'react';
 import { Music, X } from 'lucide-react';
+import { api, getMediaUrl } from '../utils/api';
 
 export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist }) {
   const [title, setTitle] = useState('');
@@ -14,7 +14,7 @@ export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist
     if (playlist) {
       setTitle(playlist.title || '');
       setDescription(playlist.description || '');
-      setPreviewUrl(playlist.coverArtUrl ? `http://localhost:9000${playlist.coverArtUrl}` : null);
+      setPreviewUrl(playlist.coverArtUrl ? getMediaUrl(playlist.coverArtUrl) : null);
     }
   }, [playlist]);
 
@@ -33,7 +33,7 @@ export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist
     if (playlist) {
       setTitle(playlist.title || '');
       setDescription(playlist.description || '');
-      setPreviewUrl(playlist.coverArtUrl ? `http://localhost:9000${playlist.coverArtUrl}` : null);
+      setPreviewUrl(playlist.coverArtUrl ? getMediaUrl(playlist.coverArtUrl) : null);
     }
     onClose();
   };
@@ -48,15 +48,11 @@ export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist
       const formData = new FormData();
       formData.append('title', title.trim() || 'My Playlist');
       formData.append('description', description.trim());
-      formData.append('userId', user.id);
       if (image) {
         formData.append('cover', image);
       }
 
-      const res = await fetch(`http://localhost:9000/api/playlists/${playlist.id}`, {
-        method: 'PUT',
-        body: formData
-      });
+      const res = await api.put(`/api/playlists/${playlist.id}`, formData);
 
       if (res.ok) {
         if (onSuccess) onSuccess();
