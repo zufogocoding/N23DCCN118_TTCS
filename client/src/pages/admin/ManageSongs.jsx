@@ -6,8 +6,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, Ban, Check, BarChart2,
   SlidersHorizontal
 } from 'lucide-react';
-
-const API = 'http://localhost:9000';
+import { api, getMediaUrl } from '../../utils/api';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +62,7 @@ function CoverImage({ url, title }) {
   }
   return (
     <img
-      src={`${API}${url}`}
+      src={getMediaUrl(url)}
       alt={title}
       onError={() => setErr(true)}
       className="w-10 h-10 rounded-lg object-cover flex-shrink-0 ring-1 ring-[#2a2a2a]"
@@ -322,8 +321,7 @@ export default function ManageSongs() {
 
   // Load genres once
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    fetch(`${API}/api/genres`, { headers: { Authorization: `Bearer ${token}` } })
+    api.get('/api/genres')
       .then(r => r.json())
       .then(data => setGenres(Array.isArray(data) ? data : []))
       .catch(() => {});
@@ -338,7 +336,6 @@ export default function ManageSongs() {
   const fetchSongs = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams({
         page, limit: 15,
         search, status: statusFilter,
@@ -346,9 +343,7 @@ export default function ManageSongs() {
         sortBy, sortOrder,
         dateFrom, dateTo,
       });
-      const res = await fetch(`${API}/api/admin/songs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/api/admin/songs?${params}`);
       if (res.ok) {
         const data = await res.json();
         setSongs(data.songs ?? []);
@@ -401,20 +396,13 @@ export default function ManageSongs() {
   const executeAction = async () => {
     if (!confirm) return;
     const { type, song } = confirm;
-    const token = localStorage.getItem('token');
     setActionLoading(true);
     try {
       let res;
       if (type === 'toggle') {
-        res = await fetch(`${API}/api/admin/songs/${song.id}/visibility`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        res = await api.patch(`/api/admin/songs/${song.id}/visibility`);
       } else if (type === 'delete') {
-        res = await fetch(`${API}/api/admin/songs/${song.id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        res = await api.delete(`/api/admin/songs/${song.id}`);
       }
       const data = await res.json();
       if (res.ok) {

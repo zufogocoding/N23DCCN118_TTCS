@@ -1,5 +1,10 @@
 const jwt = require('jsonwebtoken');
 
+if (!process.env.JWT_SECRET) {
+  console.error("CRITICAL ERROR: JWT_SECRET env variable is missing!");
+  process.exit(1);
+}
+
 const authMiddleware = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -10,7 +15,7 @@ const authMiddleware = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     
     // Giải mã token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const userId = decoded.userId ?? decoded.id;
     if (userId == null) {

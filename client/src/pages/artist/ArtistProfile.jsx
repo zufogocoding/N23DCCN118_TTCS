@@ -16,27 +16,8 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
-import { authHeaders } from '../../utils/api';
-
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
-
-function formatDuration(ms) {
-  if (!ms) return '0:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
+import { api, getMediaUrl } from '../../utils/api';
+import { getCoverArt, formatDuration } from '../../utils/songHelpers';
 
 const getSocialIcon = () => <LinkIcon size={20} />;
 
@@ -80,9 +61,7 @@ export default function ArtistProfile() {
   const fetchArtistData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:9000/api/artists/${id}`, {
-        headers: authHeaders(false),
-      });
+      const res = await api.get(`/api/artists/${id}`);
       if (res.ok) {
         const data = await res.json();
         setProfile(data.profile);
@@ -112,19 +91,17 @@ export default function ArtistProfile() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!user.id || topSongs.length === 0) return;
-    Promise.all(
-      topSongs.map((s) =>
-        fetch(`http://localhost:9000/api/interactions/like/${user.id}/${s.id}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null)
-      )
-    ).then((results) => {
-      const liked = new Set();
-      results.forEach((r, i) => {
-        if (r?.isLiked) liked.add(topSongs[i].id);
-      });
-      setLikedSongIds(liked);
-    });
+    
+    api.post('/api/interactions/like-status-batch', { songIds: topSongs.map((s) => s.id) })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((statusMap) => {
+        const liked = new Set();
+        topSongs.forEach((s) => {
+          if (statusMap[s.id]) liked.add(s.id);
+        });
+        setLikedSongIds(liked);
+      })
+      .catch((err) => console.error('Lỗi khi kiểm tra danh sách thích:', err));
   }, [topSongs]);
 
   const artistDisplayName = displayArtistName(profile);
@@ -153,11 +130,7 @@ export default function ArtistProfile() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:9000/api/interactions/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, songId }),
-      });
+      const res = await api.post('/api/interactions/like', { songId });
       if (res.ok) {
         const data = await res.json();
         setLikedSongIds((prev) => {
@@ -181,10 +154,9 @@ export default function ArtistProfile() {
     setFollowBusy(true);
     try {
       const method = profile.isFollowing ? 'DELETE' : 'POST';
-      const res = await fetch(`http://localhost:9000/api/artists/${id}/follow`, {
-        method,
-        headers: authHeaders(false),
-      });
+      const res = method === 'DELETE'
+        ? await api.delete(`/api/artists/${id}/follow`)
+        : await api.post(`/api/artists/${id}/follow`, {});
       if (res.ok) {
         await fetchArtistData();
       }
@@ -203,10 +175,10 @@ export default function ArtistProfile() {
     });
     // Set existing image previews
     const existingAvatar = profile.artist?.avatarUrl || profile.avatarUrl;
-    setAvatarPreview(existingAvatar ? (existingAvatar.startsWith('http') ? existingAvatar : `http://localhost:9000${existingAvatar}`) : null);
+    setAvatarPreview(existingAvatar ? getMediaUrl(existingAvatar) : null);
     setAvatarFile(null);
     const existingBanner = profile.artist?.bannerUrl || profile.coverImageUrl;
-    setBannerPreview(existingBanner ? (existingBanner.startsWith('http') ? existingBanner : `http://localhost:9000${existingBanner}`) : null);
+    setBannerPreview(existingBanner ? getMediaUrl(existingBanner) : null);
     setBannerFile(null);
     setIsEditModalOpen(true);
   };
@@ -238,12 +210,7 @@ export default function ArtistProfile() {
       if (avatarFile) formData.append('avatarFile', avatarFile);
       if (bannerFile) formData.append('bannerFile', bannerFile);
 
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:9000/api/artists/${id}/profile`, {
-        method: 'PUT',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData,
-      });
+      const res = await api.put(`/api/artists/${id}/profile`, formData);
 
       if (res.ok) {
         setIsEditModalOpen(false);
@@ -265,11 +232,7 @@ export default function ArtistProfile() {
     if (!newAlbumTitle.trim()) return;
     setCreateAlbumBusy(true);
     try {
-      const res = await fetch('http://localhost:9000/api/albums', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ title: newAlbumTitle.trim() }),
-      });
+      const res = await api.post('/api/albums', { title: newAlbumTitle.trim() });
       if (res.ok) {
         const data = await res.json();
         setIsCreateAlbumOpen(false);
@@ -293,9 +256,8 @@ export default function ArtistProfile() {
     const limit = discography.limit || 20;
     setLoadingMore(true);
     try {
-      const res = await fetch(
-        `http://localhost:9000/api/artists/${id}?songsPage=${nextPage}&songsLimit=${limit}`,
-        { headers: authHeaders(false) }
+      const res = await api.get(
+        `/api/artists/${id}?songsPage=${nextPage}&songsLimit=${limit}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -346,15 +308,11 @@ export default function ArtistProfile() {
 
   const banner =
     profile.artist?.bannerUrl || profile.coverImageUrl
-      ? (profile.artist?.bannerUrl || profile.coverImageUrl).startsWith('http')
-        ? profile.artist?.bannerUrl || profile.coverImageUrl
-        : `http://localhost:9000${profile.artist?.bannerUrl || profile.coverImageUrl}`
+      ? getMediaUrl(profile.artist?.bannerUrl || profile.coverImageUrl)
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop';
 
   const avatarUrl = profile.artist?.avatarUrl || profile.avatarUrl
-    ? (profile.artist?.avatarUrl || profile.avatarUrl).startsWith('http')
-      ? profile.artist?.avatarUrl || profile.avatarUrl
-      : `http://localhost:9000${profile.artist?.avatarUrl || profile.avatarUrl}`
+    ? getMediaUrl(profile.artist?.avatarUrl || profile.avatarUrl)
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(artistDisplayName)}&background=random`;
 
   const bioText = profile.artist?.artistBio || profile.bio;
@@ -500,9 +458,7 @@ export default function ArtistProfile() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {albums.map((al) => {
               const cov = al.coverArtUrl
-                ? al.coverArtUrl.startsWith('http')
-                  ? al.coverArtUrl
-                  : `http://localhost:9000${al.coverArtUrl}`
+                ? getMediaUrl(al.coverArtUrl)
                 : 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop';
               return (
                 <Link

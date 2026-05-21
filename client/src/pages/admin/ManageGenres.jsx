@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, X, Loader2 } from 'lucide-react';
+import { api } from '../../utils/api';
 
 export default function ManageGenres() {
   const [genres, setGenres] = useState([]);
@@ -23,7 +24,7 @@ export default function ManageGenres() {
   async function fetchGenres() {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:9000/api/genres');
+      const res = await api.get('/api/genres');
       if (!res.ok) throw new Error('Không thể tải danh sách thể loại');
       const data = await res.json();
       setGenres(data);
@@ -39,9 +40,7 @@ export default function ManageGenres() {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa thể loại "${name}"?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:9000/api/genres/${id}`, {
-        method: 'DELETE',
-      });
+      const res = await api.delete(`/api/genres/${id}`);
       
       if (!res.ok) {
          const data = await res.json();
@@ -86,18 +85,12 @@ export default function ManageGenres() {
 
     try {
       const url = modalMode === 'add' 
-        ? 'http://localhost:9000/api/genres' 
-        : `http://localhost:9000/api/genres/${editingId}`;
+        ? '/api/genres' 
+        : `/api/genres/${editingId}`;
         
-      const method = modalMode === 'add' ? 'POST' : 'PUT';
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: genreNameInput }),
-      });
+      const res = modalMode === 'add'
+        ? await api.post(url, { name: genreNameInput })
+        : await api.put(url, { name: genreNameInput });
 
       const data = await res.json();
 

@@ -56,13 +56,18 @@ app.use(albumRoutes);
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error("Global error handler:", err);
+  
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ error: "File quá lớn! Vui lòng chọn file nhỏ hơn." });
   }
   if (err instanceof SyntaxError) {
     return res.status(400).json({ error: "Dữ liệu gửi lên không hợp lệ." });
   }
-  res.status(500).json({ error: err.message || "Lỗi máy chủ nội bộ" });
+  
+  const statusCode = err.statusCode || err.status || 500;
+  const message = err.message || "Lỗi máy chủ nội bộ";
+  
+  res.status(statusCode).json({ error: message });
 });
 
 const startReleaseWorker = require('./workers/releaseWorker.js');

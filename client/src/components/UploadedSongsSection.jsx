@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Edit2 } from "lucide-react";
+import { getCoverArt } from "../utils/songHelpers";
 
 export default function UploadedSongsSection({ songs=[] }) {
 
@@ -45,8 +46,9 @@ className="bg-[#1d1d1d] rounded-xl p-4 flex justify-between items-center"
 <div className="flex gap-4">
 
 <img
-src={`http://localhost:9000/${song.coverArtUrl}`}
+src={getCoverArt(song)}
 className="w-16 h-16 rounded-lg object-cover"
+alt={song.title}
 />
 
 <div>

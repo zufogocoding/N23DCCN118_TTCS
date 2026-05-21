@@ -1,23 +1,12 @@
 
-import axios from "axios";
-
-const API = "http://localhost:9000";
+import { api } from "../utils/api";
 
 export const getUploadedSongs = async () => {
     try {
-        const response = await axios.get(
-            `${API}/api/songs/my-uploaded`,
-            {
-                headers:{
-                    Authorization:`Bearer ${localStorage.getItem("token")}`
-                }
-            }
-        );
-
-        return response.data;
-
+        const response = await api.get('/api/songs/my-uploaded');
+        return await response.json();
     } catch(error){
-        console.log(error);
+        console.error(error);
         return [];
     }
 };

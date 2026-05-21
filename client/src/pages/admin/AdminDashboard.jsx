@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { api } from '../../utils/api';
 
 const StatCard = ({ title, value, loading }) => (
   <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg flex flex-col justify-between">
@@ -31,7 +32,7 @@ export default function AdminDashboard() {
   // Fetch thống kê tổng quan
   const fetchStats = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/dashboard/stats');
+      const res = await api.get('/api/dashboard/stats');
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
   // Fetch dữ liệu streaming theo ngày (7 ngày gần nhất)
   const fetchStreamingStats = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/dashboard/streaming-stats?days=7');
+      const res = await api.get('/api/dashboard/streaming-stats?days=7');
       if (res.ok) {
         const data = await res.json();
         setChartData(data);
@@ -61,7 +62,7 @@ export default function AdminDashboard() {
   // Fetch các hoạt động cần xem xét gần đây
   const fetchRecentActivities = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/dashboard/recent-activities');
+      const res = await api.get('/api/dashboard/recent-activities');
       if (res.ok) {
         const data = await res.json();
         setRecentActivities(data);

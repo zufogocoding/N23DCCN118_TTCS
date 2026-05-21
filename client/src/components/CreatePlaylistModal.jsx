@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Music, X } from 'lucide-react';
+import { api } from '../utils/api';
 
 export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
@@ -39,18 +40,11 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('title', title.trim() || 'My Playlist #1');
       formData.append('description', description.trim());
-      formData.append('userId', user.id);
       if (image) {
         formData.append('cover', image);
       }
 
-      const res = await fetch('http://localhost:9000/api/playlists', {
-        method: 'POST',
-        headers: { 
-          // Không set Content-Type khi dùng FormData, fetch tự tính toán boundary
-        },
-        body: formData
-      });
+      const res = await api.post('/api/playlists', formData);
 
       if (res.ok) {
         // Tải lại danh sách playlist qua callback onSuccess

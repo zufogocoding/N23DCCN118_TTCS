@@ -76,31 +76,41 @@ const dashboardController = {
     }
   },
 
-  // Lấy số lượt nghe theo ngày trong 7 ngày gần nhất từ bảng Interaction
+  // Lấy số lượt nghe theo ngày trong 7 ngày gần nhất từ bảng Interaction (Tối ưu N+1 query)
   getStreamingStats: async (req, res) => {
     try {
       const days = parseInt(req.query.days) || 7;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (days - 1));
+      startDate.setHours(0, 0, 0, 0);
+
+      // Fetch all interactions in the time range with a single query selecting only timeStamp
+      const interactions = await prisma.interaction.findMany({
+        where: {
+          timeStamp: { gte: startDate }
+        },
+        select: {
+          timeStamp: true
+        }
+      });
+
+      // Group and count by date string format
+      const countsMap = {};
+      interactions.forEach(inter => {
+        if (inter.timeStamp) {
+          const label = new Date(inter.timeStamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          countsMap[label] = (countsMap[label] || 0) + 1;
+        }
+      });
+
+      // Map back to result array filling missing days with 0
       const result = [];
-
       for (let i = days - 1; i >= 0; i--) {
-        const start = new Date();
-        start.setDate(start.getDate() - i);
-        start.setHours(0, 0, 0, 0);
-
-        const end = new Date(start);
-        end.setHours(23, 59, 59, 999);
-
-        const count = await prisma.interaction.count({
-          where: {
-            timeStamp: {
-              gte: start,
-              lte: end
-            }
-          }
-        });
-
-        const label = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        result.push({ date: label, streams: count });
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        result.push({ date: label, streams: countsMap[label] || 0 });
       }
 
       res.status(200).json(result);
