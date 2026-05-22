@@ -47,6 +47,7 @@ model User {
   interactions        Interaction[]
   recommendationCache RecommendationCache[]
   notifications       Notification[]
+  reports             Report[]
 }
 
 model Artist {
@@ -279,4 +280,19 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  reporterId  Int
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType  String   @db.VarChar(50) // 'SONG', 'ALBUM', 'ARTIST'
+  targetId    Int      // ID của đối tượng bị báo cáo
+  reason      String   @db.VarChar(100) // 'COPYRIGHT', 'SPAM', 'HATE_SPEECH'
+  description String?  @db.Text
+  proofUrl    String?  @db.VarChar(500) // Link chứng minh
+  status      String   @default("PENDING") // PENDING, RESOLVED, REJECTED
+  createdAt   DateTime @default(now())
+
+  @@index([status, createdAt])
 }

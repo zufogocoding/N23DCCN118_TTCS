@@ -19,11 +19,13 @@ import {
   Mic2,
   Music,
   MoreHorizontal,
+  Flag,
 } from "lucide-react";
 
 import UserDropdown from "../UserDropdown";
 import NotificationDropdown from "../NotificationDropdown.jsx";
 import CreatePlaylistModal from "../CreatePlaylistModal";
+import ReportModal from "../ReportModal";
 import AddToPlaylistMenu from "../AddToPlaylistMenu";
 import { api } from "../../utils/api";
 import { getCoverArt } from "../../utils/songHelpers";
@@ -38,6 +40,11 @@ function formatPlayerClock(seconds) {
 
 export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isPlayerMenuOpen, setIsPlayerMenuOpen] = useState(false);
+  const playerMenuRef = useRef(null);
+  useClickOutside(playerMenuRef, () => setIsPlayerMenuOpen(false));
+
   const [isLiked, setIsLiked] = useState(false);
   const [userPlaylists, setUserPlaylists] = useState([]);
 
@@ -169,6 +176,15 @@ export default function MainLayout() {
         onClose={() => setIsPlaylistModalOpen(false)}
         onSuccess={fetchPlaylists}
       />
+      
+      {currentSong && (
+        <ReportModal 
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetType="SONG"
+          targetId={currentSong.id}
+        />
+      )}
 
       <div className="flex flex-1 overflow-hidden">
 
@@ -400,6 +416,40 @@ export default function MainLayout() {
                   size={18}
                   className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#b3b3b3] hover:text-white"}`}
                 />
+
+                {/* 3-dot Context Menu in Player Bar */}
+                <div className="relative" ref={playerMenuRef}>
+                  <button 
+                    onClick={() => setIsPlayerMenuOpen(!isPlayerMenuOpen)}
+                    className="p-1.5 rounded-full text-[#b3b3b3] hover:text-white transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                  
+                  {isPlayerMenuOpen && (
+                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-[#282828] rounded-md shadow-2xl border border-[#333] py-1 z-[100]">
+                      <AddToPlaylistMenu
+                        songId={currentSong.id}
+                        onCreatePlaylist={() => {
+                          setIsPlayerMenuOpen(false);
+                          setIsPlaylistModalOpen(true);
+                        }}
+                        asMenuItem={true}
+                      />
+                      
+                      <button 
+                        onClick={() => {
+                          setIsPlayerMenuOpen(false);
+                          setIsReportModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+                      >
+                        <Flag size={18} />
+                        <span>Báo cáo bài hát</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : (

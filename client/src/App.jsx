@@ -32,6 +32,7 @@ const ManagePlaylists = lazy(() => import('./pages/admin/ManagePlaylists'));
 const ReleaseManager = lazy(() => import('./pages/artist/ReleaseManager'));
 const AdminUsers = lazy(() => import('./pages/admin/adminUser'));
 const ManageSongs = lazy(() => import('./pages/admin/ManageSongs'));
+const ManageReports = lazy(() => import('./pages/admin/ManageReports'));
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-screen bg-[#121212] text-white">
@@ -159,7 +160,7 @@ function App() {
             <Route path="albums" element={<AdminAlbums />} />
             <Route path="playlists" element={<ManagePlaylists />} />
             <Route path="genres" element={<ManageGenres />} />
-            <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
+            <Route path="reports" element={<ManageReports />} />
           </Route>
 
         </Routes>
