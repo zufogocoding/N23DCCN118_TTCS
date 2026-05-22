@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
+import { api } from '../../utils/api';
+
 // Định nghĩa Zod Schema
 const loginSchema = z.object({
   identifier: z.string().min(1, "Vui lòng nhập Tên đăng nhập hoặc Email"),
@@ -26,13 +28,9 @@ export default function Login() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: data.identifier,
-          password: data.password
-        }) // Gửi identifier thay vì email
+      const res = await api.post('/api/auth/login', {
+        identifier: data.identifier,
+        password: data.password
       });
       const resData = await res.json();
 

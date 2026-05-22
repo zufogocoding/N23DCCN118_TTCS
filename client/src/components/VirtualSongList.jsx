@@ -1,6 +1,7 @@
 import { Virtuoso } from 'react-virtuoso';
 import { Heart, Play } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { getCoverArt } from '../utils/songHelpers';
 
 export default function VirtualSongList({ songs, loadMore, hasMore, scrollContainerId }) {
   const { playSong } = usePlayer();
@@ -25,7 +26,7 @@ export default function VirtualSongList({ songs, loadMore, hasMore, scrollContai
       itemContent={(index, song) => (
         <div className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer" onClick={() => playSong(song, songs)}>
           <div className="flex items-center gap-4">
-            <img src={song.coverArtUrl ? `http://localhost:9000${song.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-12 h-12 rounded-sm object-cover" />
+            <img src={getCoverArt(song) || '/default-cover.png'} alt="cover" className="w-12 h-12 rounded-sm object-cover" />
             <div>
               <h4 className="text-white font-semibold group-hover:underline">{song.title}</h4>
               <p className="text-sm text-[#a0a0a0] hover:underline">

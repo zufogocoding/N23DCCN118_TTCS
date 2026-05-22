@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2, Music } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { api, getMediaUrl } from '../../utils/api';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -23,11 +24,7 @@ export default function Profile() {
         return;
       }
 
-      const res = await fetch('http://localhost:9000/api/users/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const res = await api.get('/api/users/profile');
 
       if (res.ok) {
         const data = await res.json();
@@ -106,13 +103,7 @@ export default function Profile() {
       if (formData.country) submitData.append('country', formData.country);
       if (selectedFile) submitData.append('avatar', selectedFile);
 
-      const res = await fetch('http://localhost:9000/api/users/profile', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: submitData
-      });
+      const res = await api.put('/api/users/profile', submitData);
 
       if (res.ok) {
         const data = await res.json();
@@ -156,7 +147,7 @@ export default function Profile() {
     );
   }
 
-  const displayAvatar = previewImage || (user?.avatarUrl ? `http://localhost:9000${user.avatarUrl}` : "https://i.pravatar.cc/150?u=default");
+  const displayAvatar = previewImage || (user?.avatarUrl ? getMediaUrl(user.avatarUrl) : "https://i.pravatar.cc/150?u=default");
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">

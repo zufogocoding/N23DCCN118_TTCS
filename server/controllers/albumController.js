@@ -350,9 +350,13 @@ const albumController = {
         return res.status(400).json({ error: 'Album phải có ít nhất 1 bài hát' });
       }
 
-      const hasUnapproved = album.songs.some(as => !as.song || as.song.status !== 'approved');
-      if (hasUnapproved) {
-        return res.status(400).json({ error: 'Tất cả bài hát trong album phải được phê duyệt trước khi phát hành!' });
+      // Spotify-style partial release: chỉ cần ít nhất 1 bài đã approved
+      // Bài pending/rejected vẫn ở trong album nhưng ẩn khỏi public (public API filter status:'approved')
+      const approvedCount = album.songs.filter(as => as.song?.status === 'approved').length;
+      const pendingCount = album.songs.filter(as => as.song?.status === 'pending').length;
+
+      if (approvedCount === 0) {
+        return res.status(400).json({ error: 'Album cần ít nhất 1 bài hát đã được duyệt để phát hành' });
       }
 
       await prisma.album.update({
@@ -364,7 +368,11 @@ const albumController = {
         },
       });
 
-      res.json({ message: 'Album đã được phát hành!' });
+      const message = pendingCount > 0
+        ? `Album đã được phát hành với ${approvedCount} bài hát. ${pendingCount} bài đang chờ duyệt sẽ tự động xuất hiện sau khi được phê duyệt.`
+        : 'Album đã được phát hành!';
+
+      res.json({ message, approvedCount, pendingCount });
     } catch (e) {
       console.error('releaseAlbum:', e);
       res.status(500).json({ error: 'Lỗi server' });
@@ -389,9 +397,12 @@ const albumController = {
         return res.status(400).json({ error: 'Album phải có ít nhất 1 bài hát' });
       }
 
-      const hasUnapproved = album.songs.some(as => !as.song || as.song.status !== 'approved');
-      if (hasUnapproved) {
-        return res.status(400).json({ error: 'Tất cả bài hát trong album phải được phê duyệt trước khi lên lịch phát hành!' });
+      // Partial release: chỉ cần ít nhất 1 bài approved để lên lịch
+      const approvedCount = album.songs.filter(as => as.song?.status === 'approved').length;
+      const pendingCount = album.songs.filter(as => as.song?.status === 'pending').length;
+
+      if (approvedCount === 0) {
+        return res.status(400).json({ error: 'Album cần ít nhất 1 bài hát đã được duyệt để lên lịch phát hành' });
       }
 
       const { scheduledAt } = req.body;
@@ -415,7 +426,7 @@ const albumController = {
         },
       });
 
-      res.json({ message: 'Đã lên lịch phát hành!', scheduledAt: scheduleDate });
+      res.json({ message: 'Đã lên lịch phát hành!', scheduledAt: scheduleDate, approvedCount, pendingCount });
     } catch (e) {
       console.error('scheduleAlbum:', e);
       res.status(500).json({ error: 'Lỗi server' });

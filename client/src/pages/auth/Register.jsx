@@ -15,6 +15,8 @@ const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
+import { api } from '../../utils/api';
+
 export default function Register() {
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema)
@@ -38,13 +40,9 @@ export default function Register() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/register-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: data.username,
-          email: data.email
-        })
+      const res = await api.post('/api/auth/register-otp', {
+        username: data.username,
+        email: data.email
       });
       const resData = await res.json();
 
@@ -73,13 +71,9 @@ export default function Register() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          otp: otp
-        })
+      const res = await api.post('/api/auth/signup', {
+        ...formData,
+        otp: otp
       });
       const resData = await res.json();
 

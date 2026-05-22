@@ -1,37 +1,11 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Trash2, Plus, Loader2, Pencil } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
-import { authHeaders } from '../../utils/api';
+import { api, getMediaUrl } from '../../utils/api';
+import { getCoverArt, formatDuration, getArtistName } from '../../utils/songHelpers';
 import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
-
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
-
-function formatDuration(ms) {
-  if (!ms) return '0:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
-
-function getArtistName(song) {
-  if (song.artists?.length > 0) {
-    return song.artists
-      .map((a) => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown')
-      .join(', ');
-  }
-  return song.artistName || 'Unknown Artist';
-}
 
 export default function AlbumView() {
   const { albumId } = useParams();
@@ -51,7 +25,7 @@ export default function AlbumView() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${albumId}`);
+      const res = await api.get(`/api/albums/${albumId}`);
       if (!res.ok) {
         setError('Không tìm thấy album');
         setData(null);
@@ -76,7 +50,7 @@ export default function AlbumView() {
 
   useEffect(() => {
     if (!isOwner || !currentUser.id) return;
-    fetch('http://localhost:9000/api/songs/my-uploaded', { headers: authHeaders(false) })
+    api.get('/api/songs/my-uploaded')
       .then((r) => (r.ok ? r.json() : []))
       .then(setMyUploads)
       .catch(() => setMyUploads([]));
@@ -96,7 +70,7 @@ export default function AlbumView() {
       title: s.title,
       artist: { name: getArtistName(s) },
       coverImage: getCoverArt(s),
-      audioUrl: s.audioUrl?.startsWith('http') ? s.audioUrl : `http://localhost:9000${s.audioUrl}`,
+      audioUrl: getMediaUrl(s.audioUrl),
       durationMs: s.durationMs,
     }));
     const playerSong = queue.find((q) => q.id === song.id) || queue[0];
@@ -111,10 +85,7 @@ export default function AlbumView() {
   const handleRemoveTrack = async (songId) => {
     if (!window.confirm('Gỡ bài này khỏi album?')) return;
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${albumId}/songs/${songId}`, {
-        method: 'DELETE',
-        headers: authHeaders(false),
-      });
+      const res = await api.delete(`/api/albums/${albumId}/songs/${songId}`);
       if (res.ok) loadAlbum();
     } catch (e) {
       console.error(e);
@@ -124,11 +95,7 @@ export default function AlbumView() {
   const handleAddTrack = async (songId) => {
     setAddingId(songId);
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${albumId}/songs`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ songId }),
-      });
+      const res = await api.post(`/api/albums/${albumId}/songs`, { songId });
       if (res.ok) loadAlbum();
     } catch (e) {
       console.error(e);
@@ -141,11 +108,7 @@ export default function AlbumView() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${albumId}`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({ title: editTitle }),
-      });
+      const res = await api.put(`/api/albums/${albumId}`, { title: editTitle });
       if (res.ok) loadAlbum();
     } catch (err) {
       console.error(err);
@@ -157,10 +120,7 @@ export default function AlbumView() {
   const handleDeleteAlbum = async () => {
     if (!window.confirm('Xóa album này? Các bài vẫn tồn tại trên hệ thống.')) return;
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${albumId}`, {
-        method: 'DELETE',
-        headers: authHeaders(false),
-      });
+      const res = await api.delete(`/api/albums/${albumId}`);
       if (res.ok) navigate(`/artist/${currentUser.id}`);
     } catch (e) {
       console.error(e);
@@ -188,11 +148,9 @@ export default function AlbumView() {
 
   const { album, tracks } = data;
   const cover =
-    album.coverArtUrl?.startsWith('http')
-      ? album.coverArtUrl
-      : album.coverArtUrl
-        ? `http://localhost:9000${album.coverArtUrl}`
-        : 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800&auto=format&fit=crop';
+    album.coverArtUrl
+      ? getMediaUrl(album.coverArtUrl)
+      : 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800&auto=format&fit=crop';
 
   const artistUser = album.artist?.user;
   const artistLabel =

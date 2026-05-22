@@ -3,6 +3,11 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../db/index');
 const { sendOtpEmail } = require('../utils/emailService');
 
+if (!process.env.JWT_SECRET) {
+  console.error("CRITICAL ERROR: JWT_SECRET env variable is missing!");
+  process.exit(1);
+}
+
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // 1. Gửi OTP Đăng ký
@@ -153,7 +158,7 @@ const login = async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET || 'fallback_secret_key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' } // Token sống 7 ngày
     );
 

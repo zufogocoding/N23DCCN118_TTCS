@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../utils/api";
+import { getCoverArt } from "../../utils/songHelpers";
 
 export default function LibraryPage() {
   const [songs, setSongs] = useState([]);
@@ -12,18 +13,22 @@ export default function LibraryPage() {
 
   async function getUploadedSongs() {
     try {
-      const res = await axios.get(
-        "http://localhost:9000/api/songs/user/1"
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = user.id || 1;
+      const res = await api.get(
+        `/api/songs/user/${userId}`
       );
 
-      setSongs(res.data);
-
+      if (res.ok) {
+        const data = await res.json();
+        setSongs(data);
+      }
     } catch (err) {
       console.log("Lỗi:", err);
     }
   };
 
-    
+
   const toggleMenu = (id) => {
 
     setOpenMenu(
@@ -50,50 +55,53 @@ export default function LibraryPage() {
 
   const updateSong = async () => {
 
-  try {
+    try {
 
-    await axios.put(
+      const res = await api.put(
 
-      `http://localhost:9000/api/songs/${selectedSong.id}`,
+        `/api/songs/${selectedSong.id}`,
 
-      {
+        {
 
-        title:selectedSong.title,
-        artistName:selectedSong.artistName,
-        genre:selectedSong.genre,
-        description:selectedSong.description
+          title: selectedSong.title,
+          artistName: selectedSong.artistName,
+          genre: selectedSong.genre,
+          description: selectedSong.description
 
+        }
+
+      );
+
+      if (res.ok) {
+        setSelectedSong(null);
+        getUploadedSongs();
       }
 
-    );
+    }
 
-    setSelectedSong(null);
+    catch (err) {
 
-    getUploadedSongs();
+      console.log(
+        "Lỗi update:",
+        err
+      );
 
-  }
+    }
 
-  catch(err){
-
-    console.log(
-      "Lỗi update:",
-      err
-    );
-
-  }
-
-};
+  };
 
 
   const deleteSong = async (id) => {
 
     try {
 
-      await axios.delete(
-        `http://localhost:9000/api/songs/${id}`
+      const res = await api.delete(
+        `/api/songs/${id}`
       );
 
-      getUploadedSongs();
+      if (res.ok) {
+        getUploadedSongs();
+      }
 
     }
     catch (err) {
@@ -144,11 +152,7 @@ export default function LibraryPage() {
             <div className="flex gap-4">
 
               <img
-                src={
-                  song.coverArtUrl
-                    ? `http://localhost:9000/${song.coverArtUrl}`
-                    : "/default-cover.png"
-                }
+                src={getCoverArt(song) || "/default-cover.png"}
                 className="w-16 h-16 rounded"
               />
 
@@ -204,7 +208,7 @@ export default function LibraryPage() {
                     "
                     onClick={() => openEdit(song)}
                   >
-                     Chỉnh sửa
+                    Chỉnh sửa
                   </button>
 
 
@@ -221,7 +225,7 @@ export default function LibraryPage() {
                       deleteSong(song.id)
                     }
                   >
-                     Xóa
+                    Xóa
                   </button>
 
                 </div>

@@ -1,6 +1,9 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
+import { api } from '../utils/api';
+import useClickOutside from '../hooks/useClickOutside';
 
 /**
  * AddToPlaylistMenu - Dropdown menu để thêm bài hát vào playlist
@@ -24,17 +27,10 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
     setIsOpen(false);
   }, [songId]);
 
-  // Đóng menu khi click bên ngoài
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setIsOpen(false);
-        setSearchText('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(menuRef, () => {
+    setIsOpen(false);
+    setSearchText('');
+  });
 
   // Auto-focus search khi mở
   useEffect(() => {
@@ -61,13 +57,13 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:9000/api/playlists/user/${user.id}`);
+      const res = await api.get(`/api/playlists/user/${user.id}`);
       if (res.ok) {
         const data = await res.json();
         setPlaylists(data);
         try {
-          const memRes = await fetch(
-            `http://localhost:9000/api/playlists/user/${user.id}/song/${songId}/memberships`
+          const memRes = await api.get(
+            `/api/playlists/user/${user.id}/song/${songId}/memberships`
           );
           if (memRes.ok) {
             const { playlistIds } = await memRes.json();
@@ -95,11 +91,7 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}/songs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ songId, userId: user.id })
-      });
+      const res = await api.post(`/api/playlists/${playlistId}/songs`, { songId });
 
       const data = await res.json().catch(() => ({}));
 

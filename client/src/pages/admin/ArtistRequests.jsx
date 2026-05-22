@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { Check, X, User } from 'lucide-react';
+import { api, getMediaUrl } from '../../utils/api';
 
 export default function ArtistRequests() {
   const [requests, setRequests] = useState([]);
@@ -8,17 +9,12 @@ export default function ArtistRequests() {
 
   async function fetchRequests() {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:9000/api/artist-requests/admin/pending', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const res = await api.get('/api/artist-requests/admin/pending');
       if (res.ok) {
         const data = await res.json();
         setRequests(data);
       }
-    } catch (error) { console.error(error);
+    } catch (error) {
       console.error('Lỗi khi lấy danh sách yêu cầu:', error);
     } finally {
       setLoading(false);
@@ -31,17 +27,11 @@ export default function ArtistRequests() {
 
   const handleAction = async (id, action) => {
     try {
-      const token = localStorage.getItem('token');
       const endpoint = action === 'approve' 
-        ? `http://localhost:9000/api/artist-requests/admin/${id}/approve`
-        : `http://localhost:9000/api/artist-requests/admin/${id}/reject`;
+        ? `/api/artist-requests/admin/${id}/approve`
+        : `/api/artist-requests/admin/${id}/reject`;
 
-      const res = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const res = await api.put(endpoint);
 
       if (res.ok) {
         // Xóa request khỏi danh sách hiển thị
@@ -50,7 +40,7 @@ export default function ArtistRequests() {
         const errData = await res.json();
         alert(errData.error || 'Có lỗi xảy ra');
       }
-    } catch (error) { console.error(error);
+    } catch (error) {
       alert('Lỗi kết nối đến server');
     }
   };
@@ -77,9 +67,7 @@ export default function ArtistRequests() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {requests.map(req => {
-            const displayAvatar = req.user.avatarUrl 
-              ? (req.user.avatarUrl.startsWith('http') ? req.user.avatarUrl : `http://localhost:9000${req.user.avatarUrl}`)
-              : null;
+            const displayAvatar = getMediaUrl(req.user.avatarUrl);
 
             return (
               <div key={req.id} className="bg-[#181818] border border-[#333] rounded-xl p-5 shadow-lg flex flex-col">
@@ -103,10 +91,10 @@ export default function ArtistRequests() {
                   <p className="text-xs text-[#a0a0a0] mb-2 uppercase tracking-wide">ID Card</p>
                   <div className="w-full h-32 bg-[#121212] rounded-lg overflow-hidden border border-[#333]">
                     <img 
-                      src={`http://localhost:9000${req.idCardUrl}`} 
+                      src={getMediaUrl(req.idCardUrl)} 
                       alt="ID Card" 
                       className="w-full h-full object-cover" 
-                      onClick={() => window.open(`http://localhost:9000${req.idCardUrl}`, '_blank')}
+                      onClick={() => window.open(getMediaUrl(req.idCardUrl), '_blank')}
                       style={{ cursor: 'pointer' }}
                     />
                   </div>
@@ -121,7 +109,7 @@ export default function ArtistRequests() {
                     controlsList="nodownload"
                     style={{ filter: 'invert(1)' }} // Trick nhỏ để biến audio player mặc định thành dark mode
                   >
-                    <source src={`http://localhost:9000${req.demoTrackUrl}`} type="audio/mpeg" />
+                    <source src={getMediaUrl(req.demoTrackUrl)} type="audio/mpeg" />
                     Your browser does not support the audio element.
                   </audio>
                 </div>
