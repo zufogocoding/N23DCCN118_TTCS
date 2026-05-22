@@ -28,8 +28,12 @@ async function request(url, { method, body, headers = {}, ...customOptions } = {
 
   // Handle absolute urls or relative urls
   // Since Vite proxy is active, relative URLs starting with /api or /uploads will go to the proxy
+  // Các route xác thực (login, signup, ...) cần trả 401 về cho component xử lý,
+  // không tự redirect, để hiển thị thông báo lỗi cho người dùng.
+  const isAuthRoute = url.includes('/api/auth/');
+
   const res = await fetch(url, config);
-  if (res.status === 401) {
+  if (res.status === 401 && !isAuthRoute) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/login';
