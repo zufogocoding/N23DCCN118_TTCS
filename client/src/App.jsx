@@ -28,6 +28,8 @@ import ArtistProfile from './pages/artist/ArtistProfile';
 import AlbumView from './pages/music/AlbumView';
 import AdminAlbums from './pages/admin/AdminAlbums';
 import ManagePlaylists from './pages/admin/ManagePlaylists';
+import ManageUsers from './pages/admin/ManageUsers';
+import ManageSongs from './pages/admin/ManageSongs';
 import ReleaseManager from './pages/artist/ReleaseManager';
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
@@ -141,9 +143,9 @@ function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Users (Đang xây dựng)</div>} />
+          <Route path="users" element={<ManageUsers />} />
           <Route path="artists" element={<ArtistRequests />} />
-          <Route path="songs" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Songs (Đang xây dựng)</div>} />
+          <Route path="songs" element={<ManageSongs />} />
           <Route path="pending-songs" element={<PendingSongs />} />
           <Route path="albums" element={<AdminAlbums />} />
           <Route path="playlists" element={<ManagePlaylists />} />

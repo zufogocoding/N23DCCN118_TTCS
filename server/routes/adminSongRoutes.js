@@ -6,7 +6,12 @@ const {
   rejectSong,
   getPendingSongs,
   getPendingCount,
+  getAllSongs,
+  deleteSong,
 } = require("../controllers/adminSongController");
+
+router.get("/api/admin/songs", getAllSongs);
+router.delete("/api/admin/songs/:id", deleteSong);
 
 router.get("/api/admin/songs/pending", getPendingSongs);
 router.get("/api/admin/songs/pending/count", getPendingCount);
