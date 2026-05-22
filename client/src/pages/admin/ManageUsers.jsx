@@ -172,8 +172,8 @@ export default function ManageUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-[#a0a0a0] text-sm truncate max-w-[150px]" title={user.email}>
-                      <div className="flex items-center gap-1.5">
+                    <td className="px-6 py-4 text-[#a0a0a0] text-sm" title={user.email}>
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <Mail size={14} className="flex-shrink-0" />
                         {user.email}
                       </div>
