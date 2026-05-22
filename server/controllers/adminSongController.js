@@ -204,6 +204,63 @@ const getPendingCount = async (req, res) => {
   }
 };
 
+
+
+// get all songs for admin management
+const getAllSongs = async (req, res) => {
+  try {
+    const songs = await prisma.song.findMany({
+      include: {
+        genres: {
+          include: {
+            genre: true
+          }
+        },
+        artists: {
+          include: {
+            artist: {
+              include: {
+                user: {
+                  select: {
+                    displayName: true,
+                    username: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    res.json(songs);
+  } catch (error) {
+    console.error("Lỗi getAllSongs:", error);
+    res.status(500).json({ error: "Cannot get all songs" });
+  }
+};
+
+// delete song permanently
+const deleteSong = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.song.delete({
+      where: {
+        id: Number(id)
+      }
+    });
+
+    res.json({ message: "Song deleted successfully" });
+  } catch (error) {
+    console.error("Lỗi deleteSong:", error);
+    res.status(500).json({ error: "Delete song failed" });
+  }
+};
+
 module.exports = {
   getAllSongsAdmin,
   toggleSongVisibility,
@@ -213,4 +270,6 @@ module.exports = {
   approveSong,
   rejectSong,
   getPendingCount,
+  getAllSongs,
+  deleteSong,
 };
