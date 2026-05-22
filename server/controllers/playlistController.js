@@ -4,11 +4,8 @@ const playlistController = {
   // 1. Tạo Playlist mới
   createPlaylist: async (req, res) => {
     try {
-      const { title, userId, description } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({ error: 'Thiếu userId' });
-      }
+      const userId = req.user.id;
+      const { title, description } = req.body;
 
       let coverArtUrl = null;
       if (req.file) {
@@ -16,7 +13,7 @@ const playlistController = {
       }
 
       // Kiểm tra user tồn tại
-      const user = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
+      const user = await prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
         return res.status(404).json({ error: 'User không tồn tại' });
       }
@@ -29,7 +26,7 @@ const playlistController = {
           title: title || 'Playlist Mới',
           description: description || null,
           playlistUrl: generatedUrl, // Bắt buộc phải có theo schema
-          userId: parseInt(userId),
+          userId: userId,
           coverArtUrl: coverArtUrl
         }
       });
@@ -44,16 +41,16 @@ const playlistController = {
   addSongToPlaylist: async (req, res) => {
     try {
       const playlistId = parseInt(req.params.id);
-      const { songId, userId } = req.body;
+      const userId = req.user.id;
+      const { songId } = req.body;
 
-      if (songId == null || songId === '' || userId == null || userId === '') {
-        return res.status(400).json({ error: 'Thiếu songId hoặc userId' });
+      if (songId == null || songId === '') {
+        return res.status(400).json({ error: 'Thiếu songId' });
       }
 
-      const uid = parseInt(userId, 10);
       const sid = parseInt(songId, 10);
-      if (Number.isNaN(uid) || Number.isNaN(sid)) {
-        return res.status(400).json({ error: 'songId hoặc userId không hợp lệ' });
+      if (Number.isNaN(sid)) {
+        return res.status(400).json({ error: 'songId không hợp lệ' });
       }
 
       // Kiểm tra playlist tồn tại
@@ -63,7 +60,7 @@ const playlistController = {
       }
 
       // Chỉ chủ playlist mới được thêm bài (bắt buộc xác thực userId)
-      if (playlist.userId !== uid) {
+      if (playlist.userId !== userId) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 
@@ -108,16 +105,7 @@ const playlistController = {
     try {
       const playlistId = parseInt(req.params.id);
       const songId = parseInt(req.params.songId);
-      const { userId } = req.body;
-
-      if (userId == null || userId === '') {
-        return res.status(400).json({ error: 'Thiếu userId' });
-      }
-
-      const uid = parseInt(userId, 10);
-      if (Number.isNaN(uid)) {
-        return res.status(400).json({ error: 'userId không hợp lệ' });
-      }
+      const userId = req.user.id;
 
       // Kiểm tra playlist tồn tại
       const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
@@ -126,7 +114,7 @@ const playlistController = {
       }
 
       // Kiểm tra quyền sở hữu
-      if (playlist.userId !== uid) {
+      if (playlist.userId !== userId) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 
@@ -176,6 +164,18 @@ const playlistController = {
 
       if (!playlist) return res.status(404).json({ error: 'Không tìm thấy Playlist này!' });
 
+      // Nếu playlist không public, chỉ chủ playlist hoặc admin mới có quyền xem
+      const requesterId = req.user ? req.user.id : null;
+      let isAdmin = false;
+      if (requesterId) {
+        const requesterUser = await prisma.user.findUnique({ where: { id: requesterId }, select: { isAdmin: true } });
+        isAdmin = requesterUser ? requesterUser.isAdmin : false;
+      }
+
+      if (!playlist.isPublic && playlist.userId !== requesterId && !isAdmin) {
+        return res.status(403).json({ error: 'Playlist này là riêng tư' });
+      }
+
       // Lọc bỏ bài hát đã bị soft delete
       playlist.songs = playlist.songs.filter(ps => !ps.song.isDeleted);
 
@@ -186,22 +186,36 @@ const playlistController = {
     }
   },
 
-// Lấy danh sách playlist của một user
+  // Lấy danh sách playlist của một user
   getUserPlaylists: async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const targetUserId = parseInt(req.params.userId);
+      const requestUserId = req.user.id;
 
-      const playlists = await prisma.playlist.findMany({
-        where: { userId },
-        include: {
-          _count: { select: { songs: true } }
-        },
-        orderBy: { updatedAt: 'desc' } // Mới cập nhật lên đầu
-      });
+      let playlists;
+      if (targetUserId === requestUserId) {
+        // Lấy tất cả playlist của bản thân (cả public và private)
+        playlists = await prisma.playlist.findMany({
+          where: { userId: targetUserId },
+          include: {
+            _count: { select: { songs: true } }
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+      } else {
+        // Lấy các playlist public của người khác
+        playlists = await prisma.playlist.findMany({
+          where: { userId: targetUserId, isPublic: true },
+          include: {
+            _count: { select: { songs: true } }
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+      }
 
       res.status(200).json(playlists);
     } catch (error) {
-console.error("Lỗi getUserPlaylists:", error);
+      console.error("Lỗi getUserPlaylists:", error);
       res.status(500).json({ error: 'Lỗi server khi lấy danh sách Playlist' });
     }
   },
@@ -209,16 +223,22 @@ console.error("Lỗi getUserPlaylists:", error);
   /** Playlist của user nào đang chứa bài songId (để UI hiện trạng thái đã thêm) */
   getPlaylistIdsContainingSong: async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId, 10);
+      const targetUserId = parseInt(req.params.userId, 10);
+      const requestUserId = req.user.id;
       const songId = parseInt(req.params.songId, 10);
-      if (Number.isNaN(userId) || Number.isNaN(songId)) {
+      if (Number.isNaN(targetUserId) || Number.isNaN(songId)) {
         return res.status(400).json({ error: 'Tham số không hợp lệ' });
+      }
+
+      // Chỉ kiểm tra memberships cho chính user đang đăng nhập
+      if (targetUserId !== requestUserId) {
+        return res.status(403).json({ error: 'Bạn không có quyền thực hiện thao tác này' });
       }
 
       const rows = await prisma.playlistSong.findMany({
         where: {
           songId,
-          playlist: { userId }
+          playlist: { userId: requestUserId }
         },
         select: { playlistId: true }
       });
@@ -234,7 +254,7 @@ console.error("Lỗi getUserPlaylists:", error);
   deletePlaylist: async (req, res) => {
     try {
       const playlistId = parseInt(req.params.id);
-      const { userId } = req.body;
+      const userId = req.user.id;
 
       // Kiểm tra playlist tồn tại
       const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
@@ -242,8 +262,11 @@ console.error("Lỗi getUserPlaylists:", error);
         return res.status(404).json({ error: 'Playlist không tồn tại' });
       }
 
-      // Kiểm tra quyền sở hữu
-      if (userId && playlist.userId !== parseInt(userId)) {
+      // Kiểm tra quyền sở hữu (hoặc admin)
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
+      const isAdmin = user ? user.isAdmin : false;
+
+      if (playlist.userId !== userId && !isAdmin) {
         return res.status(403).json({ error: 'Bạn không có quyền xóa Playlist này' });
       }
 
@@ -261,7 +284,8 @@ console.error("Lỗi getUserPlaylists:", error);
   updatePlaylist: async (req, res) => {
     try {
       const playlistId = parseInt(req.params.id);
-      const { userId, title, description, isPublic } = req.body;
+      const userId = req.user.id;
+      const { title, description, isPublic } = req.body;
 
       let coverArtUrl;
       if (req.file) {
@@ -275,7 +299,7 @@ console.error("Lỗi getUserPlaylists:", error);
       }
 
       // Kiểm tra quyền sở hữu
-      if (userId && playlist.userId !== parseInt(userId)) {
+      if (playlist.userId !== userId) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 

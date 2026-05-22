@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { X, Image, Loader2 } from 'lucide-react';
+import { api, getMediaUrl } from '../utils/api';
 
 export default function TrackEditModal({ song, genres = [], onClose, onSaved }) {
   const [title, setTitle] = useState(song?.title || '');
@@ -9,7 +10,7 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
   );
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(
-    song?.coverArtUrl ? (song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`) : null
+    song?.coverArtUrl ? getMediaUrl(song.coverArtUrl) : null
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -35,12 +36,7 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
       fd.append('genreIds', JSON.stringify(selectedGenreIds));
       if (coverFile) fd.append('coverImage', coverFile);
 
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:9000/api/songs/${song.id}`, {
-        method: 'PUT',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
+      const res = await api.put(`/api/songs/${song.id}`, fd);
       if (res.ok) {
         const data = await res.json();
         onSaved?.(data.song);
@@ -49,7 +45,7 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
         const err = await res.json().catch(() => ({}));
         setError(err.error || 'Lỗi cập nhật');
       }
-    } catch (err) { setError('Lỗi kết nối'); }
+    } catch (err) { console.error(err); setError('Lỗi kết nối'); }
     finally { setSaving(false); }
   };
 

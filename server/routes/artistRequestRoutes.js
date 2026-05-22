@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const artistRequestController = require('../controllers/artistRequestController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const uploadMulti = require('../middlewares/uploadMultiMiddleware');
+const { uploadArtistRequest } = require('../middlewares/uploadMiddleware');
 
 // 1. User: Kiểm tra trạng thái yêu cầu của mình
 router.get('/my-status', authMiddleware, artistRequestController.getMyRequestStatus);
 
 // 2. User: Gửi yêu cầu làm nghệ sĩ
-router.post('/request', authMiddleware, uploadMulti.fields([
+router.post('/request', authMiddleware, uploadArtistRequest.fields([
   { name: 'idCard', maxCount: 1 },
   { name: 'demoTrack', maxCount: 1 }
 ]), artistRequestController.createRequest);

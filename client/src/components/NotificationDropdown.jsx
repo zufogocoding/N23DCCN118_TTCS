@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
+import { api } from '../utils/api';
+import useClickOutside from '../hooks/useClickOutside';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,13 +11,7 @@ export default function NotificationDropdown() {
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const res = await fetch('http://localhost:9000/api/notifications', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
+      const res = await api.get('/api/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications);
@@ -39,23 +35,11 @@ export default function NotificationDropdown() {
     if (isOpen) fetchNotifications();
   }, [isOpen]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(dropdownRef, () => setIsOpen(false));
 
   const handleMarkAsRead = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`http://localhost:9000/api/notifications/${id}/read`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.put(`/api/notifications/${id}/read`);
 
       setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
@@ -68,11 +52,7 @@ export default function NotificationDropdown() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch('http://localhost:9000/api/notifications/read-all', {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.put('/api/notifications/read-all');
 
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);

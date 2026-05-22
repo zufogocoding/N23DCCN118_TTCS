@@ -138,23 +138,58 @@ const songController = {
     }
   },
 
-  // 2. Logic Lấy tất cả bài hát (chỉ lấy bài đã duyệt và chưa bị xóa mềm)
   getAllSongs: async (req, res) => {
     try {
-      const allSongs = await prisma.song.findMany({
-        where: { isDeleted: false, status: 'approved' },
-        include: {
-          artists: {
+      const page = req.query.page ? parseInt(req.query.page) : null;
+      const limit = req.query.limit ? Math.min(parseInt(req.query.limit) || 50, 100) : 50;
+
+      if (page !== null) {
+        const skip = (page - 1) * limit;
+        const [songs, total] = await Promise.all([
+          prisma.song.findMany({
+            where: { isDeleted: false, status: 'approved' },
             include: {
-              artist: {
-                include: { user: { select: { username: true, displayName: true } } }
+              artists: {
+                include: {
+                  artist: {
+                    include: { user: { select: { username: true, displayName: true } } }
+                  }
+                }
+              }
+            },
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit
+          }),
+          prisma.song.count({ where: { isDeleted: false, status: 'approved' } })
+        ]);
+
+        return res.status(200).json({
+          songs,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+          }
+        });
+      } else {
+        const songs = await prisma.song.findMany({
+          where: { isDeleted: false, status: 'approved' },
+          include: {
+            artists: {
+              include: {
+                artist: {
+                  include: { user: { select: { username: true, displayName: true } } }
+                }
               }
             }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-      res.status(200).json(allSongs);
+          },
+          orderBy: { createdAt: 'desc' },
+          take: limit
+        });
+        return res.status(200).json(songs);
+      }
     } catch (error) {
       console.error("Lỗi getAllSongs:", error);
       res.status(500).json({ error: 'Không lấy được danh sách bài hát' });
@@ -267,6 +302,7 @@ const songController = {
   deleteSong: async (req, res) => {
     try {
       const songId = parseInt(req.params.id);
+      const userId = req.user.id;
 
       // Kiểm tra bài hát tồn tại và chưa bị xóa
       const existing = await prisma.song.findFirst({
@@ -274,6 +310,15 @@ const songController = {
       });
       if (!existing) {
         return res.status(404).json({ error: 'Không tìm thấy bài hát này!' });
+      }
+
+      // Check admin or artist owner
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const isOwner = existing.uploadedById === userId;
+      const isAdmin = user?.isAdmin || false;
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: 'Bạn không có quyền xóa bài hát này' });
       }
 
       await prisma.song.update({

@@ -8,6 +8,16 @@ export default defineConfig({
     port: 5173,
     watch: {
       usePolling: true // Enable this if hot-reload isn't working in Docker
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+      }
     }
   }
 })

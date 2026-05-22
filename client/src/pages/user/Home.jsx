@@ -7,32 +7,10 @@ import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/CreatePlaylistModal';
 import UploadButton from "../../components/layout/UploadButton";
 import { getPrimaryArtistUserId } from '../../utils/artistNav';
+import { api, getMediaUrl } from '../../utils/api';
+import { getArtistName, getCoverArt } from '../../utils/songHelpers';
 
-// Helper: lấy tên artist từ cấu trúc API response
-function getArtistName(song) {
-  if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
-  }
-  // Fallback: lấy từ trường artistName trực tiếp trên Song (do người upload nhập)
-  if (song.artistName) return song.artistName;
-  return 'Unknown Artist';
-}
 
-// Helper: lấy cover art URL
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  // Fallback dựa trên ID
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
 
 
 export default function Home() {
@@ -52,8 +30,8 @@ export default function Home() {
     async function fetchData() {
       try {
         const [songsRes, playlistsRes] = await Promise.all([
-          fetch('http://localhost:9000/api/songs'),
-          user.id ? fetch(`http://localhost:9000/api/playlists/user/${user.id}`) : Promise.resolve(null)
+          api.get('/api/songs'),
+          user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null)
         ]);
 
         if (songsRes.ok) {
@@ -73,15 +51,6 @@ export default function Home() {
     }
     fetchData();
   }, []);
-
-  const handleProtectedAction = (action) => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      navigate('/login');
-    } else if (action) {
-      action();
-    }
-  };
 
   const handlePlaySong = (song, queueList) => {
     const playerSong = {
@@ -121,11 +90,11 @@ export default function Home() {
       <div className="sticky top-0 bg-[#121212]/90 backdrop-blur-md z-10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => {
                 if (searchQuery.trim()) setSearchQuery('');
                 else navigate(-1);
-              }} 
+              }}
               className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white hover:bg-[#333] transition-colors"
             >
               <ChevronLeft size={20} />
@@ -178,7 +147,7 @@ export default function Home() {
                         >
                           <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                             {pl.coverArtUrl ? (
-                              <img src={`http://localhost:9000${pl.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                              <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-4xl">🎵</span>
                             )}
@@ -269,7 +238,7 @@ export default function Home() {
                     >
                       <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                         {pl.coverArtUrl ? (
-                          <img src={`http://localhost:9000${pl.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-4xl">🎵</span>
                         )}

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
+import { api } from '../../utils/api';
+
 export default function ForgotPassword() {
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
   const [email, setEmail] = useState('');
@@ -23,11 +25,7 @@ export default function ForgotPassword() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/forgot-password-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+      const res = await api.post('/api/auth/forgot-password-otp', { email });
       const data = await res.json();
 
       if (res.ok) {
@@ -61,11 +59,7 @@ export default function ForgotPassword() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, newPassword })
-      });
+      const res = await api.post('/api/auth/reset-password', { email, otp, newPassword });
       const data = await res.json();
 
       if (res.ok) {

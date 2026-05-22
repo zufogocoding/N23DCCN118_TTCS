@@ -8,10 +8,11 @@ const interactController = {
    */
   trackListening: async (req, res) => {
     try {
-      const { userId, songId, durationPlayed, isSkipped } = req.body;
+      const userId = req.user.id;
+      const { songId, durationPlayed, isSkipped } = req.body;
 
-      if (!userId || !songId) {
-        return res.status(400).json({ error: "Thiếu userId hoặc songId" });
+      if (!songId) {
+        return res.status(400).json({ error: "Thiếu songId" });
       }
 
       // Kiểm tra bài hát có tồn tại và chưa bị xóa không
@@ -64,10 +65,11 @@ const interactController = {
    */
   toggleLike: async (req, res) => {
     try {
-      const { userId, songId } = req.body;
+      const userId = req.user.id;
+      const { songId } = req.body;
 
-      if (!userId || !songId) {
-        return res.status(400).json({ error: "Thiếu userId hoặc songId" });
+      if (!songId) {
+        return res.status(400).json({ error: "Thiếu songId" });
       }
 
       const parsedUserId = parseInt(userId);
@@ -130,7 +132,7 @@ const interactController = {
    */
   checkLikeStatus: async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.user.id;
       const songId = parseInt(req.params.songId);
 
       const likedInteraction = await prisma.interaction.findFirst({
@@ -153,7 +155,7 @@ const interactController = {
    */
   getLikedSongs: async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.user.id;
 
       // Tìm tất cả songId mà user đã like (isLiked = true)
       const likedInteractions = await prisma.interaction.findMany({
@@ -191,6 +193,42 @@ const interactController = {
       res.status(200).json(songs);
     } catch (error) {
       console.error("Lỗi getLikedSongs:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
+  },
+
+  /**
+   * Kiểm tra trạng thái thích của nhiều bài hát cùng lúc
+   */
+  batchCheckLikeStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { songIds } = req.body;
+
+      if (!songIds || !Array.isArray(songIds)) {
+        return res.status(400).json({ error: "songIds phải là một danh sách" });
+      }
+
+      const parsedSongIds = songIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+      const likedInteractions = await prisma.interaction.findMany({
+        where: {
+          userId,
+          songId: { in: parsedSongIds },
+          isLiked: true
+        },
+        select: { songId: true }
+      });
+
+      const likedSet = new Set(likedInteractions.map(i => i.songId));
+      const statusMap = {};
+      parsedSongIds.forEach(id => {
+        statusMap[id] = likedSet.has(id);
+      });
+
+      res.status(200).json(statusMap);
+    } catch (error) {
+      console.error("Lỗi batchCheckLikeStatus:", error);
       res.status(500).json({ error: "Lỗi server" });
     }
   }
