@@ -198,6 +198,53 @@ const interactController = {
   },
 
   /**
+   * Lấy danh sách bài hát nghe gần đây của user
+   */
+  getRecentSongs: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const recentInteractions = await prisma.interaction.findMany({
+        where: { userId },
+        orderBy: { timeStamp: 'desc' },
+        select: { songId: true },
+        distinct: ['songId'],
+        take: 30
+      });
+
+      const songIds = recentInteractions.map(i => i.songId);
+
+      if (songIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      const songs = await prisma.song.findMany({
+        where: {
+          id: { in: songIds },
+          isDeleted: false
+        },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true, displayName: true } } }
+              }
+            }
+          }
+        }
+      });
+
+      // Maintain order of recent history
+      const orderedSongs = songIds.map(id => songs.find(s => s.id === id)).filter(Boolean);
+
+      res.status(200).json(orderedSongs);
+    } catch (error) {
+      console.error("Lỗi getRecentSongs:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
+  },
+
+  /**
    * Kiểm tra trạng thái thích của nhiều bài hát cùng lúc
    */
   batchCheckLikeStatus: async (req, res) => {
