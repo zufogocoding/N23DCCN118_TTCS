@@ -21,6 +21,11 @@ import BecomeArtist from './pages/user/BecomeArtist';
 import LibraryPage from "./pages/LibraryHome/LibraryPage";
 import ArtistProfile from './pages/artist/ArtistProfile';
 import AlbumView from './pages/music/AlbumView';
+ playlist-manage
+import AdminAlbums from './pages/admin/AdminAlbums';
+import ManagePlaylists from './pages/admin/ManagePlaylists';
+import ReleaseManager from './pages/artist/ReleaseManager';
+
 
 // Lazy loaded Pages (Admin & Artist)
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -38,6 +43,7 @@ const LoadingSpinner = () => (
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1db954]"></div>
   </div>
 );
+
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
@@ -148,6 +154,64 @@ function App() {
                 <AdminLayout />
               </AdminRoute>
             }
+
+          />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="register-artist"
+            element={
+              <ProtectedRoute>
+                <BecomeArtist />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="upload-song"
+            element={
+              <ProtectedRoute>
+                <UploadSong />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
+          <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
+
+          {/* Song detail, Playlist, Album view */}
+          <Route path="song/:id" element={<SongDetail />} />
+          <Route path="playlist/:playlistId" element={<PlaylistView />} />
+          <Route path="album/:albumId" element={<AlbumView />} />
+        </Route>
+
+        {/* NHÓM ADMIN */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Users (Đang xây dựng)</div>} />
+          <Route path="artists" element={<ArtistRequests />} />
+          <Route path="songs" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Songs (Đang xây dựng)</div>} />
+          <Route path="pending-songs" element={<PendingSongs />} />
+          <Route path="albums" element={<AdminAlbums />} />
+          <Route path="playlists" element={<ManagePlaylists />} />
+          <Route path="genres" element={<ManageGenres />} />
+          <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
+        </Route>
+
+      </Routes>
+
           >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
@@ -163,6 +227,7 @@ function App() {
   
         </Routes>
       </Suspense>
+
     </BrowserRouter>
   );
 }
