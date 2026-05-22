@@ -13,6 +13,11 @@ export default function Settings() {
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
+  
+  // Error states
+  const [passwordError, setPasswordError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   
   // Theme state
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
@@ -23,8 +28,10 @@ export default function Settings() {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+    setPasswordError('');
+    
     if (passwordForm.new !== passwordForm.confirm) {
-      alert('Mật khẩu xác nhận không khớp!');
+      setPasswordError('Mật khẩu xác nhận không khớp!');
       return;
     }
     
@@ -50,22 +57,26 @@ export default function Settings() {
         throw new Error(data.error || 'Lỗi khi đổi mật khẩu');
       }
       
-      alert('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
       setShowPasswordModal(false);
       setPasswordForm({ old: '', new: '', confirm: '' });
-      
-      // Xóa phiên đăng nhập cũ và về trang Login
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      navigate('/login');
+      
+      setSuccessMessage({
+        title: 'Thành công!',
+        desc: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.',
+        onClose: () => navigate('/login')
+      });
+      
     } catch (error) {
-      alert(error.message);
+      setPasswordError(error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteAccount = async () => {
+    setDeleteError('');
     setIsSubmitting(true);
     
     try {
@@ -83,15 +94,18 @@ export default function Settings() {
         throw new Error(data.error || 'Lỗi khi xóa tài khoản');
       }
       
-      alert('Tài khoản của bạn đã bị xóa vĩnh viễn.');
       setShowDeleteModal(false);
-      
-      // Xóa phiên đăng nhập và về trang Login
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      navigate('/login');
+      
+      setSuccessMessage({
+        title: 'Đã xóa tài khoản',
+        desc: 'Tài khoản của bạn đã được xóa vĩnh viễn thành công.',
+        onClose: () => navigate('/login')
+      });
+      
     } catch (error) {
-      alert(error.message);
+      setDeleteError(error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +161,7 @@ export default function Settings() {
           </nav>
         </div>
 
-        {/* MOBILE TABS (DROPDOWN OR ROW) */}
+        {/* MOBILE TABS */}
         <div className="md:hidden flex overflow-x-auto border-b border-[#333] p-2 hide-scrollbar">
           {tabs.map(tab => (
             <button
@@ -205,7 +219,10 @@ export default function Settings() {
                       <p className="text-xs text-[#a0a0a0] mt-1">Cập nhật mật khẩu để bảo vệ tài khoản của bạn.</p>
                     </div>
                     <button 
-                      onClick={() => setShowPasswordModal(true)}
+                      onClick={() => {
+                        setPasswordError('');
+                        setShowPasswordModal(true);
+                      }}
                       className="px-4 py-1.5 rounded-full border border-white/30 font-bold text-xs hover:bg-white/10 transition-colors whitespace-nowrap"
                     >
                       Đổi mật khẩu
@@ -222,7 +239,10 @@ export default function Settings() {
                       <p className="text-xs text-[#a0a0a0] mt-1">Hành động này sẽ xóa vĩnh viễn tài khoản và dữ liệu.</p>
                     </div>
                     <button 
-                      onClick={() => setShowDeleteModal(true)}
+                      onClick={() => {
+                        setDeleteError('');
+                        setShowDeleteModal(true);
+                      }}
                       className="px-4 py-1.5 rounded-full bg-red-500 text-white font-bold text-xs hover:bg-red-600 transition-colors whitespace-nowrap"
                     >
                       Xóa tài khoản
@@ -260,6 +280,7 @@ export default function Settings() {
                     >
                       <Sun size={24} className="mb-2 text-black" />
                       <span className="font-medium text-xs text-black">Chế độ Sáng</span>
+                      {theme === 'light' && <CheckCircle2 size={14} className="text-[#1ed760] absolute top-2 right-2" />}
                     </button>
 
                     <button 
@@ -270,6 +291,7 @@ export default function Settings() {
                     >
                       <Monitor size={24} className="mb-2 text-[#a0a0a0]" />
                       <span className="font-medium text-xs text-white">Theo Hệ thống</span>
+                      {theme === 'system' && <CheckCircle2 size={14} className="text-[#1ed760] absolute top-2 right-2" />}
                     </button>
                   </div>
                 </div>
@@ -307,7 +329,14 @@ export default function Settings() {
           <div className="bg-[#121212] border border-[#333] rounded-xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-5">
               <h2 className="text-lg font-bold mb-1">Đổi mật khẩu</h2>
-              <p className="text-xs text-[#a0a0a0] mb-5">Mật khẩu mới phải có ít nhất 6 ký tự.</p>
+              <p className="text-xs text-[#a0a0a0] mb-4">Mật khẩu mới phải có ít nhất 6 ký tự.</p>
+              
+              {passwordError && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-red-500">{passwordError}</p>
+                </div>
+              )}
               
               <form onSubmit={handlePasswordSubmit} className="space-y-3">
                 <div>
@@ -317,7 +346,7 @@ export default function Settings() {
                     required
                     value={passwordForm.old}
                     onChange={e => setPasswordForm({...passwordForm, old: e.target.value})}
-                    className="w-full bg-[#181818] border border-[#333] rounded-md px-3 py-2 text-sm text-white focus:border-[#1ed760] outline-none transition-colors"
+                    className={`w-full bg-[#181818] border ${passwordError ? 'border-red-500/50' : 'border-[#333] focus:border-[#1ed760]'} rounded-md px-3 py-2 text-sm text-white outline-none transition-colors`}
                   />
                 </div>
                 <div>
@@ -328,7 +357,7 @@ export default function Settings() {
                     minLength={6}
                     value={passwordForm.new}
                     onChange={e => setPasswordForm({...passwordForm, new: e.target.value})}
-                    className="w-full bg-[#181818] border border-[#333] rounded-md px-3 py-2 text-sm text-white focus:border-[#1ed760] outline-none transition-colors"
+                    className={`w-full bg-[#181818] border ${passwordError ? 'border-red-500/50' : 'border-[#333] focus:border-[#1ed760]'} rounded-md px-3 py-2 text-sm text-white outline-none transition-colors`}
                   />
                 </div>
                 <div>
@@ -339,7 +368,7 @@ export default function Settings() {
                     minLength={6}
                     value={passwordForm.confirm}
                     onChange={e => setPasswordForm({...passwordForm, confirm: e.target.value})}
-                    className="w-full bg-[#181818] border border-[#333] rounded-md px-3 py-2 text-sm text-white focus:border-[#1ed760] outline-none transition-colors"
+                    className={`w-full bg-[#181818] border ${passwordError ? 'border-red-500/50' : 'border-[#333] focus:border-[#1ed760]'} rounded-md px-3 py-2 text-sm text-white outline-none transition-colors`}
                   />
                 </div>
                 
@@ -375,9 +404,16 @@ export default function Settings() {
                 <AlertTriangle size={20} />
               </div>
               <h2 className="text-lg font-bold mb-2">Xóa tài khoản?</h2>
-              <p className="text-xs text-[#a0a0a0] mb-5">
+              <p className="text-xs text-[#a0a0a0] mb-4">
                 Hành động này <span className="font-bold text-white">KHÔNG THỂ</span> hoàn tác. Dữ liệu của bạn sẽ bị xóa vĩnh viễn.
               </p>
+              
+              {deleteError && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-red-500">{deleteError}</p>
+                </div>
+              )}
               
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-1">
                 <button
@@ -398,6 +434,36 @@ export default function Settings() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS MODAL */}
+      {successMessage && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-[#181818] border border-[#333] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 fade-in duration-300 flex flex-col items-center text-center p-8 relative">
+            
+            <div className="absolute inset-0 bg-gradient-to-b from-[#1ed760]/10 to-transparent pointer-events-none"></div>
+
+            <div className="w-16 h-16 bg-[#1ed760]/20 rounded-full flex items-center justify-center mb-4 text-[#1ed760] ring-4 ring-[#1ed760]/10 animate-bounce shadow-[0_0_15px_rgba(30,215,96,0.5)]">
+              <CheckCircle2 size={32} />
+            </div>
+            
+            <h2 className="text-2xl font-black text-white mb-2 tracking-tight">{successMessage.title}</h2>
+            <p className="text-sm text-[#a0a0a0] mb-8 leading-relaxed">
+              {successMessage.desc}
+            </p>
+            
+            <button
+              onClick={() => {
+                const closeFn = successMessage.onClose;
+                setSuccessMessage(null);
+                if (closeFn) closeFn();
+              }}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#1ed760] to-[#1db954] text-black font-bold text-sm hover:opacity-90 hover:scale-[1.02] transition-all shadow-lg"
+            >
+              Vui lòng đăng nhập lại
+            </button>
           </div>
         </div>
       )}
