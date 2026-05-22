@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
@@ -102,6 +101,7 @@ export default function MainLayout() {
   useClickOutside(nowPlayingMenuRef, () => setNowPlayingMenuOpen(false));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNowPlayingMenuOpen(false);
   }, [currentSong?.id]);
 
@@ -125,11 +125,13 @@ export default function MainLayout() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlaylists();
   }, []);
 
   useEffect(() => {
     if (!currentSong?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLiked(false);
       return;
     }
@@ -152,7 +154,6 @@ export default function MainLayout() {
 
   const handleProtectedAction = (action) => {
     const user = localStorage.getItem("user");
-
     if (!user) {
       navigate("/login");
     } else if (action) {

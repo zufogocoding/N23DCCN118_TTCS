@@ -14,8 +14,6 @@ const adminSongRoutes = require("./routes/adminSongRoutes");
 
 const adminPlaylistRoutes = require("./routes/adminPlaylistRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
-
-const adminUserRoutes = require('./routes/adminUserRoute.js');
 const adminAlbumRoutes = require('./routes/adminAlbumRoutes.js');
 
 

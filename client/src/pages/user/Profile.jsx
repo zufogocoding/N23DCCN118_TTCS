@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2, Music } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -54,7 +53,8 @@ export default function Profile() {
         }
         setError(errorData.error || 'Không thể lấy thông tin profile');
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);
@@ -62,7 +62,9 @@ export default function Profile() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInputChange = (e) => {
@@ -96,7 +98,6 @@ export default function Profile() {
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('token');
       const submitData = new FormData();
       submitData.append('displayName', formData.displayName);
       if (formData.dob) submitData.append('dob', formData.dob);
@@ -120,7 +121,8 @@ export default function Profile() {
         const errorData = await res.json();
         setError(errorData.error || 'Cập nhật thất bại');
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);

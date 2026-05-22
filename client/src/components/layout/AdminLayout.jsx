@@ -23,6 +23,7 @@ export default function AdminLayout() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPendingCount();
     // Poll mỗi 30 giây
     const interval = setInterval(fetchPendingCount, 30000);
@@ -31,6 +32,7 @@ export default function AdminLayout() {
 
   // Refresh count khi navigate giữa các trang admin
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPendingCount();
   }, [location.pathname]);
 

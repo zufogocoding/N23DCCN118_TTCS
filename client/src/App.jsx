@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SongDetail from "./pages/music/SongDetail";
 import PlaylistView from './pages/music/PlaylistView';
 
-
 // Layouts
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
@@ -21,13 +20,6 @@ import BecomeArtist from './pages/user/BecomeArtist';
 import LibraryPage from "./pages/LibraryHome/LibraryPage";
 import ArtistProfile from './pages/artist/ArtistProfile';
 import AlbumView from './pages/music/AlbumView';
- playlist-manage
-import AdminAlbums from './pages/admin/AdminAlbums';
-import ManagePlaylists from './pages/admin/ManagePlaylists';
-import ManageUsers from './pages/admin/ManageUsers';
-import ManageSongs from './pages/admin/ManageSongs';
-import ReleaseManager from './pages/artist/ReleaseManager';
-
 
 // Lazy loaded Pages (Admin & Artist)
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -36,6 +28,7 @@ const PendingSongs = lazy(() => import("./pages/admin/PendingSongs"));
 const UploadSong = lazy(() => import("./pages/artist/UploadSong"));
 const ManageGenres = lazy(() => import('./pages/admin/ManageGenres'));
 const AdminAlbums = lazy(() => import('./pages/admin/AdminAlbums'));
+const ManagePlaylists = lazy(() => import('./pages/admin/ManagePlaylists'));
 const ReleaseManager = lazy(() => import('./pages/artist/ReleaseManager'));
 const AdminUsers = lazy(() => import('./pages/admin/adminUser'));
 const ManageSongs = lazy(() => import('./pages/admin/ManageSongs'));
@@ -89,22 +82,22 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
-  
+
           {/* NHÓM XÁC THỰC (Không cần đăng nhập) */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
           </Route>
-  
+
           {/* NHÓM APP CHÍNH */}
           <Route path="/" element={<MainLayout />}>
-  
+
             {/* Các trang Public */}
             <Route index element={<Home />} />
             <Route path="search" element={<Search />} />
             <Route path="artist/:id" element={<ArtistProfile />} />
-  
+
             {/* Các trang Protected */}
             <Route path="/library" element={<LibraryPage />} />
             <Route
@@ -141,13 +134,13 @@ function App() {
             />
             <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
             <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
-  
+
             {/* Song detail, Playlist, Album view */}
             <Route path="song/:id" element={<SongDetail />} />
             <Route path="playlist/:playlistId" element={<PlaylistView />} />
             <Route path="album/:albumId" element={<AlbumView />} />
           </Route>
-  
+
           {/* NHÓM ADMIN */}
           <Route
             path="/admin"
@@ -156,64 +149,6 @@ function App() {
                 <AdminLayout />
               </AdminRoute>
             }
-
-          />
-          <Route
-            path="settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="register-artist"
-            element={
-              <ProtectedRoute>
-                <BecomeArtist />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="upload-song"
-            element={
-              <ProtectedRoute>
-                <UploadSong />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
-          <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
-
-          {/* Song detail, Playlist, Album view */}
-          <Route path="song/:id" element={<SongDetail />} />
-          <Route path="playlist/:playlistId" element={<PlaylistView />} />
-          <Route path="album/:albumId" element={<AlbumView />} />
-        </Route>
-
-        {/* NHÓM ADMIN */}
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminLayout />
-            </AdminRoute>
-          }
-        >
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<ManageUsers />} />
-          <Route path="artists" element={<ArtistRequests />} />
-          <Route path="songs" element={<ManageSongs />} />
-          <Route path="pending-songs" element={<PendingSongs />} />
-          <Route path="albums" element={<AdminAlbums />} />
-          <Route path="playlists" element={<ManagePlaylists />} />
-          <Route path="genres" element={<ManageGenres />} />
-          <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
-        </Route>
-
-      </Routes>
-
           >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
@@ -222,11 +157,11 @@ function App() {
             <Route path="songs" element={<ManageSongs />} />
             <Route path="pending-songs" element={<PendingSongs />} />
             <Route path="albums" element={<AdminAlbums />} />
-            <Route path="playlists" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Playlists (Đang xây dựng)</div>} />
+            <Route path="playlists" element={<ManagePlaylists />} />
             <Route path="genres" element={<ManageGenres />} />
             <Route path="reports" element={<div className="p-8 text-white text-2xl font-bold">Quản lý Reports (Đang xây dựng)</div>} />
           </Route>
-  
+
         </Routes>
       </Suspense>
 

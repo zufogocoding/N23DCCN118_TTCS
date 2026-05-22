@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
@@ -22,6 +21,7 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
   const searchRef = useRef(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAddedTo(new Set());
     setSearchText('');
     setIsOpen(false);

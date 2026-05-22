@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Play, Heart } from "lucide-react";
