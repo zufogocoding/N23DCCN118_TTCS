@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Disc3, Search, RefreshCw, Trash2, Eye, EyeOff, Filter,
+  Disc3, Search, RefreshCw, Eye, EyeOff,
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
   Clock, MoreVertical, Calendar, Hash, ArrowUpDown, ArrowUp,
   ArrowDown, Ban, RotateCcw, Music, SlidersHorizontal, ShieldAlert,
@@ -15,13 +15,6 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('vi-VN', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
-}
-
-function fmtCount(n) {
-  if (!n && n !== 0) return '—';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
 }
 
 // ── Status Badge ─────────────────────────────────────────────────────────────
@@ -137,7 +130,6 @@ function Toast({ toast }) {
 function AlbumDetailDrawer({ album, onClose, onTakedown, onRestore, actionLoading }) {
   if (!album) return null;
   const isBanned = album.status === 'banned';
-  const isReleased = album.status === 'released';
 
   const tracks = album.tracks ?? [];
   const stats = album.stats ?? {};
@@ -425,6 +417,7 @@ export default function AdminAlbums() {
     }
   }, [search, statusFilter, typeFilter, sortBy, sortOrder, dateFrom, dateTo, showToast]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAlbums(1); }, [fetchAlbums]);
 
   // Sort handler
@@ -443,7 +436,7 @@ export default function AdminAlbums() {
         const data = await res.json();
         setDetailAlbum({ ...data.album, tracks: data.tracks, stats: data.stats });
       }
-    } catch { } finally {
+    } catch { /* ignore */ } finally {
       setDetailLoading(false);
     }
   };

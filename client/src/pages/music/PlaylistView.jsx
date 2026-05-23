@@ -66,6 +66,7 @@ const PlaylistView = () => {
 
   useEffect(() => {
     fetchPlaylistData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistId]);
 
   // Fetch liked status for all songs in batch

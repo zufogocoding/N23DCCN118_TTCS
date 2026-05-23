@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
@@ -11,7 +10,7 @@ import useClickOutside from '../hooks/useClickOutside';
  *   - songId: ID bài hát cần thêm
  *   - onCreatePlaylist: callback khi user muốn tạo playlist mới (mở modal)
  */
-export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
+export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem = false }) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState([]);
@@ -22,6 +21,7 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
   const searchRef = useRef(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAddedTo(new Set());
     setSearchText('');
     setIsOpen(false);
@@ -126,16 +126,26 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist }) {
 
   return (
     <div ref={menuRef} className="relative">
-      <button
-        onClick={(e) => { e.stopPropagation(); handleToggle(); }}
-        className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
-        title="Thêm vào Playlist"
-      >
-        <ListPlus size={20} />
-      </button>
+      {asMenuItem ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
+          className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+        >
+          <ListPlus size={18} />
+          <span>Thêm vào Playlist</span>
+        </button>
+      ) : (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
+          className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
+          title="Thêm vào Playlist"
+        >
+          <ListPlus size={20} />
+        </button>
+      )}
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-2 z-[60]">
+        <div className={`absolute ${asMenuItem ? 'left-full top-0 ml-1' : 'right-0 top-full mt-2'} w-64 bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-2 z-[60]`}>
           <p className="px-4 py-2 text-xs font-bold text-[#a0a0a0] uppercase tracking-wider">
             Thêm vào Playlist
           </p>

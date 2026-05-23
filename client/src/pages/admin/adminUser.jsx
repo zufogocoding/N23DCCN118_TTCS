@@ -86,6 +86,7 @@ function UserDetailDrawer({ userId, onClose, onAction }) {
 
   useEffect(() => {
     if (!userId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     api.get(`/api/admin/users/${userId}`)
       .then(r => r.json())
@@ -371,6 +372,7 @@ export default function AdminUsers() {
     }
   }, [search, statusFilter, roleFilter]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchUsers(1); }, [fetchUsers]);
 
   // Debounce search

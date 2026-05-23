@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle } from 'lucide-react';
@@ -62,6 +61,7 @@ export default function ReleaseManager() {
   // Open add‑tracks modal automatically when URL contains ?add=true (after creating a new album)
   useEffect(() => {
     if (album && location.search.includes('add=true')) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowAddTracks(true);
     }
   }, [album, location.search]);
@@ -108,8 +108,9 @@ export default function ReleaseManager() {
       }
     } catch { navigate('/'); }
     finally { setLoading(false); }
-  }, [albumId, isNew]);
+  }, [albumId, isNew, navigate]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadAlbum(); }, [loadAlbum]);
 
   const handleCoverChange = (e) => {
@@ -337,7 +338,6 @@ export default function ReleaseManager() {
   const handleSchedule = async () => {
     if (!scheduledAt) { alert('Chọn thời gian phát hành'); return; }
 
-    const pendingTracks = tracks.filter(t => t.status === 'pending');
     const approvedTracks = tracks.filter(t => t.status === 'approved');
 
     if (approvedTracks.length === 0) {

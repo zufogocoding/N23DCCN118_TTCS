@@ -100,6 +100,7 @@ export default function PendingSongs() {
 
   // Fetch pending songs
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPendingSongs();
   }, []);
 

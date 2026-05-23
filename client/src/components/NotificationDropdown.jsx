@@ -23,6 +23,7 @@ export default function NotificationDropdown() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
     // Polling mỗi 30 giây để kiểm tra thông báo mới
@@ -32,7 +33,10 @@ export default function NotificationDropdown() {
 
   // Refetch khi mở dropdown
   useEffect(() => {
-    if (isOpen) fetchNotifications();
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchNotifications();
+    }
   }, [isOpen]);
 
   useClickOutside(dropdownRef, () => setIsOpen(false));

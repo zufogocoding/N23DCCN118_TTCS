@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Trash2, Loader2, Globe, Lock, Play, Music, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

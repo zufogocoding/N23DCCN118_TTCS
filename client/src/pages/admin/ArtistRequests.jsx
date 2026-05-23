@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { Check, X, User } from 'lucide-react';
 import { api, getMediaUrl } from '../../utils/api';
@@ -22,6 +21,7 @@ export default function ArtistRequests() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRequests();
   }, []);
 
@@ -40,7 +40,7 @@ export default function ArtistRequests() {
         const errData = await res.json();
         alert(errData.error || 'Có lỗi xảy ra');
       }
-    } catch (error) {
+    } catch {
       alert('Lỗi kết nối đến server');
     }
   };
