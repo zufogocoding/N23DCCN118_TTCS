@@ -12,7 +12,7 @@ services:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
       - ML_API_URL=http://ml-api:8000
     volumes:
-      - ./uploads:/app/uploads
+      - ./uploads:/app/uploads:z
     restart: unless-stopped
 
   ml-api:
