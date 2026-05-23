@@ -10,6 +10,10 @@ RUN npm install
 
 COPY . .
 
+# Pre-create upload directories with correct ownership
+RUN mkdir -p /app/uploads/avatars /app/uploads/covers /app/uploads/songs /app/uploads/artist_requests \
+    && chown -R node:node /app/uploads
+
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost/dummy" npx prisma generate
 
 ENV PORT=9000

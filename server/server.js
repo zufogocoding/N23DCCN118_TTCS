@@ -13,7 +13,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const adminSongRoutes = require("./routes/adminSongRoutes");
 
 const adminPlaylistRoutes = require("./routes/adminPlaylistRoutes");
-const adminUserRoutes = require("./routes/adminUserRoutes");
+const adminUserRoute = require("./routes/adminUserRoute");
 const adminAlbumRoutes = require('./routes/adminAlbumRoutes.js');
 const adminReportRoutes = require('./routes/adminReportRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
@@ -49,7 +49,6 @@ app.use(uploadRoutes);
 app.use(adminSongRoutes);
 
 app.use(adminPlaylistRoutes);
-app.use(adminUserRoutes);
 
 app.use(adminAlbumRoutes);
 app.use(adminReportRoutes);
@@ -57,7 +56,7 @@ app.use(reportRoutes);
 
 
 app.use('/api/users', userRoutes);
-app.use('/api/admin/users', adminUserRoutes);
+app.use('/api/admin/users', adminUserRoute);
 app.use('/api/artist-requests', artistRequestRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use(searchRoutes);

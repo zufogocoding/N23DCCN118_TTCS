@@ -17,6 +17,9 @@ router.get('/api/interactions/like-status/:songId', authMiddleware, interactCont
 // GET /api/interactions/liked - Lấy danh sách bài hát đã thích
 router.get('/api/interactions/liked', authMiddleware, interactController.getLikedSongs);
 
+// GET /api/interactions/recent - Lấy danh sách bài hát nghe gần đây
+router.get('/api/interactions/recent', authMiddleware, interactController.getRecentSongs);
+
 // POST /api/interactions/like-status-batch - Kiểm tra hàng loạt trạng thái like
 router.post('/api/interactions/like-status-batch', authMiddleware, interactController.batchCheckLikeStatus);
 
