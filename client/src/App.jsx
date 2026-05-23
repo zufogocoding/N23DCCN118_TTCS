@@ -25,6 +25,7 @@ import AlbumView from './pages/music/AlbumView';
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const ArtistRequests = lazy(() => import('./pages/admin/ArtistRequests'));
 const PendingSongs = lazy(() => import("./pages/admin/PendingSongs"));
+const ChartDetail = lazy(() => import('./pages/user/ChartDetail'));
 const UploadSong = lazy(() => import("./pages/artist/UploadSong"));
 const ManageGenres = lazy(() => import('./pages/admin/ManageGenres'));
 const AdminAlbums = lazy(() => import('./pages/admin/AdminAlbums'));
@@ -33,6 +34,7 @@ const ReleaseManager = lazy(() => import('./pages/artist/ReleaseManager'));
 const AdminUsers = lazy(() => import('./pages/admin/adminUser'));
 const ManageSongs = lazy(() => import('./pages/admin/ManageSongs'));
 const ManageReports = lazy(() => import('./pages/admin/ManageReports'));
+const ManageCharts = lazy(() => import('./pages/admin/ManageCharts'));
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-screen bg-[#121212] text-white">
@@ -98,6 +100,7 @@ function App() {
             <Route index element={<Home />} />
             <Route path="search" element={<Search />} />
             <Route path="artist/:id" element={<ArtistProfile />} />
+            <Route path="chart/:type" element={<ChartDetail />} />
 
             {/* Các trang Protected */}
             <Route path="/library" element={<LibraryPage />} />
@@ -160,6 +163,7 @@ function App() {
             <Route path="albums" element={<AdminAlbums />} />
             <Route path="playlists" element={<ManagePlaylists />} />
             <Route path="genres" element={<ManageGenres />} />
+            <Route path="charts" element={<ManageCharts />} />
             <Route path="reports" element={<ManageReports />} />
           </Route>
 

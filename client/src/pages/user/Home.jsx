@@ -19,6 +19,9 @@ export default function Home() {
 
   const [songs, setSongs] = useState([]);
   const [userPlaylists, setUserPlaylists] = useState([]);
+  const [dailyChart, setDailyChart] = useState([]);
+  const [weeklyChart, setWeeklyChart] = useState([]);
+  const [monthlyChart, setMonthlyChart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
 
@@ -28,9 +31,12 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [songsRes, playlistsRes] = await Promise.all([
+        const [songsRes, playlistsRes, dailyRes, weeklyRes, monthlyRes] = await Promise.all([
           api.get('/api/songs'),
-          user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null)
+          user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
+          api.get('/api/charts/DAILY'),
+          api.get('/api/charts/WEEKLY'),
+          api.get('/api/charts/MONTHLY')
         ]);
 
         if (songsRes.ok) {
@@ -41,6 +47,21 @@ export default function Home() {
         if (playlistsRes && playlistsRes.ok) {
           const plData = await playlistsRes.json();
           setUserPlaylists(plData);
+        }
+
+        if (dailyRes && dailyRes.ok) {
+          const data = await dailyRes.json();
+          setDailyChart(data?.songs || []);
+        }
+
+        if (weeklyRes && weeklyRes.ok) {
+          const data = await weeklyRes.json();
+          setWeeklyChart(data?.songs || []);
+        }
+
+        if (monthlyRes && monthlyRes.ok) {
+          const data = await monthlyRes.json();
+          setMonthlyChart(data?.songs || []);
         }
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu:', err);
@@ -251,6 +272,89 @@ export default function Home() {
               </div>
             )}
 
+            {/* Các Bảng Xếp Hạng Nổi Bật */}
+            {(dailyChart.length > 0 || weeklyChart.length > 0 || monthlyChart.length > 0) && (
+              <div className="mb-10">
+                <h2 className="text-2xl font-bold text-white mb-4">Bảng xếp hạng nổi bật</h2>
+                <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar">
+                  
+                  {/* Top 50 Ngày */}
+                  <div 
+                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group relative w-[200px] flex-shrink-0" 
+                    onClick={() => navigate('/chart/DAILY')}
+                  >
+                    <div className="relative mb-4">
+                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#8A2387] via-[#E94057] to-[#F27121]">
+                          <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Ngày</h3>
+                      </div>
+                      <button 
+                        className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1ed760] flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           if(dailyChart.length > 0) handlePlaySong(dailyChart[0].song, dailyChart.map(c => c.song));
+                        }}
+                      >
+                        <Play size={24} fill="black" color="black" className="ml-1" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#a0a0a0] line-clamp-2">Cập nhật hằng ngày những bản nhạc thịnh hành nhất.</p>
+                    </div>
+                  </div>
+
+                  {/* Top 50 Tuần */}
+                  <div 
+                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group relative w-[200px] flex-shrink-0" 
+                    onClick={() => navigate('/chart/WEEKLY')}
+                  >
+                    <div className="relative mb-4">
+                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#00C9FF] to-[#92FE9D]">
+                          <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Tuần</h3>
+                      </div>
+                      <button 
+                        className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1ed760] flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           if(weeklyChart.length > 0) handlePlaySong(weeklyChart[0].song, weeklyChart.map(c => c.song));
+                        }}
+                      >
+                        <Play size={24} fill="black" color="black" className="ml-1" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#a0a0a0] line-clamp-2">Cập nhật hằng tuần những bản nhạc thịnh hành nhất.</p>
+                    </div>
+                  </div>
+
+                  {/* Top 50 Tháng */}
+                  <div 
+                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group relative w-[200px] flex-shrink-0" 
+                    onClick={() => navigate('/chart/MONTHLY')}
+                  >
+                    <div className="relative mb-4">
+                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#11998e] to-[#38ef7d]">
+                          <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Tháng</h3>
+                      </div>
+                      <button 
+                        className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1ed760] flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           if(monthlyChart.length > 0) handlePlaySong(monthlyChart[0].song, monthlyChart.map(c => c.song));
+                        }}
+                      >
+                        <Play size={24} fill="black" color="black" className="ml-1" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#a0a0a0] line-clamp-2">Cập nhật hằng tháng những bản nhạc thịnh hành nhất.</p>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            
             {/* Section: All Songs (từ DB - chỉ hiện bài approved) */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-4">

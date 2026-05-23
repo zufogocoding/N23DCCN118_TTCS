@@ -107,6 +107,7 @@ export default function AdminDashboard() {
       {/* Biểu đồ streaming theo ngày */}
       <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg">
         <h3 className="text-lg font-bold text-white mb-6">Daily Streaming Traffic</h3>
+
         <div className="h-80 w-full">
           {chartLoading ? (
             <div className="h-full flex items-center justify-center text-[#a0a0a0]">
