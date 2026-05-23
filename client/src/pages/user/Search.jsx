@@ -40,6 +40,7 @@ export default function Search() {
   // Reset page when query changes
   useEffect(() => {
     if (debouncedSearchQuery.trim() !== '') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(1);
       fetchSearchResults(debouncedSearchQuery, 1, true);
     } else {

@@ -12,6 +12,7 @@ export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist
 
   useEffect(() => {
     if (playlist) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitle(playlist.title || '');
       setDescription(playlist.description || '');
       setPreviewUrl(playlist.coverArtUrl ? getMediaUrl(playlist.coverArtUrl) : null);
@@ -43,7 +44,6 @@ export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist
     setIsLoading(true);
 
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
 
       const formData = new FormData();
       formData.append('title', title.trim() || 'My Playlist');

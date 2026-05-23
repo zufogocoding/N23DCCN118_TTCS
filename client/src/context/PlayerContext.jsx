@@ -21,7 +21,6 @@ export const PlayerProvider = ({ children }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
 
-  // Lắng nghe sự kiện từ thẻ audio
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -38,6 +37,7 @@ export const PlayerProvider = ({ children }) => {
       audio.removeEventListener('timeupdate', setAudioTime);
       audio.removeEventListener('ended', handleEnded);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, queue, isRepeat, isShuffle]);
 
   // Cập nhật âm lượng

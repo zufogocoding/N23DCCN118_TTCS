@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, Heart, Play } from 'lucide-react';
@@ -50,6 +49,7 @@ export default function Home() {
       }
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePlaySong = (song, queueList) => {

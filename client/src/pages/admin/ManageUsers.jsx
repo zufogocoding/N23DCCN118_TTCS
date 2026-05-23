@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Trash2, Loader2, AlertTriangle, User, Mail, Shield, ShieldAlert, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);

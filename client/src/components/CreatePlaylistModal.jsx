@@ -5,7 +5,6 @@ import { api } from '../utils/api';
 export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  // eslint-disable-next-line no-unused-vars
   const [image, setImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +33,6 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
     setIsLoading(true);
 
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
 
       // Dùng FormData để hỗ trợ upload ảnh
       const formData = new FormData();
@@ -54,7 +52,7 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
         const data = await res.json();
         alert(data.error || 'Lỗi tạo playlist');
       }
-    } catch (error) { console.error(error);
+    } catch (error) {
       console.error(error);
       alert('Không thể kết nối đến server');
     } finally {
