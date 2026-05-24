@@ -24,6 +24,10 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
+    volumes:
+      - ./ml-service:/app:z
+      - ./uploads:/app/uploads:z
+
     restart: unless-stopped
 
   db:
