@@ -1,8 +1,14 @@
+import os
 import logging
 from fastapi import FastAPI, HTTPException, Query
+
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.train_service import trigger_training, get_training_status
 from app.services.recommend_service import get_recommendations_for_user, get_similar_songs
+from app.utils.audio_analyzer import analyze_audio_properties
+from app.models.content_model import ContentModel
+from app.database import get_db_connection
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -95,3 +101,48 @@ def similar(song_id: int, limit: int = Query(10, ge=1, le=50)):
     except Exception as e:
         logger.error(f"Error in similar songs endpoint for song {song_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch similar songs: {str(e)}")
+
+@app.post("/songs/{song_id}/analyze")
+def analyze(
+    song_id: int, 
+    file_path: str = Query(..., description="Relative path of the song from uploads directory"),
+    genre_tag: str = Query(None, description="Genre tag of the song for fallback mapping")
+):
+    """
+    Run DSP audio feature analysis on uploaded track and update database.
+    """
+    try:
+        # Convert relative path to absolute container path
+        # In container: uploads is mounted at /app/uploads
+        # Node server sends paths like "/uploads/audio/xyz.mp3" or "uploads/audio/xyz.mp3"
+        cleaned_path = file_path.lstrip("/")
+        if not cleaned_path.startswith("uploads/"):
+            cleaned_path = os.path.join("uploads", cleaned_path)
+            
+        absolute_path = os.path.join("/app", cleaned_path)
+        
+        # 1. Run DSP analysis
+        features = analyze_audio_properties(absolute_path, genre_tag)
+        
+        # 2. Update song metrics in CSDL
+        query = 'UPDATE "Song" SET tempo = %s, energy = %s, danceability = %s WHERE id = %s'
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    query, 
+                    (float(features["tempo"]), float(features["energy"]), float(features["danceability"]), song_id)
+                )
+                
+        # 3. Regenerate single song pgvector content embedding
+        content_model = ContentModel(vector_dim=128)
+        content_model.build_and_save_single_song_vector(song_id)
+        
+        return {
+            "status": "success",
+            "song_id": song_id,
+            "features": features
+        }
+    except Exception as e:
+        logger.error(f"Error in analyze endpoint for song {song_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Audio analysis failed: {str(e)}")
+

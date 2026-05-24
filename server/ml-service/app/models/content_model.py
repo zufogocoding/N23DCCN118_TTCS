@@ -230,6 +230,73 @@ class ContentModel:
                     )
         logger.info("✅ Finished seeding default user vectors.")
 
+    def build_and_save_single_song_vector(self, song_id):
+        """
+        Generate 128-dimensional content vector for a single song and save it in PostgreSQL.
+        """
+        self.fetch_and_map_genres()
+        
+        query_song = """
+            SELECT id, title, energy, tempo, danceability 
+            FROM "Song" 
+            WHERE id = %s AND "isDeleted" = false
+        """
+        query_song_genres = """
+            SELECT sg."songId", g."genreTag"
+            FROM "SongGenre" sg
+            JOIN "Genre" g ON sg."genreId" = g.id
+            WHERE sg."songId" = %s
+        """
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query_song, (song_id,))
+                # Map column names
+                columns = [desc[0] for desc in cur.description]
+                row = cur.fetchone()
+                if not row:
+                    logger.warning(f"Song {song_id} not found in DB.")
+                    return False
+                
+                song_data = dict(zip(columns, row))
+                
+                # Fetch song genres
+                cur.execute(query_song_genres, (song_id,))
+                song_genres = [r[1] for r in cur.fetchall()]
+                
+                # Normalize features
+                tempo = song_data["tempo"]
+                energy = song_data["energy"]
+                danceability = song_data["danceability"]
+                
+                norm_tempo = normalize_min_max(tempo, 50.0, 200.0)
+                norm_energy = float(energy) if energy is not None and not math.isnan(energy) else 0.5
+                norm_danceability = float(danceability) if danceability is not None and not math.isnan(danceability) else 0.5
+                
+                # Build vector
+                vector = np.zeros(self.vector_dim, dtype=np.float32)
+                vector[0] = norm_tempo
+                vector[1] = norm_energy
+                vector[2] = norm_danceability
+                
+                for genre in song_genres:
+                    if genre in self.genre_to_idx:
+                        idx = self.genre_to_idx[genre]
+                        vector[idx] = 1.0
+                        
+                # L2 Normalize
+                norm = np.linalg.norm(vector)
+                if norm > 0:
+                    vector = vector / norm
+                    
+                vector_str = format_pgvector(vector)
+                cur.execute(
+                    'UPDATE "Song" SET "contentVector" = %s::vector WHERE id = %s',
+                    (vector_str, song_id)
+                )
+        logger.info(f"✅ Single Song Content Vector for song {song_id} updated successfully.")
+        return True
+
     def run_pipeline(self):
         """
         Executes the content-based vectors pipeline.
@@ -239,3 +306,4 @@ class ContentModel:
             return False
         users_ok = self.build_and_save_user_vectors()
         return users_ok
+
