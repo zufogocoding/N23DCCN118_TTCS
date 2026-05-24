@@ -83,6 +83,35 @@ const songController = {
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
       const isOriginal = req.body.isOriginal === 'true' || req.body.isOriginal === true;
 
+      // Mặc định các thông số thuộc tính âm thanh theo Genre (BPM, Energy, Danceability)
+      let tempo = 100;
+      let energy = 0.5;
+      let danceability = 0.5;
+
+      if (parsedGenreIds.length > 0) {
+        try {
+          const selectedGenre = await prisma.genre.findUnique({
+            where: { id: parsedGenreIds[0] }
+          });
+          if (selectedGenre) {
+            const tag = selectedGenre.genreTag.toLowerCase();
+            if (tag.includes('lo-fi') || tag.includes('lofi')) {
+              tempo = 75; energy = 0.3; danceability = 0.4;
+            } else if (tag.includes('edm') || tag.includes('dance') || tag.includes('electronic')) {
+              tempo = 128; energy = 0.85; danceability = 0.9;
+            } else if (tag.includes('pop')) {
+              tempo = 110; energy = 0.65; danceability = 0.7;
+            } else if (tag.includes('rock') || tag.includes('metal')) {
+              tempo = 125; energy = 0.85; danceability = 0.5;
+            } else if (tag.includes('ballad') || tag.includes('r&b') || tag.includes('soul') || tag.includes('jazz')) {
+              tempo = 85; energy = 0.4; danceability = 0.5;
+            }
+          }
+        } catch (e) {
+          console.error("Lỗi tự động gán thuộc tính âm thanh:", e);
+        }
+      }
+
       const songData = {
         title: finalTitle,
         artistName: finalArtistName, // Lưu tên nghệ sĩ trực tiếp trên Song (metadata)
@@ -90,6 +119,9 @@ const songController = {
         durationMs: finalDurationMs,
         audioUrl: savedAudioUrl,
         coverArtUrl: savedCoverUrl,
+        tempo: parseFloat(tempo),
+        energy: parseFloat(energy),
+        danceability: parseFloat(danceability),
         status: 'pending', // Mặc định pending, chờ admin duyệt
         // Liên kết genres nếu có genreIds
         ...(parsedGenreIds.length > 0 && {
