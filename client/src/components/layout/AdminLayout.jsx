@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell, ArrowLeft, Clock } from 'lucide-react';
+import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell, ArrowLeft, Clock, BarChart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
 
@@ -65,6 +65,7 @@ export default function AdminLayout() {
     { name: 'Albums', path: '/admin/albums', icon: <Disc size={20} /> },
     { name: 'Playlists', path: '/admin/playlists', icon: <ListMusic size={20} /> },
     { name: 'Genres', path: '/admin/genres', icon: <Tags size={20} /> },
+    { name: 'Charts', path: '/admin/charts', icon: <BarChart size={20} /> },
     { name: 'Reports', path: '/admin/reports', icon: <Flag size={20} /> },
   ];
 

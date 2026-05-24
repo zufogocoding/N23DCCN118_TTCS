@@ -16,6 +16,8 @@ const adminPlaylistRoutes = require("./routes/adminPlaylistRoutes");
 const adminUserRoute = require("./routes/adminUserRoute");
 const adminAlbumRoutes = require('./routes/adminAlbumRoutes.js');
 const adminReportRoutes = require('./routes/adminReportRoutes.js');
+const adminChartRoutes = require('./routes/adminChartRoutes.js');
+const chartRoutes = require('./routes/chartRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
 const recommendationRoutes = require('./routes/recommendationRoutes.js');
 
@@ -53,6 +55,8 @@ app.use(adminPlaylistRoutes);
 
 app.use(adminAlbumRoutes);
 app.use(adminReportRoutes);
+app.use(adminChartRoutes);
+app.use(chartRoutes);
 app.use(reportRoutes);
 
 
