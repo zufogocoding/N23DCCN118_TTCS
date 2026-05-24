@@ -9,8 +9,9 @@ const songController = {
       if (!audioFile) return res.status(400).json({ error: 'Chưa chọn file nhạc!' });
 
       const savedAudioUrl = `/${audioFile.path.replace(/\\/g, '/')}`;
-      const { title, durationMs, artistName, genre, genreIds } = req.body;
+      const { title, durationMs, artistName, genre, genreIds, tempo: clientTempo, energy: clientEnergy, danceability: clientDanceability } = req.body;
       const userId = req.user.id;
+
 
       // Parse genreIds và genre: hỗ trợ cả JSON string và mảng
       let parsedGenreIds = [];
@@ -84,9 +85,16 @@ const songController = {
       const isOriginal = req.body.isOriginal === 'true' || req.body.isOriginal === true;
 
       // Mặc định các thông số thuộc tính âm thanh theo Genre (BPM, Energy, Danceability)
-      let tempo = 100;
-      let energy = 0.5;
-      let danceability = 0.5;
+      let tempo = clientTempo ? parseFloat(clientTempo) : NaN;
+      let energy = clientEnergy ? parseFloat(clientEnergy) : NaN;
+      let danceability = clientDanceability ? parseFloat(clientDanceability) : NaN;
+
+      const isCustomBpm = !isNaN(tempo);
+
+      let defaultTempo = 100;
+      let defaultEnergy = 0.5;
+      let defaultDanceability = 0.5;
+      let selectedGenreTag = "";
 
       if (parsedGenreIds.length > 0) {
         try {
@@ -94,23 +102,40 @@ const songController = {
             where: { id: parsedGenreIds[0] }
           });
           if (selectedGenre) {
+            selectedGenreTag = selectedGenre.genreTag;
             const tag = selectedGenre.genreTag.toLowerCase();
             if (tag.includes('lo-fi') || tag.includes('lofi')) {
-              tempo = 75; energy = 0.3; danceability = 0.4;
-            } else if (tag.includes('edm') || tag.includes('dance') || tag.includes('electronic')) {
-              tempo = 128; energy = 0.85; danceability = 0.9;
-            } else if (tag.includes('pop')) {
-              tempo = 110; energy = 0.65; danceability = 0.7;
-            } else if (tag.includes('rock') || tag.includes('metal')) {
-              tempo = 125; energy = 0.85; danceability = 0.5;
-            } else if (tag.includes('ballad') || tag.includes('r&b') || tag.includes('soul') || tag.includes('jazz')) {
-              tempo = 85; energy = 0.4; danceability = 0.5;
+              defaultTempo = 75; defaultEnergy = 0.3; defaultDanceability = 0.4;
+            } else if (tag.includes('edm') || tag.includes('dance') || tag.includes('electronic') || tag.includes('techno') || tag.includes('house') || tag.includes('dubstep')) {
+              defaultTempo = 128; defaultEnergy = 0.85; defaultDanceability = 0.9;
+            } else if (tag.includes('pop') || tag.includes('indie-pop')) {
+              defaultTempo = 110; defaultEnergy = 0.65; defaultDanceability = 0.7;
+            } else if (tag.includes('rock') || tag.includes('metal') || tag.includes('punk') || tag.includes('grunge')) {
+              defaultTempo = 125; defaultEnergy = 0.85; defaultDanceability = 0.5;
+            } else if (tag.includes('ballad') || tag.includes('r&b') || tag.includes('soul') || tag.includes('jazz') || tag.includes('blues')) {
+              defaultTempo = 85; defaultEnergy = 0.4; defaultDanceability = 0.5;
+            } else if (tag.includes('hip-hop') || tag.includes('hiphop') || tag.includes('rap') || tag.includes('trap')) {
+              defaultTempo = 90; defaultEnergy = 0.7; defaultDanceability = 0.8;
+            } else if (tag.includes('acoustic') || tag.includes('folk') || tag.includes('indie') || tag.includes('country')) {
+              defaultTempo = 95; defaultEnergy = 0.4; defaultDanceability = 0.5;
+            } else if (tag.includes('classical') || tag.includes('instrumental') || tag.includes('orchestral') || tag.includes('soundtrack')) {
+              defaultTempo = 80; defaultEnergy = 0.2; defaultDanceability = 0.2;
+            } else if (tag.includes('ambient') || tag.includes('chill') || tag.includes('relax') || tag.includes('meditation')) {
+              defaultTempo = 65; defaultEnergy = 0.15; defaultDanceability = 0.25;
+            } else if (tag.includes('reggae') || tag.includes('ska') || tag.includes('dub')) {
+              defaultTempo = 80; defaultEnergy = 0.5; defaultDanceability = 0.75;
+            } else if (tag.includes('latin') || tag.includes('reggaeton') || tag.includes('salsa') || tag.includes('bachata')) {
+              defaultTempo = 100; defaultEnergy = 0.75; defaultDanceability = 0.85;
             }
           }
         } catch (e) {
           console.error("Lỗi tự động gán thuộc tính âm thanh:", e);
         }
       }
+
+      if (isNaN(tempo)) tempo = defaultTempo;
+      if (isNaN(energy)) energy = defaultEnergy;
+      if (isNaN(danceability)) danceability = defaultDanceability;
 
       const songData = {
         title: finalTitle,
@@ -161,6 +186,28 @@ const songController = {
             });
           }
         }
+      }
+
+      // Gọi sang ml-service để phân tích DSP hoặc đồng bộ vector
+      try {
+        const mlApiUrl = process.env.ML_API_URL || 'http://ml-api:8000';
+        const analyzeUrl = `${mlApiUrl}/songs/${newSong.id}/analyze?file_path=${encodeURIComponent(audioFile.path)}&genre_tag=${encodeURIComponent(selectedGenreTag)}`;
+        console.log(`Đang gọi ml-service phân tích bài hát ${newSong.id}: ${analyzeUrl}`);
+        
+        const mlResponse = await fetch(analyzeUrl, { method: 'POST' });
+        if (mlResponse.ok) {
+          const mlData = await mlResponse.json();
+          console.log("Kết quả phân tích âm phổ thành công từ AI:", mlData);
+          
+          // Cập nhật lại các giá trị đã được phân tích thực tế vào đối tượng bài hát phản hồi
+          newSong.tempo = mlData.features.tempo;
+          newSong.energy = mlData.features.energy;
+          newSong.danceability = mlData.features.danceability;
+        } else {
+          console.error("ml-service báo lỗi khi phân tích bài hát:", await mlResponse.text());
+        }
+      } catch (mlErr) {
+        console.error("Không thể kết nối đến ml-service để phân tích bài hát:", mlErr);
       }
 
       res.status(201).json({ message: 'Upload thành công! Bài hát đang chờ admin duyệt.', song: newSong });
