@@ -261,6 +261,74 @@ const deleteSong = async (req, res) => {
   }
 };
 
+
+const adminUpdateSong = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, artistName, tempo, energy, danceability, status, genreIds } = req.body;
+    
+    const songId = parseInt(id);
+    const existing = await prisma.song.findFirst({
+      where: { id: songId, isDeleted: false }
+    });
+    if (!existing) {
+      return res.status(404).json({ error: "Không tìm thấy bài hát" });
+    }
+
+    const data = {};
+    if (title !== undefined) data.title = String(title).trim();
+    if (artistName !== undefined) data.artistName = artistName || null;
+    if (tempo !== undefined) data.tempo = parseFloat(tempo) || null;
+    if (energy !== undefined) data.energy = parseFloat(energy) || null;
+    if (danceability !== undefined) data.danceability = parseFloat(danceability) || null;
+    if (status !== undefined) {
+      const allowed = ["approved", "rejected", "pending", "hidden"];
+      if (allowed.includes(status)) {
+        data.status = status;
+      }
+    }
+
+    // Handle genre updates if provided
+    if (genreIds !== undefined) {
+      let parsedGenreIds = [];
+      try {
+        let parsed = typeof genreIds === 'string' ? JSON.parse(genreIds) : genreIds;
+        if (!Array.isArray(parsed)) parsed = [parsed];
+        parsedGenreIds = parsed.map(gId => parseInt(gId)).filter(gId => !isNaN(gId));
+      } catch {
+        // ignore
+      }
+
+      await prisma.songGenre.deleteMany({ where: { songId } });
+      if (parsedGenreIds.length > 0) {
+        await prisma.songGenre.createMany({
+          data: parsedGenreIds.map(genreId => ({ songId, genreId })),
+        });
+      }
+    }
+
+    const updated = await prisma.song.update({
+      where: { id: songId },
+      data,
+      include: {
+        genres: { include: { genre: true } },
+        artists: {
+          include: {
+            artist: {
+              include: { user: { select: { username: true, displayName: true } } }
+            }
+          }
+        }
+      }
+    });
+
+    res.json({ message: "Admin đã cập nhật bài hát thành công", song: updated });
+  } catch (error) {
+    console.error("adminUpdateSong error:", error);
+    res.status(500).json({ error: "Không thể chỉnh sửa bài hát" });
+  }
+};
+
 module.exports = {
   getAllSongsAdmin,
   toggleSongVisibility,
@@ -272,4 +340,5 @@ module.exports = {
   getPendingCount,
   getAllSongs,
   deleteSong,
+  adminUpdateSong,
 };
