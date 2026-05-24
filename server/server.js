@@ -17,6 +17,7 @@ const adminUserRoute = require("./routes/adminUserRoute");
 const adminAlbumRoutes = require('./routes/adminAlbumRoutes.js');
 const adminReportRoutes = require('./routes/adminReportRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
+const recommendationRoutes = require('./routes/recommendationRoutes.js');
 
 
 const userRoutes = require('./routes/userRoutes.js');
@@ -37,7 +38,7 @@ app.get('/', (req, res) => {
   res.send('Hello from PandaExpress')
 })
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+app.use(recommendationRoutes);
 app.use(songRoutes);
 app.use(streamRoutes);
 app.use(authRoutes);

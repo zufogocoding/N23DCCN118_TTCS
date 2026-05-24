@@ -14,6 +14,7 @@ const {
   getPendingCount,
   getAllSongs,
   deleteSong,
+  adminUpdateSong,
 } = require("../controllers/adminSongController");
 // Existing routes (protected)
 router.get("/api/admin/songs/pending", authMiddleware, requireAdmin, getPendingSongs);
@@ -26,6 +27,7 @@ router.patch("/api/admin/song/:id/reject", authMiddleware, requireAdmin, rejectS
 router.get("/api/admin/songs", authMiddleware, requireAdmin, getAllSongsAdmin);
 router.patch("/api/admin/songs/:id/visibility", authMiddleware, requireAdmin, toggleSongVisibility);
 router.patch("/api/admin/songs/:id/status", authMiddleware, requireAdmin, setAdminSongStatus);
+router.put("/api/admin/songs/:id", authMiddleware, requireAdmin, adminUpdateSong);
 router.delete("/api/admin/songs/:id", authMiddleware, requireAdmin, adminDeleteSong);
 
 module.exports = router;

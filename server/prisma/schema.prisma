@@ -34,9 +34,10 @@ model User {
   isVerified    Boolean   @default(false) // xac thuc account
   createdAt     DateTime  @default(now())
   lastLogin     DateTime?                    // lan dang nhap gan nhat
-
+  //vector luu tru User Factor tu CB 
+  contentVector Unsupported("vector(128)")?
   // Vector lưu trữ User Factors từ ALS (Giả sử số chiều k = 64)
-  alsFeature Unsupported("vector(64)")?
+  collaborativeVector Unsupported("vector(64)")?
 
   // Quan hệ
   artist              Artist?
@@ -101,9 +102,13 @@ model Song {
   uploadedById Int?    // ID user đã upload bài hát
   energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
   tempo       Float? // Đổi sang Float
+  danceability Float? 
   status String @default("pending") @db.VarChar(50) // moi bai upload moi se tu pending
   // Vector lưu trữ Item Features (Cho CBF hoặc Item Factors của ALS)
-  embedding Unsupported("vector(64)")?
+  contentVector Unsupported("vector(128)")?
+
+  // Vector luu tru Collaborative Filtering Vector ("ITEM FACETOR")
+  collaborativeVector Unsupported("vector(64)")?
 
   // Streaming URLs
   audioUrl    String   @db.VarChar(500)
