@@ -30,6 +30,15 @@ export default function UploadSong() {
   // Duration detection
   const [durationMs, setDurationMs] = useState(0);
 
+  // New features V4: Genre search & Artist custom audio params & Circular ML Analysis
+  const [genreQuery, setGenreQuery] = useState("");
+  const [tempo, setTempo] = useState("");
+  const [energy, setEnergy] = useState(0.5);
+  const [danceability, setDanceability] = useState(0.5);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState(0);
+
+
   // Fetch genres từ API
   useEffect(() => {
     api.get('/api/genres')
@@ -124,6 +133,13 @@ export default function UploadSong() {
       }
       formData.append("isOriginal", isOriginal);
 
+      // Append custom audio properties for artists V4
+      if (tempo) formData.append("tempo", tempo);
+      if (isArtistUser) {
+        formData.append("energy", energy.toString());
+        formData.append("danceability", danceability.toString());
+      }
+
       // Sử dụng XMLHttpRequest để theo dõi progress
       const xhr = new XMLHttpRequest();
 
@@ -153,7 +169,19 @@ export default function UploadSong() {
         xhr.send(formData);
       });
 
-      setUploadSuccess(true);
+      // Thay vì setUploadSuccess(true) ngay lập tức, chuyển sang trạng thái phân tích AI
+      setIsAnalyzing(true);
+      setAnalysisStep(1);
+      
+      // Chạy hiệu ứng mô phỏng các bước phân tích DSP của hệ thống AI
+      setTimeout(() => setAnalysisStep(2), 800);
+      setTimeout(() => setAnalysisStep(3), 1600);
+      setTimeout(() => setAnalysisStep(4), 2400);
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setUploadSuccess(true);
+      }, 3200);
+
     } catch (err) {
       console.error(err);
       setError(err.message || "Upload thất bại. Vui lòng thử lại.");
@@ -161,6 +189,52 @@ export default function UploadSong() {
       setUploading(false);
     }
   };
+
+  // Analyzing / DSP progress state V4
+  if (isAnalyzing) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-6">
+        <div className="text-center max-w-md w-full p-8 rounded-3xl bg-[#121212] border border-[#222] shadow-2xl relative overflow-hidden backdrop-blur-md">
+          
+          {/* Glowing ambient background inside card */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00e6e6]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Spinning Glowing Circular Loader */}
+          <div className="relative w-36 h-36 mx-auto mb-8 flex items-center justify-center">
+            {/* Inner spinning ring */}
+            <div className="absolute inset-0 rounded-full border-4 border-t-[#00e6e6] border-r-transparent border-b-[#10b981] border-l-transparent animate-spin duration-1000" />
+            {/* Outer spinning ring (reverse) */}
+            <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-[#10b981] border-b-transparent border-l-[#00e6e6] animate-spin duration-1500" style={{ animationDirection: 'reverse' }} />
+            {/* Center pulsing pulse wave icon */}
+            <div className="w-20 h-20 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] flex items-center justify-center">
+              <Music size={32} className="text-[#00e6e6] animate-bounce" />
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-bold mb-3 tracking-tight">AI Đang Phân Tích Bài Hát</h2>
+          
+          {/* Analysis Step Messaging */}
+          <div className="h-16 flex items-center justify-center px-4 mb-6">
+            <p className="text-sm font-medium text-[#a0a0a0] transition-all duration-300 animate-pulse text-center leading-relaxed">
+              {analysisStep === 1 && "⚡ Đang nạp tệp nhạc vào lõi giải mã âm phổ..."}
+              {analysisStep === 2 && "🥁 Đang trích xuất cấu trúc nhịp và ước lượng BPM..."}
+              {analysisStep === 3 && "🔥 Đang tính toán năng lượng (Energy) và độ sôi động (Danceability)..."}
+              {analysisStep === 4 && "✨ Hoàn thành tính toán! Đang lưu vector nhúng pgvector..."}
+            </p>
+          </div>
+
+          {/* Flat Progress Bar representing Backend analysis progress */}
+          <div className="h-1.5 bg-[#222] rounded-full overflow-hidden w-full max-w-xs mx-auto">
+            <div 
+              className="h-full bg-gradient-to-r from-[#00e6e6] to-[#10b981] rounded-full transition-all duration-300"
+              style={{ width: `${(analysisStep / 4) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Success state
   if (uploadSuccess) {
@@ -436,36 +510,120 @@ export default function UploadSong() {
 
             {/* Dropdown list */}
             {genreDropdownOpen && (
-              <div className="absolute z-50 mt-2 w-full max-h-60 overflow-y-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 scrollbar-thin">
+              <div className="absolute z-50 mt-2 w-full max-h-60 overflow-y-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 scrollbar-thin flex flex-col">
+                {/* Search Input for Genres */}
+                <div className="p-2 border-b border-[#2a2a2a] sticky top-0 bg-[#1a1a1a] z-10">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm thể loại..."
+                    value={genreQuery}
+                    onChange={(e) => setGenreQuery(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs outline-none text-white focus:border-[#00e6e6]/50 transition-colors placeholder-[#444]"
+                    onClick={(e) => e.stopPropagation()} // Prevent closing dropdown
+                  />
+                </div>
                 {genres.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-[#666]">Đang tải...</div>
                 ) : (
-                  genres.map(g => {
-                    const isSelected = selectedGenreIds.includes(g.id);
-                    return (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() => toggleGenre(g.id)}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${
-                          isSelected
-                            ? 'bg-[#00e6e6]/10 text-[#00e6e6]'
-                            : 'text-white hover:bg-[#222]'
-                        }`}
-                      >
-                        <span>{g.genreTag}</span>
-                        {isSelected && (
-                          <svg className="w-4 h-4 text-[#00e6e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
+                  (() => {
+                    const filtered = genres.filter(g => 
+                      g.genreTag.toLowerCase().includes(genreQuery.toLowerCase())
                     );
-                  })
+                    if (filtered.length === 0) {
+                      return <div className="px-4 py-3 text-sm text-[#666]">Không tìm thấy thể loại nào</div>;
+                    }
+                    return filtered.map(g => {
+                      const isSelected = selectedGenreIds.includes(g.id);
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => toggleGenre(g.id)}
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${
+                            isSelected
+                              ? 'bg-[#00e6e6]/10 text-[#00e6e6]'
+                              : 'text-white hover:bg-[#222]'
+                          }`}
+                        >
+                          <span>{g.genreTag}</span>
+                          {isSelected && (
+                            <svg className="w-4 h-4 text-[#00e6e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    });
+                  })()
                 )}
               </div>
+
             )}
           </div>
+
+          {/* ADVANCED ARTIST AUDIO PROPERTIES V4 */}
+          {isArtistUser && (
+            <div className="border border-[#2a2a2a] bg-[#0a0a0a] rounded-xl p-5 space-y-4">
+              <h4 className="text-sm font-bold text-[#00e6e6] tracking-tight">Thông số âm học nâng cao (Dành cho nghệ sĩ)</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* BPM / Tempo */}
+                <div>
+                  <label className="block mb-2 text-xs font-semibold text-[#a0a0a0]">
+                    BPM / Tempo gốc
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Tự động đo lường"
+                    value={tempo}
+                    onChange={(e) => setTempo(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2a2a2a] rounded-lg px-3.5 py-2.5 text-xs outline-none focus:border-[#00e6e6]/50 text-white placeholder-[#444] transition-colors"
+                  />
+                </div>
+                
+                {/* Energy */}
+                <div>
+                  <label className="block mb-2 text-xs font-semibold text-[#a0a0a0] flex justify-between">
+                    <span>Năng lượng (Energy)</span>
+                    <span className="text-[#00e6e6] font-mono">{energy}</span>
+                  </label>
+                  <div className="flex items-center h-[38px]">
+                    <input
+                      type="range"
+                      min="0.0"
+                      max="1.0"
+                      step="0.05"
+                      value={energy}
+                      onChange={(e) => setEnergy(parseFloat(e.target.value))}
+                      className="w-full h-1 bg-[#222] rounded-lg appearance-none cursor-pointer accent-[#00e6e6]"
+                    />
+                  </div>
+                </div>
+                
+                {/* Danceability */}
+                <div>
+                  <label className="block mb-2 text-xs font-semibold text-[#a0a0a0] flex justify-between">
+                    <span>Độ nhảy (Danceability)</span>
+                    <span className="text-[#00e6e6] font-mono">{danceability}</span>
+                  </label>
+                  <div className="flex items-center h-[38px]">
+                    <input
+                      type="range"
+                      min="0.0"
+                      max="1.0"
+                      step="0.05"
+                      value={danceability}
+                      onChange={(e) => setDanceability(parseFloat(e.target.value))}
+                      className="w-full h-1 bg-[#222] rounded-lg appearance-none cursor-pointer accent-[#00e6e6]"
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-[#555] leading-relaxed">
+                * Lưu ý: Hãy nhập BPM gốc của bài nhạc nếu có. Để trống ô BPM để hệ thống AI tự động phân tích nhịp điệu trung bình từ file nhạc. Năng lượng và Độ nhảy là các thông số cảm xúc tùy chỉnh không bắt buộc.
+              </p>
+            </div>
+          )}
 
           {/* DESCRIPTION */}
           <div>
