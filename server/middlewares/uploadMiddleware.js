@@ -77,12 +77,24 @@ const uploadSongFields = multer({
     }
   }),
   fileFilter: (req, file, cb) => {
-    if (file.fieldname === 'audioFile' && file.mimetype.startsWith('audio/')) {
-      cb(null, true);
-    } else if (file.fieldname === 'coverImage' && file.mimetype.startsWith('image/')) {
-      cb(null, true);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    const allowedAudioExts = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.mp4'];
+
+    if (file.fieldname === 'audioFile') {
+      if (file.mimetype.startsWith('audio/') || allowedAudioExts.includes(ext)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Định dạng file nhạc không hợp lệ! Chỉ cho phép mp3, wav, flac, ogg, m4a, aac'), false);
+      }
+    } else if (file.fieldname === 'coverImage') {
+      if (file.mimetype.startsWith('image/') || allowedImageExts.includes(ext)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Định dạng ảnh bìa không hợp lệ! Chỉ cho phép jpg, jpeg, png, webp, gif'), false);
+      }
     } else {
-      cb(new Error('Định dạng file không hợp lệ!'), false);
+      cb(new Error('Trường file không hợp lệ!'), false);
     }
   },
   limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit
@@ -101,17 +113,21 @@ const uploadArtistRequest = multer({
     }
   ),
   fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    const allowedAudioExts = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.mp4'];
+
     if (file.fieldname === 'idCard') {
-      if (file.mimetype.startsWith('image/')) {
+      if (file.mimetype.startsWith('image/') || allowedImageExts.includes(ext)) {
         cb(null, true);
       } else {
-        cb(new Error('ID Card phải là file ảnh!'), false);
+        cb(new Error('ID Card phải là file ảnh (jpg, jpeg, png, webp, gif)!'), false);
       }
     } else if (file.fieldname === 'demoTrack') {
-      if (file.mimetype.startsWith('audio/')) {
+      if (file.mimetype.startsWith('audio/') || allowedAudioExts.includes(ext)) {
         cb(null, true);
       } else {
-        cb(new Error('Demo Track phải là file âm thanh!'), false);
+        cb(new Error('Demo Track phải là file âm thanh (mp3, wav, flac, ogg, m4a, aac)!'), false);
       }
     } else {
       cb(new Error('Trường file không hợp lệ!'), false);
