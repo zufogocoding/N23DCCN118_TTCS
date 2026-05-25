@@ -58,6 +58,27 @@ const PlaylistView = () => {
           setPlaylist(data);
           const extractedSongs = data.songs ? data.songs.map(ps => ps.song) : [];
           setSongs(extractedSongs);
+
+          // Lưu lịch sử click playlist của khách
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          if (!currentUser.id) {
+            try {
+              const guestPlaylists = JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]');
+              const updated = [
+                {
+                  id: data.id,
+                  title: data.title,
+                  coverArtUrl: data.coverArtUrl,
+                  songCount: extractedSongs.length
+                },
+                ...guestPlaylists.filter(p => p.id !== data.id)
+              ].slice(0, 10);
+              localStorage.setItem('guest_recent_playlists', JSON.stringify(updated));
+              window.dispatchEvent(new Event('guestHistoryUpdated'));
+            } catch (err) {
+              console.error('Error saving guest recent playlists:', err);
+            }
+          }
         }
       } catch (err) {
         console.error('Lỗi khi lấy playlist:', err);
