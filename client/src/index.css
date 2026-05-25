@@ -60,3 +60,59 @@ html.light-theme [class*="border-[#3"],
 html.light-theme [class*="border-[#2"] {
   border-color: #cbd5e1 !important;
 }
+
+/* SLEEK CUSTOM SCROLLBARS GLOBALLY */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+/* Light Theme Scrollbars */
+html.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.12) !important;
+}
+
+html.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.25) !important;
+}
+
+/* Custom scrollbar utility classes */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px !important;
+  width: 6px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 9999px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+html.light-theme .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light-theme .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.2) !important;
+}

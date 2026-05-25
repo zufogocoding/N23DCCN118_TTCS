@@ -79,6 +79,21 @@ export const PlayerProvider = ({ children }) => {
         durationPlayed: 0, // Tạm thời gửi 0, chỉ để tăng playCount
         isSkipped: false
       }).catch(err => console.error('Track listen error:', err));
+    } else {
+      // Lưu lịch sử cục bộ cho Guest
+      try {
+        const guestRecent = JSON.parse(localStorage.getItem('guest_recent_songs') || '[]');
+        const updatedRecent = [
+          song,
+          ...guestRecent.filter(s => s.id !== song.id)
+        ].slice(0, 20); // Giữ tối đa 20 bài gần nhất
+        localStorage.setItem('guest_recent_songs', JSON.stringify(updatedRecent));
+        
+        // Kích hoạt custom event để các component đang lắng nghe (như Home) biết và cập nhật lại
+        window.dispatchEvent(new Event('guestHistoryUpdated'));
+      } catch (err) {
+        console.error('Error saving guest recent history:', err);
+      }
     }
   }
 
