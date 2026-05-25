@@ -45,7 +45,7 @@ const artistRequestController = {
       res.status(201).json({ message: "Gửi yêu cầu thành công!", request: newRequest });
     } catch (error) {
       console.error("Lỗi createRequest:", error);
-      res.status(500).json({ error: "Lỗi server khi tạo yêu cầu" });
+      res.status(500).json({ error: `Lỗi server khi tạo yêu cầu: ${error.message}` });
     }
   },
 
