@@ -1,5 +1,12 @@
 const jwt = require('jsonwebtoken');
 
+// BUG FIX: Load dotenv để process.env.JWT_SECRET có giá trị
+try {
+  require('dotenv').config();
+} catch (_) {
+  // dotenv có thể không được cài, bỏ qua
+}
+
 if (!process.env.JWT_SECRET) {
   console.error("CRITICAL ERROR: JWT_SECRET env variable is missing!");
   process.exit(1);

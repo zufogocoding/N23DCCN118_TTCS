@@ -55,7 +55,23 @@ export default function ArtistProfile() {
   const avatarInputRef = useRef(null);
   const bannerInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const [currentUser, setCurrentUser] = useState(
+    JSON.parse(localStorage.getItem('user') || '{}')
+  );
+
+  // BUG FIX: currentUser reactive — cập nhật khi localStorage thay đổi
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setCurrentUser(JSON.parse(localStorage.getItem('user') || '{}'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // Cũng check mỗi khi focus vào tab (user login ở tab khác)
+    window.addEventListener('focus', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
 
   const fetchArtistData = useCallback(async () => {
     setLoading(true);
@@ -91,7 +107,7 @@ export default function ArtistProfile() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!user.id || topSongs.length === 0) return;
-    
+
     api.post('/api/interactions/like-status-batch', { songIds: topSongs.map((s) => s.id) })
       .then((r) => (r.ok ? r.json() : {}))
       .then((statusMap) => {
@@ -145,6 +161,7 @@ export default function ArtistProfile() {
     }
   };
 
+  // BUG FIX: follow/unfollow chỉ cập nhật local state, không reload toàn bộ UI
   const handleFollowToggle = async () => {
     if (!currentUser.id) {
       navigate('/login');
@@ -158,7 +175,13 @@ export default function ArtistProfile() {
         ? await api.delete(`/api/artists/${id}/follow`)
         : await api.post(`/api/artists/${id}/follow`, {});
       if (res.ok) {
-        await fetchArtistData();
+        const data = await res.json().catch(() => ({}));
+        // BUG FIX: Chỉ cập nhật local state thay vì fetchArtistData()
+        setProfile((prev) => prev ? {
+          ...prev,
+          isFollowing: !prev.isFollowing,
+          followerCount: prev.followerCount + (prev.isFollowing ? -1 : 1),
+        } : prev);
       }
     } catch (e) {
       console.error(e);
@@ -306,13 +329,15 @@ export default function ArtistProfile() {
     );
   }
 
-  const banner =
-    profile.artist?.bannerUrl || profile.coverImageUrl
-      ? getMediaUrl(profile.artist?.bannerUrl || profile.coverImageUrl)
-      : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop';
+  // BUG FIX: Sửa operator precedence — dùng ?? thay || và thêm () cho ternary
+  const bannerUrl = profile.artist?.bannerUrl ?? profile.coverImageUrl;
+  const banner = bannerUrl
+    ? getMediaUrl(bannerUrl)
+    : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop';
 
-  const avatarUrl = profile.artist?.avatarUrl || profile.avatarUrl
-    ? getMediaUrl(profile.artist?.avatarUrl || profile.avatarUrl)
+  const avatarImgUrl = profile.artist?.avatarUrl ?? profile.avatarUrl;
+  const avatarUrl = avatarImgUrl
+    ? getMediaUrl(avatarImgUrl)
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(artistDisplayName)}&background=random`;
 
   const bioText = profile.artist?.artistBio || profile.bio;
@@ -379,11 +404,10 @@ export default function ArtistProfile() {
                 type="button"
                 disabled={followBusy}
                 onClick={handleFollowToggle}
-                className={`inline-flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition ${
-                  profile.isFollowing
-                    ? 'bg-transparent border border-white/40 text-white hover:border-white'
-                    : 'bg-[#1ed760] text-black hover:scale-105'
-                }`}
+                className={`inline-flex items-center gap-2 px-6 py-2 rounded-full font-bold text-sm transition ${profile.isFollowing
+                  ? 'bg-transparent border border-white/40 text-white hover:border-white'
+                  : 'bg-[#1ed760] text-black hover:scale-105'
+                  }`}
               >
                 {followBusy ? (
                   <Loader2 className="animate-spin" size={18} />
@@ -524,9 +548,8 @@ export default function ArtistProfile() {
                       >
                         <Heart
                           size={18}
-                          className={`transition-colors ${
-                            likedSongIds.has(song.id) ? 'text-[#1ed760] fill-current' : 'text-gray-400 hover:text-white'
-                          }`}
+                          className={`transition-colors ${likedSongIds.has(song.id) ? 'text-[#1ed760] fill-current' : 'text-gray-400 hover:text-white'
+                            }`}
                         />
                       </button>
                       <AddToPlaylistMenu songId={song.id} />

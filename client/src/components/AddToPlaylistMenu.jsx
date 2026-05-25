@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
 import { api } from '../utils/api';
 import useClickOutside from '../hooks/useClickOutside';
+import CreatePlaylistModal from './CreatePlaylistModal';
 
 /**
  * AddToPlaylistMenu - Dropdown menu để thêm bài hát vào playlist
@@ -17,6 +18,8 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [addedTo, setAddedTo] = useState(new Set());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [positionClass, setPositionClass] = useState('right-0 top-full mt-2');
   const menuRef = useRef(null);
   const searchRef = useRef(null);
 
@@ -53,6 +56,39 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
       return;
     }
 
+    // Đo vị trí viewport để tự động điều chỉnh hướng mở của dropdown, chống tràn viền / cắt góc
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let horizontal = 'right-0'; // Mặc định căn lề phải (bung sang trái)
+      let vertical = 'top-full mt-2'; // Mặc định bung xuống dưới
+
+      // Nếu nút nằm quá sát mép trái (< 256px), căn lề trái (bung sang phải)
+      if (rect.left < 256) {
+        horizontal = 'left-0';
+      }
+
+      // Nếu nút nằm quá sát mép dưới (< 320px), bung ngược lên trên
+      if (viewportHeight - rect.bottom < 320) {
+        vertical = 'bottom-full mb-2';
+      }
+
+      // Nếu menu nằm trong menu dọc / ngang side-by-side
+      if (asMenuItem) {
+        // Nếu nút nằm sát mép phải (< 256px), bung sang trái
+        if (viewportWidth - rect.right < 256) {
+          horizontal = 'right-full mr-1 top-0';
+        } else {
+          horizontal = 'left-full ml-1 top-0';
+        }
+        vertical = '';
+      }
+
+      setPositionClass(`${horizontal} ${vertical}`);
+    }
+
     setIsOpen(true);
     setLoading(true);
 
@@ -81,6 +117,21 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
       setPlaylists([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlaylistCreated = async () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      try {
+        const res = await api.get(`/api/playlists/user/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPlaylists(data);
+        }
+      } catch (err) {
+        console.error('Lỗi khi lấy playlist sau khi tạo:', err);
+      }
     }
   };
 
@@ -145,7 +196,7 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
       )}
 
       {isOpen && (
-        <div className={`absolute ${asMenuItem ? 'left-full top-0 ml-1' : 'right-0 top-full mt-2'} w-64 bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-2 z-[60]`}>
+        <div className={`absolute ${positionClass} w-64 bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-2 z-[60]`}>
           <p className="px-4 py-2 text-xs font-bold text-[#a0a0a0] uppercase tracking-wider">
             Thêm vào Playlist
           </p>
@@ -156,7 +207,11 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
               e.stopPropagation();
               setIsOpen(false);
               setSearchText('');
-              if (onCreatePlaylist) onCreatePlaylist();
+              if (onCreatePlaylist) {
+                onCreatePlaylist();
+              } else {
+                setIsModalOpen(true);
+              }
             }}
             className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-white hover:bg-white/10 transition-colors"
           >
@@ -215,6 +270,13 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
           )}
         </div>
       )}
+
+      {/* Modal tạo playlist tích hợp sẵn */}
+      <CreatePlaylistModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handlePlaylistCreated}
+      />
     </div>
   );
 }

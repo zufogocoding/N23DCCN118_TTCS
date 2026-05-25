@@ -1,4 +1,5 @@
 const prisma = require('../db/index');
+const path = require('path');
 
 const songController = {
   // 1. Logic Upload (nhận audio + cover image)
@@ -8,7 +9,7 @@ const songController = {
       const audioFile = req.files?.audioFile?.[0];
       if (!audioFile) return res.status(400).json({ error: 'Chưa chọn file nhạc!' });
 
-      const savedAudioUrl = `/${audioFile.path.replace(/\\/g, '/')}`;
+      const savedAudioUrl = `/${path.relative(process.cwd(), audioFile.path).replace(/\\/g, '/')}`;
       const { title, durationMs, artistName, genre, genreIds, tempo: clientTempo, energy: clientEnergy, danceability: clientDanceability } = req.body;
       const userId = req.user.id;
 
@@ -40,7 +41,7 @@ const songController = {
 
       // Cover image (optional)
       const coverFile = req.files?.coverImage?.[0];
-      let savedCoverUrl = coverFile ? `/${coverFile.path.replace(/\\/g, '/')}` : null;
+      let savedCoverUrl = coverFile ? `/${path.relative(process.cwd(), coverFile.path).replace(/\\/g, '/')}` : null;
 
       const albumIdRaw = req.body.albumId;
       const albumIdParsed = albumIdRaw != null && albumIdRaw !== '' ? parseInt(albumIdRaw, 10) : NaN;

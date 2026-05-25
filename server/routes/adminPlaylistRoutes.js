@@ -5,9 +5,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const requireAdmin = require("../middlewares/requireAdmin");
 
 // Require auth + admin for all playlist admin routes
-router.use(authMiddleware, requireAdmin);
-
-router.get("/api/admin/playlists", getAllPlaylists);
-router.delete("/api/admin/playlists/:id", deletePlaylist);
+router.get("/api/admin/playlists", authMiddleware, requireAdmin, getAllPlaylists);
+router.delete("/api/admin/playlists/:id", authMiddleware, requireAdmin, deletePlaylist);
 
 module.exports = router;
