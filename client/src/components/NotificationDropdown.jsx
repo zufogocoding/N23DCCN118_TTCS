@@ -23,6 +23,9 @@ export default function NotificationDropdown() {
   };
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return; // Không fetch nếu chưa đăng nhập!
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
@@ -33,7 +36,8 @@ export default function NotificationDropdown() {
 
   // Refetch khi mở dropdown
   useEffect(() => {
-    if (isOpen) {
+    const userStr = localStorage.getItem('user');
+    if (isOpen && userStr) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchNotifications();
     }
@@ -86,6 +90,9 @@ export default function NotificationDropdown() {
       default: return 'border-l-[#00e6e6]';
     }
   };
+
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return null; // Ẩn luôn quả chuông nếu là khách!
 
   return (
     <div className="relative" ref={dropdownRef}>

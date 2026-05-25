@@ -31,21 +31,23 @@ const PlaylistView = () => {
 
     if (playlistId === 'liked') {
       setIsLikedPage(true);
-      if (user.id) {
-        try {
-          const res = await api.get('/api/interactions/liked');
-          if (res.ok) {
-            const data = await res.json();
-            setSongs(data);
-            setPlaylist({
-              title: 'Liked Songs',
-              user: { username: user.artistName || user.displayName || user.username },
-              songCount: data.length,
-            });
-          }
-        } catch (err) {
-          console.error('Lỗi khi lấy liked songs:', err);
+      if (!user.id) {
+        navigate('/login');
+        return;
+      }
+      try {
+        const res = await api.get('/api/interactions/liked');
+        if (res.ok) {
+          const data = await res.json();
+          setSongs(data);
+          setPlaylist({
+            title: 'Liked Songs',
+            user: { username: user.artistName || user.displayName || user.username },
+            songCount: data.length,
+          });
         }
+      } catch (err) {
+        console.error('Lỗi khi lấy liked songs:', err);
       }
     } else {
       setIsLikedPage(false);

@@ -244,12 +244,12 @@ export default function MainLayout() {
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
 
-            <Link
-              to="/playlist/liked"
-              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6] mb-4"
+            <button
+              onClick={() => handleProtectedAction(() => navigate('/playlist/liked'))}
+              className="w-full text-left flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6] mb-4"
             >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
-            </Link>
+            </button>
 
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
 
@@ -279,12 +279,27 @@ export default function MainLayout() {
         <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
 
           <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-3 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-md">
-
-            <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
-              <NotificationDropdown />
-              <UserDropdown />
-            </div>
-
+            {localStorage.getItem('user') ? (
+              <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
+                <NotificationDropdown />
+                <UserDropdown />
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <Link
+                  to="/register"
+                  className="text-[#a0a0a0] hover:text-white font-bold py-2 px-4 transition-colors text-sm"
+                >
+                  Đăng ký
+                </Link>
+                <Link
+                  to="/login"
+                  className="bg-white text-black hover:scale-105 font-bold py-2 px-6 rounded-full transition-transform text-sm"
+                >
+                  Đăng nhập
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="px-6 pb-6">
