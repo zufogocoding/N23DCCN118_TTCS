@@ -1,4 +1,5 @@
 const prisma = require('../db/index');
+const path = require('path');
 
 const songListInclude = {
   artists: {
@@ -116,7 +117,7 @@ const albumController = {
       // Handle cover image file upload
       const coverFile = req.files?.coverImage?.[0];
       const coverArtUrl = coverFile
-        ? `/${coverFile.path.replace(/\\/g, '/')}`
+        ? `/${path.relative(process.cwd(), coverFile.path).replace(/\\/g, '/')}`
         : (req.body.coverArtUrl || null);
 
       let parsedScheduledAt = null;
@@ -168,7 +169,7 @@ const albumController = {
       // Handle cover image file upload
       const coverFile = req.files?.coverImage?.[0];
       if (coverFile) {
-        data.coverArtUrl = `/${coverFile.path.replace(/\\/g, '/')}`;
+        data.coverArtUrl = `/${path.relative(process.cwd(), coverFile.path).replace(/\\/g, '/')}`;
       } else if (req.body.coverArtUrl !== undefined) {
         data.coverArtUrl = req.body.coverArtUrl;
       }
