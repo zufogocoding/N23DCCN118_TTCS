@@ -62,27 +62,13 @@ export default function Search() {
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Reset page when query changes
+  // Reset page and fetch search results when debounced query changes
   useEffect(() => {
-
-    const timer = setTimeout(() => {
-      if (searchQuery.trim() !== '') {
-        setPage(1);
-        fetchSearchResults(1, true);
-      } else {
-        setSearchResults({ songs: [], playlists: [], artists: [], albums: [] });
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
     if (debouncedSearchQuery.trim() !== '') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(1);
       fetchSearchResults(debouncedSearchQuery, 1, true);
     } else {
-      setSearchResults({ songs: [], playlists: [], artists: [] });
+      setSearchResults({ songs: [], playlists: [], artists: [], albums: [] });
     }
   }, [debouncedSearchQuery]);
 

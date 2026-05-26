@@ -53,20 +53,15 @@ export default function Home() {
     async function fetchData() {
       try {
 
-        const [songsRes, playlistsRes, albumsRes] = await Promise.all([
-          fetch('http://localhost:9000/api/songs'),
-          user.id ? fetch(`http://localhost:9000/api/playlists/user/${user.id}`) : Promise.resolve(null),
-          fetch('http://localhost:9000/api/albums')
-
-        const [songsRes, playlistsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes] = await Promise.all([
+        const [songsRes, playlistsRes, albumsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes] = await Promise.all([
           api.get('/api/songs'),
           user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
+          api.get('/api/albums'),
           api.get('/api/charts/DAILY'),
           api.get('/api/charts/WEEKLY'),
           api.get('/api/charts/MONTHLY'),
           user.id ? api.get('/api/recommendations') : Promise.resolve(null),
           user.id ? api.get('/api/interactions/recent') : Promise.resolve(null)
-
         ]);
 
         let fetchedSongs = [];

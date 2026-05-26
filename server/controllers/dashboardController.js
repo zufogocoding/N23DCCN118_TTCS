@@ -80,9 +80,15 @@ const dashboardController = {
   getStreamingStats: async (req, res) => {
     try {
       const days = parseInt(req.query.days) || 7;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - (days - 1));
-      startDate.setHours(0, 0, 0, 0);
+      
+      // Tính toán mốc thời gian nửa đêm hôm nay theo múi giờ Việt Nam (UTC+7)
+      const vnOffset = 7 * 60 * 60 * 1000;
+      const vnTime = new Date(Date.now() + vnOffset);
+      vnTime.setUTCHours(0, 0, 0, 0);
+      const todayMidnight = new Date(vnTime.getTime() - vnOffset);
+      
+      // Ngày bắt đầu (startDate) tính lùi lại (days - 1) ngày từ nửa đêm hôm nay
+      const startDate = new Date(todayMidnight.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
 
       // Fetch all interactions in the time range with a single query selecting only timeStamp
       const interactions = await prisma.interaction.findMany({
@@ -94,11 +100,15 @@ const dashboardController = {
         }
       });
 
-      // Group and count by date string format
+      // Group and count by date string format (sử dụng múi giờ Việt Nam để đồng bộ)
       const countsMap = {};
       interactions.forEach(inter => {
         if (inter.timeStamp) {
-          const label = new Date(inter.timeStamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const label = new Date(inter.timeStamp).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'Asia/Ho_Chi_Minh'
+          });
           countsMap[label] = (countsMap[label] || 0) + 1;
         }
       });
@@ -106,10 +116,12 @@ const dashboardController = {
       // Map back to result array filling missing days with 0
       const result = [];
       for (let i = days - 1; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        d.setHours(0, 0, 0, 0);
-        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const d = new Date(todayMidnight.getTime() - i * 24 * 60 * 60 * 1000);
+        const label = d.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          timeZone: 'Asia/Ho_Chi_Minh'
+        });
         result.push({ date: label, streams: countsMap[label] || 0 });
       }
 
