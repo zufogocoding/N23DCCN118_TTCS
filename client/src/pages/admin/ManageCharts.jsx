@@ -8,6 +8,29 @@ export default function ManageCharts() {
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  const [historyDate, setHistoryDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [historyChart, setHistoryChart] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const fetchHistory = async () => {
+    if (!historyDate) return;
+    setHistoryLoading(true);
+    setHistoryChart(null);
+    try {
+      const res = await api.get(`/api/admin/charts/history?chartType=${chartType}&date=${historyDate}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryChart(data);
+      }
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const fetchChart = async (type) => {
     setLoading(true);
@@ -29,6 +52,7 @@ export default function ManageCharts() {
 
   useEffect(() => {
     fetchChart(chartType);
+    fetchHistory();
   }, [chartType]);
 
   const handleSyncChart = async () => {
@@ -93,7 +117,7 @@ export default function ManageCharts() {
       <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-white">
-            {chartType === 'DAILY' ? 'Top 50 Ngày' : chartType === 'WEEKLY' ? 'Top 50 Tuần' : 'Top 50 Tháng'}
+            {chartType === 'DAILY' ? 'Top 50 Ngày Hiện Tại' : chartType === 'WEEKLY' ? 'Top 50 Tuần Hiện Tại' : 'Top 50 Tháng Hiện Tại'}
           </h2>
           <span className="text-sm text-[#a0a0a0]">
             Cập nhật lần cuối: {chartData?.updateAt ? new Date(chartData.updateAt).toLocaleString() : 'Chưa cập nhật'}
@@ -142,6 +166,76 @@ export default function ManageCharts() {
         ) : (
           <div className="text-center py-12 text-[#a0a0a0]">
             Bảng xếp hạng chưa có dữ liệu. Vui lòng ấn "Cập nhật Bảng Xếp Hạng" để tạo dữ liệu.
+          </div>
+        )}
+      </div>
+
+      <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-xl font-bold text-white">Tra Cứu Lịch Sử</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-[#a0a0a0] text-sm">Chọn mốc thời gian:</span>
+            <input 
+              type="date" 
+              value={historyDate}
+              onChange={(e) => setHistoryDate(e.target.value)}
+              className="bg-[#181818] border border-[#333] text-white rounded px-3 py-1 outline-none focus:border-[#00e6e6] text-sm"
+            />
+            <button
+              onClick={fetchHistory}
+              className="text-sm bg-[#333] hover:bg-[#444] text-white px-4 py-1.5 rounded transition-colors"
+            >
+              Xem BXH
+            </button>
+          </div>
+        </div>
+        
+        {historyLoading ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#00e6e6]"></div>
+          </div>
+        ) : historyChart ? (
+          <div className="space-y-4">
+            <div className="bg-[#181818] border border-[#333] rounded-lg p-4">
+              <h3 className="text-[#00e6e6] font-semibold mb-4">{historyChart.title}</h3>
+              {historyChart.songs && historyChart.songs.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-[#a0a0a0]">
+                    <thead className="text-xs uppercase bg-[#222] text-[#a0a0a0]">
+                      <tr>
+                        <th className="px-4 py-2 text-center w-16">Rank</th>
+                        <th className="px-4 py-2">Bài Hát</th>
+                        <th className="px-4 py-2 text-center w-24">Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyChart.songs.map(item => (
+                        <tr key={item.songId} className="border-b border-[#333]">
+                          <td className="px-4 py-2 text-center font-bold text-white">{item.rank}</td>
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={getCoverArt(item.song)} 
+                                alt="cover" 
+                                className="w-8 h-8 rounded object-cover"
+                              />
+                              <span className="text-white">{item.song?.title}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 text-center text-[#00e6e6]">{item.totalScore}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-[#a0a0a0] text-sm text-center py-4">Không có dữ liệu stream nào trong khoảng thời gian này.</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-6 text-[#a0a0a0]">
+            Vui lòng chọn ngày và nhấn "Xem BXH" để tra cứu.
           </div>
         )}
       </div>

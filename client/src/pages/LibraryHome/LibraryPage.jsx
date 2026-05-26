@@ -5,6 +5,7 @@ import { api, getMediaUrl } from "../../utils/api";
 import { getCoverArt, getArtistName } from "../../utils/songHelpers";
 import { usePlayer } from "../../context/PlayerContext";
 import TrackEditModal from "../../components/TrackEditModal";
+import CreatePlaylistModal from "../../components/CreatePlaylistModal";
 
 export default function LibraryPage() {
   const [songs, setSongs] = useState([]); // Uploaded songs
@@ -17,6 +18,7 @@ export default function LibraryPage() {
   const [openMenu, setOpenMenu] = useState(null);
   const [selectedSong, setSelectedSong] = useState(null);
   const [deletingSong, setDeletingSong] = useState(null);
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
 
   const navigate = useNavigate();
   const { playSong } = usePlayer();
@@ -297,7 +299,7 @@ export default function LibraryPage() {
             {/* Create Playlist Button Card */}
             <div 
               className="bg-[#181818] hover:bg-[#222] transition-colors rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer min-h-[220px] group border border-dashed border-[#333] hover:border-[#00e6e6]/50"
-              onClick={() => navigate('/create-playlist')}
+              onClick={() => setShowCreatePlaylist(true)}
             >
               <div className="w-14 h-14 rounded-full bg-[#222] group-hover:bg-[#00e6e6]/15 group-hover:text-[#00e6e6] flex items-center justify-center mb-4 transition-colors">
                 <Plus size={28} />
@@ -378,6 +380,18 @@ export default function LibraryPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Create Playlist Modal */}
+      {showCreatePlaylist && (
+        <CreatePlaylistModal
+          isOpen={true}
+          onClose={() => setShowCreatePlaylist(false)}
+          onSuccess={() => {
+            getPlaylists(user.id);
+            setShowCreatePlaylist(false);
+          }}
+        />
       )}
 
     </div>
