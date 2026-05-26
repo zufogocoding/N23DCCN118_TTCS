@@ -29,6 +29,7 @@ const uploadAlbumCover = multer({
 }).fields([{ name: 'coverImage', maxCount: 1 }]);
 
 // Public routes
+router.get('/api/albums', albumController.getAllPublicAlbums);
 router.get('/api/artists/:artistId/albums', albumController.listAlbumsByArtist);
 router.get('/api/albums/:albumId', albumController.getAlbumById);
 

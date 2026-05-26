@@ -68,22 +68,44 @@ const searchController = {
         take: limit + 1
       });
 
+      // Search Albums
+      const albums = await prisma.album.findMany({
+        where: {
+          status: 'released',
+          OR: [
+            { title: { contains: searchTerms, mode: 'insensitive' } }
+          ]
+        },
+        include: {
+          artist: {
+            include: {
+              user: { select: { username: true, displayName: true } }
+            }
+          }
+        },
+        skip,
+        take: limit + 1
+      });
+
       // Tính toán hasNextPage
       const hasNextSongs = songs.length > limit;
       const hasNextArtists = artists.length > limit;
       const hasNextPlaylists = playlists.length > limit;
+      const hasNextAlbums = albums.length > limit;
       
-      const hasNextPage = hasNextSongs || hasNextArtists || hasNextPlaylists;
+      const hasNextPage = hasNextSongs || hasNextArtists || hasNextPlaylists || hasNextAlbums;
 
       // Cắt bỏ phần tử dư thừa
       if (hasNextSongs) songs.pop();
       if (hasNextArtists) artists.pop();
       if (hasNextPlaylists) playlists.pop();
+      if (hasNextAlbums) albums.pop();
 
       res.status(200).json({ 
         songs, 
         artists, 
         playlists,
+        albums,
         page,
         hasNextPage 
       });
