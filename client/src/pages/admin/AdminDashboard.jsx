@@ -29,6 +29,96 @@ export default function AdminDashboard() {
   const [chartLoading, setChartLoading] = useState(true);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
 
+  // Trạng thái kích hoạt huấn luyện hệ thống AI
+  const [trainingState, setTrainingState] = useState({
+    loading: false,
+    success: false,
+    error: ''
+  });
+
+  const [mlStatus, setMlStatus] = useState('idle'); // 'idle', 'training', 'success', 'failed'
+  
+  // Chi tiết trạng thái huấn luyện (bao gồm lần cuối train, kết quả...)
+  const [mlData, setMlData] = useState({
+    status: 'idle',
+    is_training: false,
+    last_error: null,
+    last_trained: null,
+    last_status: 'none'
+  });
+
+  const formatVietnamTime = (isoString) => {
+    if (!isoString) return '';
+    try {
+      const date = new Date(isoString);
+      return new Intl.DateTimeFormat('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(date);
+    } catch (e) {
+      return isoString;
+    }
+  };
+
+  // Fetch trạng thái huấn luyện thời gian thực từ ML Service
+  const fetchMLStatus = async () => {
+    try {
+      const res = await api.get('/api/admin/recommendations/train/status');
+      if (res.ok) {
+        const data = await res.json();
+        setMlStatus(data.status || 'idle');
+        setMlData(data);
+        if (data.status === 'success' || data.status === 'failed' || data.status === 'idle') {
+          setTrainingState(prev => ({ ...prev, loading: false }));
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setMlStatus('failed');
+        setTrainingState({
+          loading: false,
+          success: false,
+          error: errData.error || `Lỗi lấy trạng thái ML (HTTP ${res.status})`
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi khi lấy trạng thái ML:', err);
+      setMlStatus('failed');
+      setTrainingState({
+        loading: false,
+        success: false,
+        error: 'Lỗi kết nối khi lấy trạng thái ML'
+      });
+    }
+  };
+
+  // Gửi lệnh huấn luyện tới máy chủ ML
+  const handleTrainModel = async () => {
+    setTrainingState({ loading: true, success: false, error: '' });
+    setMlStatus('training');
+    try {
+      const res = await api.post('/api/admin/recommendations/train');
+      if (res.ok) {
+        setTrainingState({ loading: true, success: true, error: '' });
+        // Bắt đầu check trạng thái ngay lập tức
+        fetchMLStatus();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTrainingState({ loading: false, success: false, error: err.error || 'Huấn luyện thất bại' });
+        setMlStatus('failed');
+      }
+    } catch (err) {
+      console.error(err);
+      setTrainingState({ loading: false, success: false, error: 'Lỗi kết nối tới máy chủ ML' });
+      setMlStatus('failed');
+    }
+  };
+
   // Fetch thống kê tổng quan
   const fetchStats = async () => {
     try {
@@ -78,7 +168,23 @@ export default function AdminDashboard() {
     fetchStats();
     fetchStreamingStats();
     fetchRecentActivities();
+    fetchMLStatus(); // Kiểm tra trạng thái lúc tải trang
   }, []);
+
+  // Polling check trạng thái huấn luyện khi đang trong tiến trình 'training'
+  useEffect(() => {
+    if (mlStatus === 'training') {
+      const interval = setInterval(async () => {
+        await fetchMLStatus();
+      }, 1500); // Poll mỗi 1.5s thay vì 3s để phản hồi nhanh hơn
+      return () => clearInterval(interval);
+    }
+    // Khi train vừa xong (success/failed), refresh lại toàn bộ stats
+    if (mlStatus === 'success' || mlStatus === 'failed') {
+      fetchStats();
+      fetchStreamingStats();
+    }
+  }, [mlStatus]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -102,6 +208,77 @@ export default function AdminDashboard() {
         <StatCard title="Total Songs" value={stats.totalSongs} loading={loading} />
         <StatCard title="Total Playlists" value={stats.totalPlaylists} loading={loading} />
         <StatCard title="Pending Artist Requests" value={stats.pendingArtists} loading={loading} />
+      </div>
+
+      {/* Bảng điều khiển kích hoạt Huấn Luyện AI */}
+      <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span>🤖 Trí tuệ nhân tạo & Đề xuất (AI Engine)</span>
+            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+              mlStatus === 'training' 
+                ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30' 
+                : mlStatus === 'success' 
+                  ? 'bg-green-500/15 text-green-400 border border-green-500/30' 
+                  : mlStatus === 'failed' 
+                    ? 'bg-red-500/15 text-red-400 border border-red-500/30' 
+                    : 'bg-white/5 text-[#a0a0a0] border border-white/10'
+            }`}>
+              {mlStatus === 'training' ? '● Đang chạy ngầm...' : mlStatus === 'success' ? '● Hoàn thành' : mlStatus === 'failed' ? '● Thất bại' : '● Sẵn sàng'}
+            </span>
+          </h3>
+          <p className="text-[#a0a0a0] text-sm">
+            Cập nhật ma trận tương tác Collaborative Filtering (ALS) & pgvector content nhúng ngầm qua Python FastAPI.
+          </p>
+          {mlStatus === 'training' && (
+            <p className="text-yellow-400 text-xs font-bold animate-pulse mt-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" />
+              Tiến trình đang được tính toán trên máy chủ Python ML. Hệ thống vẫn hoạt động bình thường...
+            </p>
+          )}
+          {mlStatus === 'success' && (
+            <p className="text-green-400 text-xs font-bold mt-2 animate-bounce">
+              ✅ Huấn luyện hoàn tất! Các gợi ý cá nhân hóa và tương đồng đã được cập nhật thành công.
+            </p>
+          )}
+          {trainingState.error && (
+            <p className="text-red-400 text-xs font-bold mt-2">
+              ❌ {trainingState.error}
+            </p>
+          )}
+          {mlData.last_trained && (
+            <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-lg text-xs text-[#a0a0a0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-xl">
+              <div>
+                <span className="font-semibold text-white">Lần cuối cập nhật:</span>{' '}
+                <span className="text-gray-300">{formatVietnamTime(mlData.last_trained)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-bold">
+                <span>Kết quả:</span>
+                <span className={mlData.last_status === 'success' ? 'text-green-400' : 'text-red-400'}>
+                  {mlData.last_status === 'success' ? 'Thành công' : mlData.last_status === 'failed' ? 'Thất bại' : 'Chưa rõ'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleTrainModel}
+          disabled={mlStatus === 'training'}
+          className={`px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center gap-2 shrink-0 ${
+            mlStatus === 'training'
+              ? 'bg-[#222] text-[#666] cursor-not-allowed border border-[#333]'
+              : 'bg-transparent text-[#00e6e6] hover:bg-[#00e6e6]/10 border border-[#00e6e6]/30 hover:border-[#00e6e6] hover:shadow-lg hover:shadow-[#00e6e6]/5'
+          }`}
+        >
+          {mlStatus === 'training' ? (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-600 border-t-gray-400 rounded-full animate-spin" />
+              <span>Đang huấn luyện...</span>
+            </>
+          ) : (
+            <span>Kích hoạt Huấn luyện</span>
+          )}
+        </button>
       </div>
 
       {/* Biểu đồ streaming theo ngày */}
