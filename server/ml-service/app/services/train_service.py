@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 _training_state = {
     "is_training": False,
     "status": "idle",
-    "last_error": None
+    "last_error": None,
+    "last_trained": None,
+    "last_status": "none"
 }
 _state_lock = threading.Lock()
 
@@ -26,6 +28,7 @@ def _run_training_worker(factors, regularization, alpha, iterations):
     Background worker performing actual database writes and mathematical fits.
     """
     global _training_state
+    from datetime import datetime
     try:
         logger.info("🚀 Starting Recommendation System offline training worker...")
         
@@ -59,6 +62,8 @@ def _run_training_worker(factors, regularization, alpha, iterations):
             _training_state["is_training"] = False
             _training_state["status"] = "success"
             _training_state["last_error"] = None
+            _training_state["last_trained"] = datetime.now().isoformat()
+            _training_state["last_status"] = "success"
         logger.info("✅ Core Recommendation System training completed successfully!")
 
     except Exception as e:
@@ -67,6 +72,8 @@ def _run_training_worker(factors, regularization, alpha, iterations):
             _training_state["is_training"] = False
             _training_state["status"] = "failed"
             _training_state["last_error"] = str(e)
+            _training_state["last_trained"] = datetime.now().isoformat()
+            _training_state["last_status"] = "failed"
 
 def trigger_training(factors=None, regularization=None, alpha=None, iterations=None):
     """
