@@ -8,7 +8,16 @@ async function seedInteractions() {
     // 1. Lấy danh sách user và song hiện có
     const users = await prisma.user.findMany({ select: { id: true } });
     const songs = await prisma.song.findMany({ 
-      where: { isDeleted: false, status: 'approved' },
+      where: { 
+        isDeleted: false, 
+        status: 'approved',
+        NOT: {
+          artistName: {
+            contains: 'Mock',
+            mode: 'insensitive'
+          }
+        }
+      },
       select: { id: true, durationMs: true } 
     });
 
