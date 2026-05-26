@@ -31,7 +31,7 @@ class ImplicitALSModel:
             FROM "Interaction"
         """
         query_users = 'SELECT id FROM "User" WHERE "isActive" = true'
-        query_songs = 'SELECT id FROM "Song" WHERE "isDeleted" = false AND status = \'released\''
+        query_songs = 'SELECT id FROM "Song" WHERE "isDeleted" = false AND status = \'approved\''
 
         with get_db_connection() as conn:
             # Fetch datasets
@@ -136,7 +136,10 @@ class ImplicitALSModel:
     def save_vectors_to_db(self):
         """
         Save calculated User factors and Song factors back to DB in collaborativeVector.
+        Sử dụng execute_values để batch update thay vì N+1 individual UPDATEs.
         """
+        from psycopg2.extras import execute_values
+
         if self.model is None:
             raise ValueError("Model is not trained yet.")
         
@@ -151,36 +154,46 @@ class ImplicitALSModel:
             song_factors = song_factors.factors
 
         logger.info(f"User factors shape: {user_factors.shape}, Item factors shape: {song_factors.shape}")
-        logger.info("Updating Collaborative Vectors in PostgreSQL database...")
+        logger.info("Batch updating Collaborative Vectors in PostgreSQL database...")
 
-        # Update User Collaborative Vectors
+        # Chuẩn bị dữ liệu batch: list of (vector_string, id)
+        n_users = min(len(self.idx_to_user), user_factors.shape[0])
+        user_data = [
+            (format_pgvector(user_factors[i]), self.idx_to_user[i])
+            for i in range(n_users)
+        ]
+
+        n_songs = min(len(self.idx_to_song), song_factors.shape[0])
+        song_data = [
+            (format_pgvector(song_factors[i]), self.idx_to_song[i])
+            for i in range(n_songs)
+        ]
+
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Update users (only for those who have trained factors)
-                n_users_to_update = min(len(self.idx_to_user), user_factors.shape[0])
-                for i in range(n_users_to_update):
-                    user_id = self.idx_to_user[i]
-                    vector = user_factors[i]
-                    vector_str = format_pgvector(vector)
-                    
-                    cur.execute(
-                        'UPDATE "User" SET "collaborativeVector" = %s::vector WHERE id = %s',
-                        (vector_str, user_id)
+                # Batch update tất cả User Collaborative Vectors chỉ trong 1 query
+                if user_data:
+                    execute_values(
+                        cur,
+                        'UPDATE "User" SET "collaborativeVector" = data.v::vector '
+                        'FROM (VALUES %s) AS data(v, id) WHERE "User".id = data.id::int',
+                        user_data,
+                        page_size=500
                     )
-                
-                # Update songs (only for those who have trained factors)
-                n_songs_to_update = min(len(self.idx_to_song), song_factors.shape[0])
-                for i in range(n_songs_to_update):
-                    song_id = self.idx_to_song[i]
-                    vector = song_factors[i]
-                    vector_str = format_pgvector(vector)
-                    
-                    cur.execute(
-                        'UPDATE "Song" SET "collaborativeVector" = %s::vector WHERE id = %s',
-                        (vector_str, song_id)
+                    logger.info(f"✅ Batch updated {n_users} User Collaborative Vectors.")
+
+                # Batch update tất cả Song Collaborative Vectors chỉ trong 1 query
+                if song_data:
+                    execute_values(
+                        cur,
+                        'UPDATE "Song" SET "collaborativeVector" = data.v::vector '
+                        'FROM (VALUES %s) AS data(v, id) WHERE "Song".id = data.id::int',
+                        song_data,
+                        page_size=500
                     )
-                    
-            logger.info("✅ Successfully updated all Collaborative Vectors in DB.")
+                    logger.info(f"✅ Batch updated {n_songs} Song Collaborative Vectors.")
+
+        logger.info("✅ Successfully updated all Collaborative Vectors in DB.")
 
     def train_pipeline(self):
         """
