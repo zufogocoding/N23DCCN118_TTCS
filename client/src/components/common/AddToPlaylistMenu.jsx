@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
-import { api } from '../utils/api';
-import useClickOutside from '../hooks/useClickOutside';
+import { api } from '../../utils/api';
+import useClickOutside from '../../hooks/useClickOutside';
 import CreatePlaylistModal from './CreatePlaylistModal';
 
 /**

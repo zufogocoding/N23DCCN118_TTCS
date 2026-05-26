@@ -154,12 +154,12 @@ export default function Profile() {
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">
       {/* Header Profile */}
-      <div className="flex flex-col md:flex-row items-center md:items-end gap-8 mb-12">
-        <div className="relative group">
+      <div className="relative p-8 md:p-12 mb-10 flex flex-col md:flex-row items-center md:items-end gap-8 rounded-3xl bg-gradient-to-b from-[#1db954]/10 via-transparent to-transparent border border-white/5 shadow-lg">
+        <div className="relative group shrink-0">
           <img 
             src={displayAvatar} 
             alt="Profile Avatar" 
-            className="w-48 h-48 rounded-full object-cover shadow-2xl border-4 border-[#333]"
+            className="w-48 h-48 rounded-full object-cover shadow-[0_8px_24px_rgba(0,0,0,0.5)] border-4 border-[#121212]"
           />
           {isEditing && (
             <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
@@ -176,8 +176,8 @@ export default function Profile() {
         
         <div className="flex-1 text-center md:text-left">
           <h4 className="uppercase text-xs font-bold tracking-[0.2em] text-[#a0a0a0] mb-2">Hồ sơ người dùng</h4>
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-[#a0a0a0]">
+          <div className="flex items-center justify-center md:justify-start gap-4 mb-4 flex-wrap">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white">
               {user?.artistName || user?.displayName || user?.username}
             </h1>
             {user?.isArtist && (
@@ -188,8 +188,8 @@ export default function Profile() {
             )}
           </div>
           <div className="flex items-center justify-center md:justify-start gap-4 text-sm font-semibold">
-            <span className="text-white">{user?.email}</span>
-            <span className="text-[#a0a0a0]">•</span>
+            <span className="text-[#a0a0a0]">{user?.email}</span>
+            <span className="text-[#333]">•</span>
             <span className="text-[#a0a0a0]">Thành viên từ {new Date(user?.createdAt).getFullYear()}</span>
           </div>
         </div>
@@ -197,7 +197,7 @@ export default function Profile() {
         {!isEditing && (
           <button 
             onClick={() => setIsEditing(true)}
-            className="mt-6 md:mt-0 flex items-center gap-2 bg-[#1db954] hover:bg-[#1ed760] text-black font-bold py-3 px-6 rounded-full transition-all transform hover:scale-105"
+            className="mt-6 md:mt-0 shrink-0 flex items-center gap-2 bg-[#1db954] hover:bg-[#1ed760] text-black font-bold py-3 px-6 rounded-full transition-all transform hover:scale-105 shadow-md"
           >
             <Edit2 size={18} /> Chỉnh sửa hồ sơ
           </button>
@@ -219,109 +219,111 @@ export default function Profile() {
       )}
 
       {/* Form chỉnh sửa hoặc Hiển thị thông tin */}
-      <div className="bg-[#181818] p-8 rounded-2xl shadow-xl border border-[#333]">
+      <div className="w-full">
         {isEditing ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#a0a0a0]">Tên hiển thị</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-3.5 text-[#666]" size={18} />
-                  <input
-                    type="text"
-                    name="displayName"
-                    value={formData.displayName}
-                    onChange={handleInputChange}
-                    className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
-                    placeholder="Nhập tên hiển thị"
-                    required
-                  />
+          <div className="bg-[#181818] p-8 rounded-2xl shadow-xl border border-[#333]">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-[#a0a0a0]">Tên hiển thị</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3.5 text-[#666]" size={18} />
+                    <input
+                      type="text"
+                      name="displayName"
+                      value={formData.displayName}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
+                      placeholder="Nhập tên hiển thị"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-[#a0a0a0]">Tên đăng nhập (Không thể thay đổi)</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3.5 text-[#666]" size={18} />
+                    <input
+                      type="text"
+                      value={user?.username}
+                      disabled
+                      className="w-full bg-[#222] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-[#666] cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-[#a0a0a0]">Ngày sinh</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3.5 text-[#666]" size={18} />
+                    <input
+                      type="date"
+                      name="dob"
+                      value={formData.dob}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-[#a0a0a0]">Quốc gia</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3.5 text-[#666]" size={18} />
+                    <input
+                      type="text"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
+                      placeholder="Ví dụ: Việt Nam"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-[#a0a0a0]">Email (Không thể thay đổi)</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3.5 text-[#666]" size={18} />
+                    <input
+                      type="email"
+                      value={user?.email}
+                      disabled
+                      className="w-full bg-[#222] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-[#666] cursor-not-allowed"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#a0a0a0]">Tên đăng nhập (Không thể thay đổi)</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-3.5 text-[#666]" size={18} />
-                  <input
-                    type="text"
-                    value={user?.username}
-                    disabled
-                    className="w-full bg-[#222] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-[#666] cursor-not-allowed"
-                  />
-                </div>
+              <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-[#333]">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-6 py-3 rounded-full font-bold text-white hover:text-[#a0a0a0] transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-white hover:bg-gray-200 text-black font-bold py-3 px-8 rounded-full transition-transform transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div>
+                  ) : (
+                    <>
+                      <Save size={18} /> Lưu thay đổi
+                    </>
+                  )}
+                </button>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#a0a0a0]">Ngày sinh</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-3.5 text-[#666]" size={18} />
-                  <input
-                    type="date"
-                    name="dob"
-                    value={formData.dob}
-                    onChange={handleInputChange}
-                    className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#a0a0a0]">Quốc gia</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3.5 text-[#666]" size={18} />
-                  <input
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
-                    placeholder="Ví dụ: Việt Nam"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#a0a0a0]">Email (Không thể thay đổi)</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3.5 text-[#666]" size={18} />
-                  <input
-                    type="email"
-                    value={user?.email}
-                    disabled
-                    className="w-full bg-[#222] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-[#666] cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-[#333]">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-6 py-3 rounded-full font-bold text-white hover:text-[#a0a0a0] transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex items-center gap-2 bg-white hover:bg-gray-200 text-black font-bold py-3 px-8 rounded-full transition-transform transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div>
-                ) : (
-                  <>
-                    <Save size={18} /> Lưu thay đổi
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-[#222] p-6 rounded-xl flex items-center gap-4">
-              <div className="bg-[#333] p-3 rounded-full text-[#1db954]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-[#181818] hover:bg-[#282828] p-6 rounded-xl flex items-center gap-4 group transition-all duration-300 hover:shadow-lg cursor-default border border-transparent hover:border-[#333]">
+              <div className="bg-[#2a2a2a] group-hover:bg-[#333] p-3 rounded-full text-[#1db954] transition-colors">
                 <Mail size={24} />
               </div>
               <div>
@@ -330,8 +332,8 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="bg-[#222] p-6 rounded-xl flex items-center gap-4">
-              <div className="bg-[#333] p-3 rounded-full text-[#00e6e6]">
+            <div className="bg-[#181818] hover:bg-[#282828] p-6 rounded-xl flex items-center gap-4 group transition-all duration-300 hover:shadow-lg cursor-default border border-transparent hover:border-[#333]">
+              <div className="bg-[#2a2a2a] group-hover:bg-[#333] p-3 rounded-full text-[#00e6e6] transition-colors">
                 <Calendar size={24} />
               </div>
               <div>
@@ -342,8 +344,8 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="bg-[#222] p-6 rounded-xl flex items-center gap-4 md:col-span-2">
-              <div className="bg-[#333] p-3 rounded-full text-[#ff4b4b]">
+            <div className="bg-[#181818] hover:bg-[#282828] p-6 rounded-xl flex items-center gap-4 group transition-all duration-300 hover:shadow-lg cursor-default md:col-span-2 border border-transparent hover:border-[#333]">
+              <div className="bg-[#2a2a2a] group-hover:bg-[#333] p-3 rounded-full text-[#ff4b4b] transition-colors">
                 <MapPin size={24} />
               </div>
               <div>

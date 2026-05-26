@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Music, X } from 'lucide-react';
-import { api, getMediaUrl } from '../utils/api';
+import { api, getMediaUrl } from '../../utils/api';
 
 export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist }) {
   const [title, setTitle] = useState('');

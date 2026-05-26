@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMediaUrl } from '../utils/api';
-import useClickOutside from '../hooks/useClickOutside';
+import { getMediaUrl } from '../../utils/api';
+import useClickOutside from '../../hooks/useClickOutside';
 import { User, Music, LogIn, UserPlus } from 'lucide-react';
 
 export default function UserDropdown() {

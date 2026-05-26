@@ -10,7 +10,7 @@ const songController = {
       if (!audioFile) return res.status(400).json({ error: 'Chưa chọn file nhạc!' });
 
       const savedAudioUrl = `/${path.relative(process.cwd(), audioFile.path).replace(/\\/g, '/')}`;
-      const { title, durationMs, artistName, genre, genreIds, tempo: clientTempo, energy: clientEnergy, danceability: clientDanceability } = req.body;
+      const { title, durationMs, artistName, genre, genreIds, tempo: clientTempo, energy: clientEnergy, danceability: clientDanceability, lyrics } = req.body;
       const userId = req.user.id;
 
 
@@ -145,6 +145,7 @@ const songController = {
         durationMs: finalDurationMs,
         audioUrl: savedAudioUrl,
         coverArtUrl: savedCoverUrl,
+        lyrics: lyrics || null,
         tempo: parseFloat(tempo),
         energy: parseFloat(energy),
         danceability: parseFloat(danceability),
@@ -317,13 +318,14 @@ const songController = {
         return res.status(404).json({ error: 'Không tìm thấy bài hát hoặc bạn không có quyền chỉnh sửa!' });
       }
 
-      const { title, newTitle, artistName, genreIds } = req.body;
+      const { title, newTitle, artistName, genreIds, lyrics } = req.body;
       const data = {};
 
       // Support both 'title' and 'newTitle' for backward compatibility
       const finalTitle = title || newTitle;
       if (finalTitle !== undefined) data.title = String(finalTitle).trim();
       if (artistName !== undefined) data.artistName = artistName || null;
+      if (lyrics !== undefined) data.lyrics = lyrics || null;
 
       // Handle cover image upload
       const coverFile = req.files?.coverImage?.[0];

@@ -8,6 +8,7 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
   const [selectedGenreIds, setSelectedGenreIds] = useState(
     (song?.genres || []).map(g => g.genre?.id || g.genreId).filter(Boolean)
   );
+  const [lyrics, setLyrics] = useState(song?.lyrics || '');
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(
     song?.coverArtUrl ? getMediaUrl(song.coverArtUrl) : null
@@ -33,6 +34,11 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
       const fd = new FormData();
       fd.append('title', title.trim());
       fd.append('artistName', artistName);
+      if (lyrics.trim()) {
+        fd.append('lyrics', lyrics.trim());
+      } else {
+        fd.append('lyrics', ''); // Clear lyrics if empty
+      }
       fd.append('genreIds', JSON.stringify(selectedGenreIds));
       if (coverFile) fd.append('coverImage', coverFile);
 
@@ -108,6 +114,14 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
                 );
               })}
             </div>
+          </div>
+
+          {/* Lyrics */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-[#a0a0a0]">Lời bài hát (Tùy chọn)</label>
+            <textarea value={lyrics} onChange={e => setLyrics(e.target.value)} rows="5"
+              placeholder="Nhập lời bài hát của bạn tại đây..."
+              className="w-full bg-black border border-[#333] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00e6e6]/50 resize-y custom-scrollbar" />
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

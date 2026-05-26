@@ -5,7 +5,7 @@ import { api, getMediaUrl } from "../../utils/api";
 import { getCoverArt, getArtistName } from "../../utils/songHelpers";
 import { usePlayer } from "../../context/PlayerContext";
 import TrackEditModal from "../../components/TrackEditModal";
-import CreatePlaylistModal from "../../components/CreatePlaylistModal";
+import CreatePlaylistModal from "../../components/common/CreatePlaylistModal";
 
 export default function LibraryPage() {
   const [songs, setSongs] = useState([]); // Uploaded songs
