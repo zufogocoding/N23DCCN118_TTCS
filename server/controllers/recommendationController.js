@@ -42,8 +42,18 @@ const recommendationController = {
       if (cached.length > 0) {
         // Trích xuất danh sách bài hát từ cache
         const recommendedSongs = cached
-          .map(c => c.song)
-          .filter(song => song && !song.isDeleted && song.status === 'approved');
+          .map(c => {
+            const song = c.song;
+            if (!song) return null;
+            return {
+              ...song,
+              score: c.finalScore,
+              colab_score: c.finalScore * 0.7,
+              content_score: c.finalScore * 0.3,
+              recommend_reason: c.finalScore > 0.6 ? "Gu âm nhạc của bạn" : "Gợi ý khám phá mới"
+            };
+          })
+          .filter(Boolean);
           
         if (recommendedSongs.length > 0) {
           console.log(`⚡ Lấy gợi ý cho user ${userId} từ Cache thành công!`);
@@ -70,9 +80,12 @@ const recommendationController = {
       }
 
       // Thực hiện truy vấn tương đồng Cosine kết hợp (Lọc cộng tác 0.7 + Nội dung 0.3)
+      // Áp dụng hình phạt 95% (nhân với 0.05) đối với các bài hát của nghệ sĩ "Mock" để đẩy chúng xuống cuối danh sách
       const recommendations = await prisma.$queryRaw`
-        SELECT s.id, s.title, s."artistName", s."audioUrl", s."coverArtUrl", s."playCount", s."durationMs",
-               COALESCE(
+        SELECT s.id,
+               COALESCE(1 - (u."collaborativeVector" <=> s."collaborativeVector"), 0.0) AS colab_score,
+               COALESCE(1 - (u."contentVector" <=> s."contentVector"), 0.0) AS content_score,
+               (COALESCE(
                  0.7 * (CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL 
                              THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) 
                              ELSE 0.0 END) +
@@ -80,14 +93,9 @@ const recommendationController = {
                              THEN (1 - (u."contentVector" <=> s."contentVector")) 
                              ELSE 0.0 END),
                  0.0
-               ) AS score
+               ) * (CASE WHEN s."artistName" ILIKE '%mock%' THEN 0.05 ELSE 1.0 END)) AS score
         FROM "Song" s, "User" u
         WHERE u.id = ${userId} AND s."isDeleted" = false AND s.status = 'approved'
-          -- Loại trừ các bài hát user đã nghe trong vòng 7 ngày qua để tạo cảm giác tươi mới
-          AND s.id NOT IN (
-              SELECT "songId" FROM "Interaction" 
-              WHERE "userId" = ${userId} AND "timeStamp" > NOW() - INTERVAL '7 days'
-          )
         ORDER BY score DESC, s."playCount" DESC
         LIMIT ${limit}
       `;
@@ -120,7 +128,34 @@ const recommendationController = {
 
       // Sắp xếp lại danh sách bài hát theo đúng thứ tự điểm số từ cao đến thấp của pgvector
       const orderedSongs = songIds
-        .map(id => songsWithArtists.find(s => s.id === id))
+        .map(id => {
+          const song = songsWithArtists.find(s => s.id === id);
+          if (!song) return null;
+          const recInfo = recommendations.find(r => r.id === id);
+          
+          let colab = recInfo ? parseFloat(recInfo.colab_score) || 0.0 : 0.0;
+          let content = recInfo ? parseFloat(recInfo.content_score) || 0.0 : 0.0;
+          let score = recInfo ? parseFloat(recInfo.score) || 0.0 : 0.0;
+          
+          let reason = "Khám phá bài hát mới";
+          if (score > 0.0) {
+            if (colab > 0.6 && content > 0.6) {
+              reason = "Phù hợp cả gu nghe & nhịp điệu";
+            } else if (colab > content && colab > 0.2) {
+              reason = "Nhiều người nghe giống bạn thích";
+            } else if (content >= colab && content > 0.2) {
+              reason = "Nhịp điệu đồng điệu gu của bạn";
+            }
+          }
+          
+          return {
+            ...song,
+            score,
+            colab_score: colab,
+            content_score: content,
+            recommend_reason: reason
+          };
+        })
         .filter(Boolean);
 
       return res.status(200).json(orderedSongs);
@@ -197,13 +232,13 @@ const recommendationController = {
     }
   },
 
-  /**
-   * POST /api/admin/recommendations/train
-   * Trigger huấn luyện lại mô hình ML bất đồng bộ.
-   */
   triggerTraining: async (req, res) => {
     try {
       console.log("Triggering Python ML service training pipeline...");
+      
+      // Xóa sạch toàn bộ Cache cũ trong database để bắt buộc tính toán lại theo các vector mới
+      await prisma.recommendationCache.deleteMany();
+      console.log("🧹 Đã dọn dẹp toàn bộ bộ nhớ đệm (Recommendation Cache) thành công!");
       
       const response = await fetch(`${ML_API_URL}/train`, {
         method: 'POST',
@@ -223,6 +258,29 @@ const recommendationController = {
 
     } catch (error) {
       console.error("Lỗi triggerTraining:", error);
+      return res.status(500).json({ error: "Không kết nối được tới dịch vụ Python ML" });
+    }
+  },
+
+  /**
+   * GET /api/admin/recommendations/train/status
+   * Lấy trạng thái tiến trình huấn luyện của Python ML service.
+   */
+  getTrainingStatus: async (req, res) => {
+    try {
+      const response = await fetch(`${ML_API_URL}/train/status`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      console.log("[DEBUG getTrainingStatus] Data from Python:", data);
+      if (!response.ok) {
+        console.error("[DEBUG getTrainingStatus] Response not ok:", response.status, data);
+        return res.status(response.status).json({ error: data.detail || "Không thể lấy trạng thái huấn luyện" });
+      }
+      return res.status(200).json(data);
+    } catch (error) {
+      console.error("Lỗi getTrainingStatus:", error);
       return res.status(500).json({ error: "Không kết nối được tới dịch vụ Python ML" });
     }
   },
@@ -247,10 +305,19 @@ const recommendationController = {
     }
   },
 
-  // Helper Fallback: Lấy các bài hát thịnh hành nhất
+  // Helper Fallback: Lấy các bài hát thịnh hành nhất (Loại bỏ các bài hát của nghệ sĩ "Mock" khỏi danh sách thịnh hành)
   getTrendingFallback: async (res, limit) => {
     const trending = await prisma.song.findMany({
-      where: { isDeleted: false, status: 'approved' },
+      where: { 
+        isDeleted: false, 
+        status: 'approved',
+        NOT: {
+          artistName: {
+            contains: 'Mock',
+            mode: 'insensitive'
+          }
+        }
+      },
       include: {
         artists: {
           include: {
@@ -266,7 +333,16 @@ const recommendationController = {
       ],
       take: limit
     });
-    return res.status(200).json(trending);
+    
+    const mapped = trending.map(song => ({
+      ...song,
+      score: 0.0,
+      colab_score: 0.0,
+      content_score: 0.0,
+      recommend_reason: "Xu hướng thịnh hành"
+    }));
+    
+    return res.status(200).json(mapped);
   },
 
   // Helper Fallback: Lấy các bài hát cùng thể loại
