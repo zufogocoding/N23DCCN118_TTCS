@@ -97,9 +97,10 @@ export const PlayerProvider = ({ children }) => {
     }
   }
 
-  function playNext() {
+  function playNext(isManual = false) {
     if (queue.length === 0) return;
-    if (isRepeat) {
+    
+    if (isRepeat && !isManual) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
       return;
@@ -108,6 +109,10 @@ export const PlayerProvider = ({ children }) => {
     let nextIndex = currentIndex + 1;
     if (isShuffle) {
       nextIndex = Math.floor(Math.random() * queue.length);
+      // Tránh chọn lại bài hiện tại nếu danh sách > 1
+      if (queue.length > 1 && nextIndex === currentIndex) {
+        nextIndex = (nextIndex + 1) % queue.length;
+      }
     } else if (nextIndex >= queue.length) {
       nextIndex = 0; // Quay lại bài đầu nếu hết danh sách
     }
@@ -115,10 +120,10 @@ export const PlayerProvider = ({ children }) => {
     playSong(queue[nextIndex], queue);
   }
 
-  function playPrev() {
+  function playPrev(isManual = false) {
     if (queue.length === 0) return;
     // Nếu đang phát quá 3 giây, nút prev sẽ tua lại từ đầu bài thay vì qua bài trước
-    if (currentTime > 3) {
+    if (currentTime > 3 && isManual) {
       audioRef.current.currentTime = 0;
       return;
     }
@@ -143,9 +148,20 @@ export const PlayerProvider = ({ children }) => {
   return (
     <PlayerContext.Provider value={{
       currentSong, isPlaying, volume, currentTime, duration, isShuffle, isRepeat,
-      setVolume, togglePlay, playSong, playNext, playPrev, handleSeek, formatTime,
-      toggleShuffle: () => setIsShuffle(!isShuffle),
-      toggleRepeat: () => setIsRepeat(!isRepeat)
+      setVolume, togglePlay, playSong, 
+      playNext: () => playNext(true), 
+      playPrev: () => playPrev(true), 
+      handleSeek, formatTime,
+      toggleShuffle: () => {
+        const next = !isShuffle;
+        setIsShuffle(next);
+        if (next) setIsRepeat(false);
+      },
+      toggleRepeat: () => {
+        const next = !isRepeat;
+        setIsRepeat(next);
+        if (next) setIsShuffle(false);
+      }
     }}>
       {children}
     </PlayerContext.Provider>

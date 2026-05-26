@@ -12,6 +12,27 @@ const songListInclude = {
 };
 
 const albumController = {
+  /** GET /api/albums — public, get all released albums */
+  getAllPublicAlbums: async (req, res) => {
+    try {
+      const albums = await prisma.album.findMany({
+        where: { status: 'released', artist: { status: 'active' } },
+        orderBy: { releasedDate: 'desc' },
+        include: {
+          artist: {
+            include: {
+              user: { select: { username: true, displayName: true } }
+            }
+          }
+        }
+      });
+      res.json(albums);
+    } catch (e) {
+      console.error('getAllPublicAlbums:', e);
+      res.status(500).json({ error: 'Lỗi server' });
+    }
+  },
+
   /** GET /api/artists/:artistId/albums — public, artist phải active */
   listAlbumsByArtist: async (req, res) => {
     try {

@@ -7,14 +7,39 @@ import useDebounce from '../../hooks/useDebounce';
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   const [suggestions, setSuggestions] = useState([]);
   const [searchResults, setSearchResults] = useState({
     songs: [],
     playlists: [],
-    artists: []
+    artists: [],
+    albums: []
   });
   
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recentSearches')) || [];
+    } catch { return []; }
+  });
+
+  const addRecentSearch = (query) => {
+    if (!query.trim()) return;
+    setRecentSearches(prev => {
+      const filtered = prev.filter(q => q.toLowerCase() !== query.toLowerCase());
+      const updated = [query.trim(), ...filtered].slice(0, 10);
+      localStorage.setItem('recentSearches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleRecentSearchClick = (q) => {
+    setSearchQuery(q);
+    setIsSearchFocused(false);
+  };
+
+  const filteredRecent = recentSearches.filter(q => q.toLowerCase().includes(searchQuery.toLowerCase()));
+
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -39,6 +64,19 @@ export default function Search() {
 
   // Reset page when query changes
   useEffect(() => {
+
+    const timer = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        setPage(1);
+        fetchSearchResults(1, true);
+      } else {
+        setSearchResults({ songs: [], playlists: [], artists: [], albums: [] });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
     if (debouncedSearchQuery.trim() !== '') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(1);
@@ -47,6 +85,7 @@ export default function Search() {
       setSearchResults({ songs: [], playlists: [], artists: [] });
     }
   }, [debouncedSearchQuery]);
+
 
   async function fetchSearchResults(query, pageNum, isReset = false) {
     setIsLoading(true);
@@ -60,13 +99,19 @@ export default function Search() {
           setSearchResults({
             songs: data.songs || [],
             artists: data.artists || [],
-            playlists: data.playlists || []
+            playlists: data.playlists || [],
+            albums: data.albums || []
           });
+          // Lưu vào recent searches khi có kết quả hoặc có tìm kiếm mới
+          if (data.songs?.length > 0 || data.artists?.length > 0 || data.playlists?.length > 0 || data.albums?.length > 0) {
+            addRecentSearch(searchQuery);
+          }
         } else {
           setSearchResults(prev => ({
             songs: [...prev.songs, ...(data.songs || [])],
             artists: [...prev.artists, ...(data.artists || [])],
-            playlists: [...prev.playlists, ...(data.playlists || [])]
+            playlists: [...prev.playlists, ...(data.playlists || [])],
+            albums: [...prev.albums, ...(data.albums || [])]
           }));
         }
       }
@@ -85,7 +130,7 @@ export default function Search() {
     }
   };
 
-  const hasResults = searchResults.songs.length > 0 || searchResults.playlists.length > 0 || searchResults.artists.length > 0;
+  const hasResults = searchResults.songs.length > 0 || searchResults.playlists.length > 0 || searchResults.artists.length > 0 || searchResults.albums.length > 0;
 
   return (
     <div className="flex flex-col h-full relative">
@@ -111,8 +156,37 @@ export default function Search() {
               placeholder="Bạn muốn nghe gì?" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
               className="w-full py-3 pl-12 pr-4 rounded-full bg-white text-black text-sm outline-none font-medium focus:ring-2 focus:ring-white border-2 border-transparent transition-all"
             />
+            {isSearchFocused && filteredRecent.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-[#282828] rounded-xl shadow-2xl py-2 z-50">
+                <div className="px-4 py-2 flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-[#a0a0a0] uppercase tracking-wider">Tìm kiếm gần đây</span>
+                  <button 
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setRecentSearches([]);
+                      localStorage.removeItem('recentSearches');
+                    }}
+                    className="text-xs font-semibold text-[#a0a0a0] hover:text-white"
+                  >
+                    Xóa
+                  </button>
+                </div>
+                {filteredRecent.map((q, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleRecentSearchClick(q)}
+                    className="px-4 py-2.5 hover:bg-[#3e3e3e] cursor-pointer flex items-center text-sm text-white"
+                  >
+                    <SearchIcon size={16} className="mr-3 text-[#a0a0a0]" />
+                    {q}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -182,6 +256,22 @@ export default function Search() {
                           <img src={artist.avatarUrl ? getMediaUrl(artist.avatarUrl) : '/default-avatar.png'} alt="avatar" className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg" />
                           <h3 className="font-bold text-white truncate w-full mb-1">{artist.artistName || artist.user?.displayName || artist.user?.username}</h3>
                           <p className="text-sm text-[#a0a0a0]">Nghệ sĩ</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ALBUMS */}
+                {searchResults.albums.length > 0 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-4">Albums</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                      {searchResults.albums.map((album, index) => (
+                        <div key={index} className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group" onClick={() => navigate(`/album/${album.id}`)}>
+                          <img src={album.coverArtUrl ? `http://localhost:9000${album.coverArtUrl}` : '/default-cover.png'} alt="cover" className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg" />
+                          <h3 className="font-bold text-white truncate text-base mb-1">{album.title}</h3>
+                          <p className="text-sm text-[#a0a0a0] truncate">{album.artist?.artistName || album.artist?.user?.displayName || album.artist?.user?.username}</p>
                         </div>
                       ))}
                     </div>

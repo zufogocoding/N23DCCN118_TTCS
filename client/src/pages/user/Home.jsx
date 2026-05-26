@@ -19,9 +19,13 @@ export default function Home() {
 
   const [songs, setSongs] = useState([]);
   const [userPlaylists, setUserPlaylists] = useState([]);
+
+  const [albums, setAlbums] = useState([]);
+
   const [dailyChart, setDailyChart] = useState([]);
   const [weeklyChart, setWeeklyChart] = useState([]);
   const [monthlyChart, setMonthlyChart] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
 
@@ -30,11 +34,30 @@ export default function Home() {
   const [recentPlaylists, setRecentPlaylists] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recentSearches')) || [];
+    } catch { return []; }
+  });
+
+  const handleRecentSearchClick = (q) => {
+    setSearchQuery(q);
+    setIsSearchFocused(false);
+  };
+
+  const filteredRecent = recentSearches.filter(q => q.toLowerCase().includes(searchQuery.toLowerCase()));
 
   // Fetch songs từ API (chỉ lấy bài đã approved)
   useEffect(() => {
     async function fetchData() {
       try {
+
+        const [songsRes, playlistsRes, albumsRes] = await Promise.all([
+          fetch('http://localhost:9000/api/songs'),
+          user.id ? fetch(`http://localhost:9000/api/playlists/user/${user.id}`) : Promise.resolve(null),
+          fetch('http://localhost:9000/api/albums')
+
         const [songsRes, playlistsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes] = await Promise.all([
           api.get('/api/songs'),
           user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
@@ -43,6 +66,7 @@ export default function Home() {
           api.get('/api/charts/MONTHLY'),
           user.id ? api.get('/api/recommendations') : Promise.resolve(null),
           user.id ? api.get('/api/interactions/recent') : Promise.resolve(null)
+
         ]);
 
         let fetchedSongs = [];
@@ -55,6 +79,12 @@ export default function Home() {
         if (playlistsRes && playlistsRes.ok) {
           const plData = await playlistsRes.json();
           setUserPlaylists(plData);
+        }
+
+
+        if (albumsRes && albumsRes.ok) {
+          const alData = await albumsRes.json();
+          setAlbums(alData);
         }
 
         if (dailyRes && dailyRes.ok) {
@@ -92,6 +122,7 @@ export default function Home() {
         
         // Always read recent playlists from localStorage
         setRecentPlaylists(JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]'));
+
 
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu:', err);
@@ -142,6 +173,10 @@ export default function Home() {
     pl.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredAlbums = albums.filter(al =>
+    al.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Modal tạo playlist */}
@@ -175,8 +210,37 @@ export default function Home() {
               placeholder="What do you want to listen to?"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
               className="w-full py-2 pl-10 pr-4 rounded-full bg-white text-black text-sm outline-none font-medium"
             />
+            {isSearchFocused && filteredRecent.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-[#282828] rounded-xl shadow-2xl py-2 z-50">
+                <div className="px-4 py-2 flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-[#a0a0a0] uppercase tracking-wider">Tìm kiếm gần đây</span>
+                  <button 
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setRecentSearches([]);
+                      localStorage.removeItem('recentSearches');
+                    }}
+                    className="text-xs font-semibold text-[#a0a0a0] hover:text-white"
+                  >
+                    Xóa
+                  </button>
+                </div>
+                {filteredRecent.map((q, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleRecentSearchClick(q)}
+                    className="px-4 py-2.5 hover:bg-[#3e3e3e] cursor-pointer flex items-center text-sm text-white"
+                  >
+                    <Search size={16} className="mr-3 text-[#a0a0a0]" />
+                    {q}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -192,9 +256,9 @@ export default function Home() {
           <div className="mt-8 mb-10">
             <h2 className="text-2xl font-bold text-white mb-6">Kết quả cho "{searchQuery}"</h2>
 
-            {filteredPlaylists.length === 0 && filteredSongs.length === 0 ? (
+            {filteredPlaylists.length === 0 && filteredSongs.length === 0 && filteredAlbums.length === 0 ? (
               <div className="p-8 border border-dashed border-[#333] rounded-xl text-center">
-                <p className="text-[#a0a0a0] font-medium">Không tìm thấy bài hát hay playlist nào phù hợp.</p>
+                <p className="text-[#a0a0a0] font-medium">Không tìm thấy bài hát, playlist, hay album nào phù hợp.</p>
               </div>
             ) : (
               <div className="flex flex-col gap-10">
@@ -218,6 +282,32 @@ export default function Home() {
                           </div>
                           <h3 className="font-bold truncate text-white">{pl.title}</h3>
                           <p className="text-xs text-[#a0a0a0] mt-1">{pl._count?.songs || 0} bài hát</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lọc Albums */}
+                {filteredAlbums.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-bold text-[#b83280] mb-4">Albums</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {filteredAlbums.map(al => (
+                        <div
+                          key={al.id}
+                          onClick={() => navigate(`/album/${al.id}`)}
+                          className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group"
+                        >
+                          <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
+                            {al.coverArtUrl ? (
+                              <img src={`http://localhost:9000${al.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-4xl">🎵</span>
+                            )}
+                          </div>
+                          <h3 className="font-bold truncate text-white">{al.title}</h3>
+                          <p className="text-xs text-[#a0a0a0] mt-1">{al.artist?.artistName || al.artist?.user?.displayName || al.artist?.user?.username || 'Unknown Artist'}</p>
                         </div>
                       ))}
                     </div>
