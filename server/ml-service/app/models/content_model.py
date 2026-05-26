@@ -38,7 +38,10 @@ class ContentModel:
     def build_and_save_song_vectors(self):
         """
         Generate 128-dimensional content vectors for all songs and save them in PostgreSQL.
+        Sử dụng execute_values để batch update thay vì N+1 individual UPDATEs.
         """
+        from psycopg2.extras import execute_values
+
         self.fetch_and_map_genres()
         
         # Query all songs and their genre relations
@@ -64,64 +67,67 @@ class ContentModel:
         # Group genres by songId
         genres_by_song = df_song_genres.groupby("songId")["genreTag"].apply(list).to_dict()
 
-        logger.info("Computing and saving 128-dim Song Content Vectors...")
+        logger.info("Computing 128-dim Song Content Vectors (batch mode)...")
 
+        # Tính toán tất cả vectors trong bộ nhớ trước, sau đó batch insert 1 lần
+        batch_data = []  # list of (vector_str, song_id)
+        for _, row in df_songs.iterrows():
+            song_id = int(row["id"])
+            
+            # 1. Normalize audio features
+            tempo = row["tempo"]
+            energy = row["energy"]
+            danceability = row["danceability"]
+            
+            norm_tempo = normalize_min_max(tempo, 50.0, 200.0)
+            norm_energy = float(energy) if energy is not None and not math.isnan(energy) else 0.5
+            norm_danceability = float(danceability) if danceability is not None and not math.isnan(danceability) else 0.5
+            
+            # 2. Build vector array
+            vector = np.zeros(self.vector_dim, dtype=np.float32)
+            vector[0] = norm_tempo
+            vector[1] = norm_energy
+            vector[2] = norm_danceability
+            
+            # 3. Apply genre one-hot slots
+            song_genres = genres_by_song.get(song_id, [])
+            for genre in song_genres:
+                if genre in self.genre_to_idx:
+                    vector[self.genre_to_idx[genre]] = 1.0
+                        
+            # 4. L2 Normalize
+            norm = np.linalg.norm(vector)
+            if norm > 0:
+                vector = vector / norm
+
+            batch_data.append((format_pgvector(vector), song_id))
+
+        # 5. Batch update tất cả trong 1 query duy nhất
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                for _, row in df_songs.iterrows():
-                    song_id = int(row["id"])
-                    
-                    # 1. Normalize audio features
-                    tempo = row["tempo"]
-                    energy = row["energy"]
-                    danceability = row["danceability"]
-                    
-                    # Normalize BPM between 50 and 200
-                    norm_tempo = normalize_min_max(tempo, 50.0, 200.0)
-                    norm_energy = float(energy) if energy is not None and not math.isnan(energy) else 0.5
-                    norm_danceability = float(danceability) if danceability is not None and not math.isnan(danceability) else 0.5
-                    
-                    # 2. Build vector array
-                    vector = np.zeros(self.vector_dim, dtype=np.float32)
-                    vector[0] = norm_tempo
-                    vector[1] = norm_energy
-                    vector[2] = norm_danceability
-                    
-                    # 3. Apply genre one-hot slots
-                    song_genres = genres_by_song.get(song_id, [])
-                    for genre in song_genres:
-                        if genre in self.genre_to_idx:
-                            idx = self.genre_to_idx[genre]
-                            vector[idx] = 1.0
-                            
-                    # 4. L2 Normalize the vector so cosine similarity is optimal
-                    norm = np.linalg.norm(vector)
-                    if norm > 0:
-                        vector = vector / norm
-                        
-                    # 5. Format to pgvector string and update DB
-                    vector_str = format_pgvector(vector)
-                    cur.execute(
-                        'UPDATE "Song" SET "contentVector" = %s::vector WHERE id = %s',
-                        (vector_str, song_id)
-                    )
-                    
-            logger.info("✅ Song Content Vectors updated successfully in DB.")
+                execute_values(
+                    cur,
+                    'UPDATE "Song" SET "contentVector" = data.v::vector '
+                    'FROM (VALUES %s) AS data(v, id) WHERE "Song".id = data.id::int',
+                    batch_data,
+                    page_size=500
+                )
+        logger.info(f"✅ Batch updated {len(batch_data)} Song Content Vectors.")
         return True
 
     def build_and_save_user_vectors(self):
         """
         Aggregate song content vectors based on positive interactions of each user to build User Content Profiles.
+        Sử dụng numpy vectorized operations và execute_values batch thay vì double iterrows loop.
         """
-        # Fetch positive interactions (liked or high completion rate)
+        from psycopg2.extras import execute_values
+
         query_positive_interactions = """
             SELECT "userId", "songId", "isLiked", "completionRate"
             FROM "Interaction"
             WHERE "isLiked" = true OR "completionRate" >= 0.5
         """
-        # Fetch active users
         query_active_users = 'SELECT id FROM "User" WHERE "isActive" = true'
-        # Fetch all song content vectors
         query_song_vectors = 'SELECT id, "contentVector"::text as content_vector FROM "Song" WHERE "contentVector" IS NOT NULL'
         
         with get_db_connection() as conn:
@@ -134,101 +140,107 @@ class ContentModel:
             return False
             
         if df_interactions.empty or df_songs.empty:
-            logger.warning("⚠️ Insufficient interaction or song vector data to construct User Profiles. Seeding default balanced vectors.")
+            logger.warning("⚠️ Insufficient interaction or song vector data. Seeding default balanced vectors.")
             self.seed_default_user_vectors(df_users["id"].tolist())
             return True
 
-        # Map song content vectors from string '[v1,v2,...]' to numpy arrays
-        song_vectors_dict = {}
+        # Parse tất cả song vectors thành numpy matrix 1 lần
+        valid_songs = []
         for _, row in df_songs.iterrows():
-            sid = int(row["id"])
             vec_str = row["content_vector"]
             if vec_str:
-                # Parse vector string '[0.1,0.2,...]'
                 try:
                     vec = np.fromstring(vec_str.strip("[]"), sep=",", dtype=np.float32)
                     if len(vec) == self.vector_dim:
-                        song_vectors_dict[sid] = vec
+                        valid_songs.append((int(row["id"]), vec))
                 except Exception as e:
-                    logger.error(f"Error parsing content vector for song {sid}: {e}")
+                    logger.error(f"Error parsing content vector for song {int(row['id'])}: {e}")
 
-        logger.info("Aggregating user listening interactions to build User Content Profiles...")
+        if not valid_songs:
+            self.seed_default_user_vectors(df_users["id"].tolist())
+            return True
 
+        song_ids_arr = np.array([s[0] for s in valid_songs], dtype=np.int64)
+        song_vec_matrix = np.stack([s[1] for s in valid_songs])  # shape: (n_songs, vector_dim)
+        song_id_to_row = {sid: i for i, sid in enumerate(song_ids_arr)}
+
+        # Tính weight cho từng interaction một lần (vectorized)
+        df_interactions = df_interactions[df_interactions["songId"].isin(song_id_to_row)].copy()
+        df_interactions["weight"] = np.where(
+            df_interactions["isLiked"],
+            3.0,
+            np.where(df_interactions["completionRate"].fillna(0) >= 0.5, 1.0, 0.0)
+        )
+        df_interactions = df_interactions[df_interactions["weight"] > 0]
+        df_interactions["song_row"] = df_interactions["songId"].map(song_id_to_row)
+
+        logger.info("Aggregating User Content Profiles (vectorized mode)...")
+
+        user_ids = df_users["id"].tolist()
+        default_vector = np.zeros(self.vector_dim, dtype=np.float32)
+        default_vector[0:3] = 0.5
+        default_norm = np.linalg.norm(default_vector)
+        default_vector = default_vector / default_norm if default_norm > 0 else default_vector
+        default_vec_str = format_pgvector(default_vector)
+
+        batch_data = []
+        for user_id in user_ids:
+            user_ints = df_interactions[df_interactions["userId"] == user_id]
+
+            if user_ints.empty:
+                batch_data.append((default_vec_str, user_id))
+                continue
+
+            # Vectorized weighted sum: ma trận nhân thay cho Python loop
+            weights = user_ints["weight"].values.astype(np.float32)          # (k,)
+            rows    = user_ints["song_row"].values.astype(np.int64)            # (k,)
+            profile = weights @ song_vec_matrix[rows]                          # (vector_dim,)
+
+            norm = np.linalg.norm(profile)
+            profile = profile / norm if norm > 0 else default_vector
+
+            batch_data.append((format_pgvector(profile), user_id))
+
+        # Batch update tất cả user vectors trong 1 query duy nhất
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                for _, user_row in df_users.iterrows():
-                    user_id = int(user_row["id"])
-                    
-                    # Filter positive interactions for this user
-                    user_ints = df_interactions[df_interactions["userId"] == user_id]
-                    
-                    if user_ints.empty:
-                        # Fallback: seed balanced vector
-                        vector = np.zeros(self.vector_dim, dtype=np.float32)
-                        vector[0:3] = 0.5  # default balanced features
-                        norm = np.linalg.norm(vector)
-                        if norm > 0:
-                            vector = vector / norm
-                        vector_str = format_pgvector(vector)
-                        cur.execute(
-                            'UPDATE "User" SET "contentVector" = %s::vector WHERE id = %s',
-                            (vector_str, user_id)
-                        )
-                        continue
-                        
-                    # Aggregate vectors with weighted weights
-                    # Weight = 3.0 for like, 1.0 for completion rate >= 0.5
-                    user_profile = np.zeros(self.vector_dim, dtype=np.float32)
-                    count_weighted = 0.0
-                    
-                    for _, i_row in user_ints.iterrows():
-                        sid = int(i_row["songId"])
-                        is_liked = bool(i_row["isLiked"])
-                        completion = float(i_row["completionRate"]) if i_row["completionRate"] is not None else 0.0
-                        
-                        if sid in song_vectors_dict:
-                            weight = 3.0 if is_liked else (1.0 if completion >= 0.5 else 0.0)
-                            user_profile += song_vectors_dict[sid] * weight
-                            count_weighted += weight
-                            
-                    if count_weighted > 0:
-                        # L2 Normalize aggregated profile
-                        norm = np.linalg.norm(user_profile)
-                        if norm > 0:
-                            user_profile = user_profile / norm
-                    else:
-                        user_profile[0:3] = 0.5
-                        user_profile = user_profile / np.linalg.norm(user_profile)
-                        
-                    # Update database
-                    vector_str = format_pgvector(user_profile)
-                    cur.execute(
-                        'UPDATE "User" SET "contentVector" = %s::vector WHERE id = %s',
-                        (vector_str, user_id)
-                    )
-                    
-            logger.info("✅ User Content Profiles successfully updated in DB.")
+                execute_values(
+                    cur,
+                    'UPDATE "User" SET "contentVector" = data.v::vector '
+                    'FROM (VALUES %s) AS data(v, id) WHERE "User".id = data.id::int',
+                    batch_data,
+                    page_size=500
+                )
+        logger.info(f"✅ Batch updated {len(batch_data)} User Content Profiles.")
         return True
 
     def seed_default_user_vectors(self, user_ids):
         """
-        Populate default vectors for cold-start users.
+        Populate default vectors for cold-start users. Sử dụng batch execute_values.
         """
+        from psycopg2.extras import execute_values
+
         logger.info("Seeding default balanced content vectors for users...")
+
+        default_vector = np.zeros(self.vector_dim, dtype=np.float32)
+        default_vector[0:3] = 0.5
+        norm = np.linalg.norm(default_vector)
+        if norm > 0:
+            default_vector = default_vector / norm
+        default_vec_str = format_pgvector(default_vector)
+
+        batch_data = [(default_vec_str, uid) for uid in user_ids]
+
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                for uid in user_ids:
-                    vector = np.zeros(self.vector_dim, dtype=np.float32)
-                    vector[0:3] = 0.5  # default balanced features
-                    norm = np.linalg.norm(vector)
-                    if norm > 0:
-                        vector = vector / norm
-                    vector_str = format_pgvector(vector)
-                    cur.execute(
-                        'UPDATE "User" SET "contentVector" = %s::vector WHERE id = %s',
-                        (vector_str, uid)
-                    )
-        logger.info("✅ Finished seeding default user vectors.")
+                execute_values(
+                    cur,
+                    'UPDATE "User" SET "contentVector" = data.v::vector '
+                    'FROM (VALUES %s) AS data(v, id) WHERE "User".id = data.id::int',
+                    batch_data,
+                    page_size=500
+                )
+        logger.info(f"✅ Batch seeded default vectors for {len(user_ids)} users.")
 
     def build_and_save_single_song_vector(self, song_id):
         """
