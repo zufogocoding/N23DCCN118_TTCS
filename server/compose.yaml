@@ -24,6 +24,9 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
+      # Tắt OpenBLAS multi-thread để tránh contention trong môi trường single-process
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
     volumes:
       - ./ml-service:/app:z
       - ./uploads:/app/uploads:z
