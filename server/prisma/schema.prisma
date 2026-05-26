@@ -34,9 +34,10 @@ model User {
   isVerified    Boolean   @default(false) // xac thuc account
   createdAt     DateTime  @default(now())
   lastLogin     DateTime?                    // lan dang nhap gan nhat
-
+  //vector luu tru User Factor tu CB 
+  contentVector Unsupported("vector(128)")?
   // Vector lưu trữ User Factors từ ALS (Giả sử số chiều k = 64)
-  alsFeature Unsupported("vector(64)")?
+  collaborativeVector Unsupported("vector(64)")?
 
   // Quan hệ
   artist              Artist?
@@ -47,6 +48,7 @@ model User {
   interactions        Interaction[]
   recommendationCache RecommendationCache[]
   notifications       Notification[]
+  reports             Report[]
 }
 
 model Artist {
@@ -100,9 +102,13 @@ model Song {
   uploadedById Int?    // ID user đã upload bài hát
   energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
   tempo       Float? // Đổi sang Float
+  danceability Float? 
   status String @default("pending") @db.VarChar(50) // moi bai upload moi se tu pending
   // Vector lưu trữ Item Features (Cho CBF hoặc Item Factors của ALS)
-  embedding Unsupported("vector(64)")?
+  contentVector Unsupported("vector(128)")?
+
+  // Vector luu tru Collaborative Filtering Vector ("ITEM FACETOR")
+  collaborativeVector Unsupported("vector(64)")?
 
   // Streaming URLs
   audioUrl    String   @db.VarChar(500)
@@ -123,6 +129,8 @@ model Song {
 
   // Tối ưu câu lệnh WHERE isDeleted = false khi quét toàn bộ bảng
   @@index([isDeleted])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Genre {
@@ -188,6 +196,8 @@ model Interaction {
   @@id([userId, songId, timeStamp])
 
   @@index([userId, timeStamp])
+  @@index([userId, songId])
+  @@index([timeStamp])
 }
 
 model PlaylistSong {
@@ -275,4 +285,19 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  reporterId  Int
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType  String   @db.VarChar(50) // 'SONG', 'ALBUM', 'ARTIST'
+  targetId    Int      // ID của đối tượng bị báo cáo
+  reason      String   @db.VarChar(100) // 'COPYRIGHT', 'SPAM', 'HATE_SPEECH'
+  description String?  @db.Text
+  proofUrl    String?  @db.VarChar(500) // Link chứng minh
+  status      String   @default("PENDING") // PENDING, RESOLVED, REJECTED
+  createdAt   DateTime @default(now())
+
+  @@index([status, createdAt])
 }

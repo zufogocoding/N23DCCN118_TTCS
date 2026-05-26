@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useRef, useEffect } from 'react';
+import { api } from '../utils/api';
 
 const PlayerContext = createContext();
 
@@ -20,7 +21,6 @@ export const PlayerProvider = ({ children }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
 
-  // Lắng nghe sự kiện từ thẻ audio
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -37,6 +37,7 @@ export const PlayerProvider = ({ children }) => {
       audio.removeEventListener('timeupdate', setAudioTime);
       audio.removeEventListener('ended', handleEnded);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, queue, isRepeat, isShuffle]);
 
   // Cập nhật âm lượng
@@ -62,7 +63,7 @@ export const PlayerProvider = ({ children }) => {
     setCurrentIndex(playlist.findIndex(s => s.id === song.id));
 
     // Sử dụng streaming API endpoint
-    const streamUrl = `http://localhost:9000/api/songs/${song.id}/stream`;
+    const streamUrl = `/api/songs/${song.id}/stream`;
     audioRef.current.src = streamUrl;
     audioRef.current.play().catch(() => {
       // Nếu lỗi (ví dụ file không tồn tại), vẫn set state đúng
@@ -73,20 +74,25 @@ export const PlayerProvider = ({ children }) => {
     // Call API để tracking lượt nghe
     const userStr = localStorage.getItem('user');
     if (userStr) {
+      api.post('/api/interactions/listen', {
+        songId: song.id,
+        durationPlayed: 0, // Tạm thời gửi 0, chỉ để tăng playCount
+        isSkipped: false
+      }).catch(err => console.error('Track listen error:', err));
+    } else {
+      // Lưu lịch sử cục bộ cho Guest
       try {
-        const user = JSON.parse(userStr);
-        fetch('http://localhost:9000/api/interactions/listen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            songId: song.id,
-            durationPlayed: 0, // Tạm thời gửi 0, chỉ để tăng playCount
-            isSkipped: false
-          })
-        }).catch(err => console.error('Track listen error:', err));
-      } catch (e) {
-        console.error(e);
+        const guestRecent = JSON.parse(localStorage.getItem('guest_recent_songs') || '[]');
+        const updatedRecent = [
+          song,
+          ...guestRecent.filter(s => s.id !== song.id)
+        ].slice(0, 20); // Giữ tối đa 20 bài gần nhất
+        localStorage.setItem('guest_recent_songs', JSON.stringify(updatedRecent));
+        
+        // Kích hoạt custom event để các component đang lắng nghe (như Home) biết và cập nhật lại
+        window.dispatchEvent(new Event('guestHistoryUpdated'));
+      } catch (err) {
+        console.error('Error saving guest recent history:', err);
       }
     }
   }

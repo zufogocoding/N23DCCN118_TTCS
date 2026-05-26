@@ -6,37 +6,10 @@ import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/CreatePlaylistModal';
 import EditPlaylistModal from '../../components/EditPlaylistModal';
+import { api, getMediaUrl } from '../../utils/api';
+import { getArtistName, getCoverArt, formatDuration } from '../../utils/songHelpers';
 
-// Helper: lấy tên artist từ cấu trúc API response
-function getArtistName(song) {
-  if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
-  }
-  if (song.artistName) return song.artistName;
-  return 'Unknown Artist';
-}
 
-// Helper: lấy cover art URL
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
-
-// Format duration từ milliseconds
-function formatDuration(ms) {
-  if (!ms) return '0:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
 
 const PlaylistView = () => {
   const { playlistId } = useParams();
@@ -58,31 +31,54 @@ const PlaylistView = () => {
 
     if (playlistId === 'liked') {
       setIsLikedPage(true);
-      if (user.id) {
-        try {
-          const res = await fetch(`http://localhost:9000/api/interactions/liked/${user.id}`);
-          if (res.ok) {
-            const data = await res.json();
-            setSongs(data);
-            setPlaylist({
-              title: 'Liked Songs',
-              user: { username: user.artistName || user.displayName || user.username },
-              songCount: data.length,
-            });
-          }
-        } catch (err) {
-          console.error('Lỗi khi lấy liked songs:', err);
+      if (!user.id) {
+        navigate('/login');
+        return;
+      }
+      try {
+        const res = await api.get('/api/interactions/liked');
+        if (res.ok) {
+          const data = await res.json();
+          setSongs(data);
+          setPlaylist({
+            title: 'Liked Songs',
+            user: { username: user.artistName || user.displayName || user.username },
+            songCount: data.length,
+          });
         }
+      } catch (err) {
+        console.error('Lỗi khi lấy liked songs:', err);
       }
     } else {
       setIsLikedPage(false);
       try {
-        const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}`);
+        const res = await api.get(`/api/playlists/${playlistId}`);
         if (res.ok) {
           const data = await res.json();
           setPlaylist(data);
           const extractedSongs = data.songs ? data.songs.map(ps => ps.song) : [];
           setSongs(extractedSongs);
+
+          // Lưu lịch sử click playlist của khách
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          if (!currentUser.id) {
+            try {
+              const guestPlaylists = JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]');
+              const updated = [
+                {
+                  id: data.id,
+                  title: data.title,
+                  coverArtUrl: data.coverArtUrl,
+                  songCount: extractedSongs.length
+                },
+                ...guestPlaylists.filter(p => p.id !== data.id)
+              ].slice(0, 10);
+              localStorage.setItem('guest_recent_playlists', JSON.stringify(updated));
+              window.dispatchEvent(new Event('guestHistoryUpdated'));
+            } catch (err) {
+              console.error('Error saving guest recent playlists:', err);
+            }
+          }
         }
       } catch (err) {
         console.error('Lỗi khi lấy playlist:', err);
@@ -93,23 +89,26 @@ const PlaylistView = () => {
 
   useEffect(() => {
     fetchPlaylistData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistId]);
 
-  // Fetch liked status for all songs
+  // Fetch liked status for all songs in batch
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!user.id || songs.length === 0) return;
-    Promise.all(
-      songs.map(s =>
-        fetch(`http://localhost:9000/api/interactions/like/${user.id}/${s.id}`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null)
-      )
-    ).then(results => {
-      const liked = new Set();
-      results.forEach((r, i) => { if (r?.isLiked) liked.add(songs[i].id); });
-      setLikedSongIds(liked);
-    });
+    
+    api.post('/api/interactions/like-status-batch', { songIds: songs.map(s => s.id) })
+      .then(r => r.ok ? r.json() : {})
+      .then(statusMap => {
+        const liked = new Set();
+        songs.forEach(s => {
+          if (statusMap[s.id]) {
+            liked.add(s.id);
+          }
+        });
+        setLikedSongIds(liked);
+      })
+      .catch(err => console.error('Lỗi khi kiểm tra danh sách thích:', err));
   }, [songs]);
 
   useEffect(() => {
@@ -152,11 +151,7 @@ const PlaylistView = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!user.id) { navigate('/login'); return; }
     try {
-      const res = await fetch('http://localhost:9000/api/interactions/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, songId }),
-      });
+      const res = await api.post('/api/interactions/like', { songId });
       if (res.ok) {
         const data = await res.json();
         setLikedSongIds(prev => {
@@ -172,11 +167,7 @@ const PlaylistView = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!user.id) return;
     try {
-      const res = await fetch(`http://localhost:9000/api/playlists/${playlistId}/songs/${songId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      const res = await api.delete(`/api/playlists/${playlistId}/songs/${songId}`);
       if (res.ok) {
         setSongs(prev => prev.filter(s => s.id !== songId));
       }
@@ -224,11 +215,7 @@ const PlaylistView = () => {
     }
 
     try {
-      const res = await fetch(`http://localhost:9000/api/playlists/${playlist.id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      const res = await api.delete(`/api/playlists/${playlist.id}`);
       setPlaylistToolbarMenuOpen(false);
       if (res.ok) {
         navigate('/');
@@ -284,7 +271,7 @@ const PlaylistView = () => {
         ) : playlist?.coverArtUrl ? (
           <div className="w-52 h-52 shadow-2xl flex-shrink-0">
             <img 
-              src={`http://localhost:9000${playlist.coverArtUrl}`} 
+              src={getMediaUrl(playlist.coverArtUrl)} 
               alt={playlist.title} 
               className="w-full h-full object-cover rounded-md"
             />

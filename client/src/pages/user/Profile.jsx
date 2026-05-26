@@ -1,7 +1,7 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCircle, CheckCircle2, Music } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { api, getMediaUrl } from '../../utils/api';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -23,11 +23,7 @@ export default function Profile() {
         return;
       }
 
-      const res = await fetch('http://localhost:9000/api/users/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const res = await api.get('/api/users/profile');
 
       if (res.ok) {
         const data = await res.json();
@@ -57,7 +53,8 @@ export default function Profile() {
         }
         setError(errorData.error || 'Không thể lấy thông tin profile');
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);
@@ -65,7 +62,9 @@ export default function Profile() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInputChange = (e) => {
@@ -99,20 +98,13 @@ export default function Profile() {
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('token');
       const submitData = new FormData();
       submitData.append('displayName', formData.displayName);
       if (formData.dob) submitData.append('dob', formData.dob);
       if (formData.country) submitData.append('country', formData.country);
       if (selectedFile) submitData.append('avatar', selectedFile);
 
-      const res = await fetch('http://localhost:9000/api/users/profile', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: submitData
-      });
+      const res = await api.put('/api/users/profile', submitData);
 
       if (res.ok) {
         const data = await res.json();
@@ -129,7 +121,8 @@ export default function Profile() {
         const errorData = await res.json();
         setError(errorData.error || 'Cập nhật thất bại');
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);
@@ -156,7 +149,7 @@ export default function Profile() {
     );
   }
 
-  const displayAvatar = previewImage || (user?.avatarUrl ? `http://localhost:9000${user.avatarUrl}` : "https://i.pravatar.cc/150?u=default");
+  const displayAvatar = previewImage || (user?.avatarUrl ? getMediaUrl(user.avatarUrl) : "https://i.pravatar.cc/150?u=default");
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">

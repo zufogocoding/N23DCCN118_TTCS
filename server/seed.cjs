@@ -79,9 +79,46 @@ async function seedGenres() {
   console.log('   (Các genre đã tồn tại sẽ được bỏ qua, không tạo trùng)\n');
 }
 
-seedGenres()
+async function seedCharts() {
+  console.log('\n🏷️  Bắt đầu seed bảng xếp hạng...\n');
+
+  const CHARTS = [
+    { title: 'Top 50 Ngày', chartType: 'DAILY' },
+    { title: 'Top 50 Tuần', chartType: 'WEEKLY' },
+    { title: 'Top 50 Tháng', chartType: 'MONTHLY' },
+  ];
+
+  let created = 0;
+
+  for (const chartData of CHARTS) {
+    // Vì schema prisma.chart chưa có trường @unique (ngoài id), ta không thể dùng trực tiếp prisma.chart.upsert() theo chartType.
+    // Thay vào đó, ta sẽ dùng findFirst và create để đảm bảo logic chạy an toàn.
+    const existingChart = await prisma.chart.findFirst({
+      where: { chartType: chartData.chartType },
+    });
+
+    if (!existingChart) {
+      const newChart = await prisma.chart.create({
+        data: chartData,
+      });
+      console.log(`  ✅ ${newChart.title} (id: ${newChart.id})`);
+      created++;
+    } else {
+      console.log(`  ⏩ Đã tồn tại ${existingChart.title} (id: ${existingChart.id})`);
+    }
+  }
+
+  console.log(`\n✨ Hoàn tất! Đã tạo mới ${created} bảng xếp hạng.\n`);
+}
+
+async function main() {
+  await seedGenres();
+  await seedCharts();
+}
+
+main()
   .catch((err) => {
-    console.error('❌ Lỗi khi seed genres:', err);
+    console.error('❌ Lỗi khi seed:', err);
     process.exit(1);
   })
   .finally(async () => {

@@ -8,10 +8,11 @@ const interactController = {
    */
   trackListening: async (req, res) => {
     try {
-      const { userId, songId, durationPlayed, isSkipped } = req.body;
+      const userId = req.user.id;
+      const { songId, durationPlayed, isSkipped } = req.body;
 
-      if (!userId || !songId) {
-        return res.status(400).json({ error: "Thiếu userId hoặc songId" });
+      if (!songId) {
+        return res.status(400).json({ error: "Thiếu songId" });
       }
 
       // Kiểm tra bài hát có tồn tại và chưa bị xóa không
@@ -64,10 +65,11 @@ const interactController = {
    */
   toggleLike: async (req, res) => {
     try {
-      const { userId, songId } = req.body;
+      const userId = req.user.id;
+      const { songId } = req.body;
 
-      if (!userId || !songId) {
-        return res.status(400).json({ error: "Thiếu userId hoặc songId" });
+      if (!songId) {
+        return res.status(400).json({ error: "Thiếu songId" });
       }
 
       const parsedUserId = parseInt(userId);
@@ -130,7 +132,7 @@ const interactController = {
    */
   checkLikeStatus: async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.user.id;
       const songId = parseInt(req.params.songId);
 
       const likedInteraction = await prisma.interaction.findFirst({
@@ -153,7 +155,7 @@ const interactController = {
    */
   getLikedSongs: async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.user.id;
 
       // Tìm tất cả songId mà user đã like (isLiked = true)
       const likedInteractions = await prisma.interaction.findMany({
@@ -191,6 +193,89 @@ const interactController = {
       res.status(200).json(songs);
     } catch (error) {
       console.error("Lỗi getLikedSongs:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
+  },
+
+  /**
+   * Lấy danh sách bài hát nghe gần đây của user
+   */
+  getRecentSongs: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const recentInteractions = await prisma.interaction.findMany({
+        where: { userId },
+        orderBy: { timeStamp: 'desc' },
+        select: { songId: true },
+        distinct: ['songId'],
+        take: 30
+      });
+
+      const songIds = recentInteractions.map(i => i.songId);
+
+      if (songIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      const songs = await prisma.song.findMany({
+        where: {
+          id: { in: songIds },
+          isDeleted: false
+        },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true, displayName: true } } }
+              }
+            }
+          }
+        }
+      });
+
+      // Maintain order of recent history
+      const orderedSongs = songIds.map(id => songs.find(s => s.id === id)).filter(Boolean);
+
+      res.status(200).json(orderedSongs);
+    } catch (error) {
+      console.error("Lỗi getRecentSongs:", error);
+      res.status(500).json({ error: "Lỗi server" });
+    }
+  },
+
+  /**
+   * Kiểm tra trạng thái thích của nhiều bài hát cùng lúc
+   */
+  batchCheckLikeStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { songIds } = req.body;
+
+      if (!songIds || !Array.isArray(songIds)) {
+        return res.status(400).json({ error: "songIds phải là một danh sách" });
+      }
+
+      const parsedSongIds = songIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+      const likedInteractions = await prisma.interaction.findMany({
+        where: {
+          userId,
+          songId: { in: parsedSongIds },
+          isLiked: true
+        },
+        select: { songId: true }
+      });
+
+      const likedSet = new Set(likedInteractions.map(i => i.songId));
+      const statusMap = {};
+      parsedSongIds.forEach(id => {
+        statusMap[id] = likedSet.has(id);
+      });
+
+      res.status(200).json(statusMap);
+    } catch (error) {
+      console.error("Lỗi batchCheckLikeStatus:", error);
       res.status(500).json({ error: "Lỗi server" });
     }
   }

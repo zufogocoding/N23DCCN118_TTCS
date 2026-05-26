@@ -15,6 +15,8 @@ const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
+import { api } from '../../utils/api';
+
 export default function Register() {
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema)
@@ -24,7 +26,7 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // OTP States
   const [step, setStep] = useState(1); // 1: Fill info, 2: Enter OTP
   const [formData, setFormData] = useState(null);
@@ -38,13 +40,9 @@ export default function Register() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/register-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: data.username,
-          email: data.email
-        })
+      const res = await api.post('/api/auth/register-otp', {
+        username: data.username,
+        email: data.email
       });
       const resData = await res.json();
 
@@ -54,7 +52,8 @@ export default function Register() {
       } else {
         setServerError(resData.error || "Có lỗi xảy ra!");
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setServerError("Không thể kết nối đến server!");
     } finally {
       setIsLoading(false);
@@ -73,23 +72,26 @@ export default function Register() {
     setServerError('');
 
     try {
-      const res = await fetch('http://localhost:9000/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          otp: otp
-        })
+      const res = await api.post('/api/auth/signup', {
+        ...formData,
+        otp: otp
       });
       const resData = await res.json();
 
       if (res.ok) {
-        alert("Đăng ký thành công! Đăng nhập ngay nào.");
-        navigate('/login');
+        // BUG FIX: Backend giờ trả về token + user, tự động đăng nhập
+        if (resData.token) {
+          localStorage.setItem('token', resData.token);
+          localStorage.setItem('user', JSON.stringify(resData.user));
+          navigate('/');
+        } else {
+          navigate('/login');
+        }
       } else {
         setServerError(resData.error || "Mã OTP không hợp lệ!");
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setServerError("Không thể kết nối đến server!");
     } finally {
       setIsLoading(false);
@@ -171,7 +173,7 @@ export default function Register() {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" size={18} />
               <input
-                type="text" 
+                type="text"
                 placeholder="Nhập mã OTP 6 số"
                 maxLength={6}
                 value={otp}

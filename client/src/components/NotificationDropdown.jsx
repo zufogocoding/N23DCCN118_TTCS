@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
+import { api } from '../utils/api';
+import useClickOutside from '../hooks/useClickOutside';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,13 +11,7 @@ export default function NotificationDropdown() {
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const res = await fetch('http://localhost:9000/api/notifications', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
+      const res = await api.get('/api/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications);
@@ -27,6 +23,10 @@ export default function NotificationDropdown() {
   };
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return; // Không fetch nếu chưa đăng nhập!
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
     // Polling mỗi 30 giây để kiểm tra thông báo mới
@@ -36,26 +36,18 @@ export default function NotificationDropdown() {
 
   // Refetch khi mở dropdown
   useEffect(() => {
-    if (isOpen) fetchNotifications();
+    const userStr = localStorage.getItem('user');
+    if (isOpen && userStr) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchNotifications();
+    }
   }, [isOpen]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(dropdownRef, () => setIsOpen(false));
 
   const handleMarkAsRead = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`http://localhost:9000/api/notifications/${id}/read`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.put(`/api/notifications/${id}/read`);
 
       setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
@@ -68,11 +60,7 @@ export default function NotificationDropdown() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch('http://localhost:9000/api/notifications/read-all', {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await api.put('/api/notifications/read-all');
 
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
@@ -102,6 +90,9 @@ export default function NotificationDropdown() {
       default: return 'border-l-[#00e6e6]';
     }
   };
+
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return null; // Ẩn luôn quả chuông nếu là khách!
 
   return (
     <div className="relative" ref={dropdownRef}>

@@ -1,7 +1,8 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogIn, UserPlus, Music } from 'lucide-react';
+import { getMediaUrl } from '../utils/api';
+import useClickOutside from '../hooks/useClickOutside';
+import { User, Music, LogIn, UserPlus } from 'lucide-react';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,7 @@ const [user, setUser] = useState({});
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUser();
     
     // Lắng nghe sự kiện cập nhật profile để render lại dropdown
@@ -34,16 +36,7 @@ const [user, setUser] = useState({});
     return '?';
   };
 
-  // Đóng menu khi click ra ngoài
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(dropdownRef, () => setIsOpen(false));
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -72,7 +65,7 @@ const [user, setUser] = useState({});
   }
 
   const displayAvatar = user.avatarUrl 
-    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:9000${user.avatarUrl}`)
+    ? getMediaUrl(user.avatarUrl)
     : null;
 
   // Hiển thị artistName nếu là nghệ sĩ, ngược lại hiển thị username

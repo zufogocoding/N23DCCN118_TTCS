@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react';
 import { Music, X } from 'lucide-react';
+import { api } from '../utils/api';
 
 export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  // eslint-disable-next-line no-unused-vars
   const [image, setImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,24 +33,16 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
     setIsLoading(true);
 
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
 
       // Dùng FormData để hỗ trợ upload ảnh
       const formData = new FormData();
       formData.append('title', title.trim() || 'My Playlist #1');
       formData.append('description', description.trim());
-      formData.append('userId', user.id);
       if (image) {
         formData.append('cover', image);
       }
 
-      const res = await fetch('http://localhost:9000/api/playlists', {
-        method: 'POST',
-        headers: { 
-          // Không set Content-Type khi dùng FormData, fetch tự tính toán boundary
-        },
-        body: formData
-      });
+      const res = await api.post('/api/playlists', formData);
 
       if (res.ok) {
         // Tải lại danh sách playlist qua callback onSuccess
@@ -60,7 +52,7 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
         const data = await res.json();
         alert(data.error || 'Lỗi tạo playlist');
       }
-    } catch (error) { console.error(error);
+    } catch (error) {
       console.error(error);
       alert('Không thể kết nối đến server');
     } finally {

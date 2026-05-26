@@ -5,3 +5,5 @@ pandas
 scipy
 psycopg2-binary
 pgvector
+librosa
+soundfile

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
@@ -20,13 +19,17 @@ import {
   Mic2,
   Music,
   MoreHorizontal,
-  ListPlus,
+  Flag,
 } from "lucide-react";
 
 import UserDropdown from "../UserDropdown";
 import NotificationDropdown from "../NotificationDropdown.jsx";
 import CreatePlaylistModal from "../CreatePlaylistModal";
+import ReportModal from "../ReportModal";
 import AddToPlaylistMenu from "../AddToPlaylistMenu";
+import { api } from "../../utils/api";
+import { getCoverArt } from "../../utils/songHelpers";
+import useClickOutside from "../../hooks/useClickOutside";
 
 function formatPlayerClock(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
@@ -37,6 +40,11 @@ function formatPlayerClock(seconds) {
 
 export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isPlayerMenuOpen, setIsPlayerMenuOpen] = useState(false);
+  const playerMenuRef = useRef(null);
+  useClickOutside(playerMenuRef, () => setIsPlayerMenuOpen(false));
+
   const [isLiked, setIsLiked] = useState(false);
   const [userPlaylists, setUserPlaylists] = useState([]);
 
@@ -97,17 +105,10 @@ export default function MainLayout() {
   const [nowPlayingMenuOpen, setNowPlayingMenuOpen] = useState(false);
   const nowPlayingMenuRef = useRef(null);
 
-  useEffect(() => {
-    const handleClose = (e) => {
-      if (nowPlayingMenuRef.current && !nowPlayingMenuRef.current.contains(e.target)) {
-        setNowPlayingMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClose);
-    return () => document.removeEventListener("mousedown", handleClose);
-  }, []);
+  useClickOutside(nowPlayingMenuRef, () => setNowPlayingMenuOpen(false));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNowPlayingMenuOpen(false);
   }, [currentSong?.id]);
 
@@ -116,26 +117,28 @@ export default function MainLayout() {
 
     if (user.id) {
       try {
-        const res = await fetch(
-          `http://localhost:9000/api/playlists/user/${user.id}`
+        const res = await api.get(
+          `/api/playlists/user/${user.id}`
         );
 
         if (res.ok) {
           const data = await res.json();
           setUserPlaylists(data);
         }
-      } catch (error) { console.error(error);
+      } catch (error) {
         console.error("Lỗi khi lấy playlist:", error);
       }
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlaylists();
   }, []);
 
   useEffect(() => {
     if (!currentSong?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLiked(false);
       return;
     }
@@ -145,7 +148,7 @@ export default function MainLayout() {
       return;
     }
     let cancelled = false;
-    fetch(`http://localhost:9000/api/interactions/like/${user.id}/${currentSong.id}`)
+    api.get(`/api/interactions/like-status/${currentSong.id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled && data) setIsLiked(!!data.isLiked);
@@ -158,7 +161,6 @@ export default function MainLayout() {
 
   const handleProtectedAction = (action) => {
     const user = localStorage.getItem("user");
-
     if (!user) {
       navigate("/login");
     } else if (action) {
@@ -174,6 +176,15 @@ export default function MainLayout() {
         onClose={() => setIsPlaylistModalOpen(false)}
         onSuccess={fetchPlaylists}
       />
+      
+      {currentSong && (
+        <ReportModal 
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetType="SONG"
+          targetId={currentSong.id}
+        />
+      )}
 
       <div className="flex flex-1 overflow-hidden">
 
@@ -233,12 +244,12 @@ export default function MainLayout() {
 
           <div className="mt-4 px-6 border-t border-[#222] pt-4 flex-1 overflow-y-auto mb-4">
 
-            <Link
-              to="/playlist/liked"
-              className="flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6] mb-4"
+            <button
+              onClick={() => handleProtectedAction(() => navigate('/playlist/liked'))}
+              className="w-full text-left flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6] mb-4"
             >
               <Heart size={24} className="fill-current" /> Bài hát đã thích
-            </Link>
+            </button>
 
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
 
@@ -268,12 +279,27 @@ export default function MainLayout() {
         <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
 
           <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-3 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-md">
-
-            <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
-              <NotificationDropdown />
-              <UserDropdown />
-            </div>
-
+            {localStorage.getItem('user') ? (
+              <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
+                <NotificationDropdown />
+                <UserDropdown />
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <Link
+                  to="/register"
+                  className="text-[#a0a0a0] hover:text-white font-bold py-2 px-4 transition-colors text-sm"
+                >
+                  Đăng ký
+                </Link>
+                <Link
+                  to="/login"
+                  className="bg-white text-black hover:scale-105 font-bold py-2 px-6 rounded-full transition-transform text-sm"
+                >
+                  Đăng nhập
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="px-6 pb-6">
@@ -318,7 +344,7 @@ export default function MainLayout() {
           </div>
 
           <img
-            src={currentSong?.coverImage || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"}
+            src={getCoverArt(currentSong) || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"}
             alt="Now Playing"
             className="w-full aspect-square object-cover rounded-xl mb-4 shadow-2xl shadow-[#00e6e6]/10"
           />
@@ -340,11 +366,7 @@ export default function MainLayout() {
                   if (!currentSong) return;
                   const user = JSON.parse(localStorage.getItem("user") || "{}");
                   if (!user.id) { navigate("/login"); return; }
-                  fetch("http://localhost:9000/api/interactions/like", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userId: user.id, songId: currentSong.id }),
-                  })
+                  api.post("/api/interactions/like", { songId: currentSong.id })
                     .then((r) => r.json())
                     .then((data) => setIsLiked(data.isLiked))
                     .catch((err) => console.error(err));
@@ -377,9 +399,9 @@ export default function MainLayout() {
         <div className="flex items-center gap-3 min-w-0 flex-[1.1] max-w-[28vw]">
           {currentSong ? (
             <>
-              {currentSong.coverImage ? (
+              {getCoverArt(currentSong) ? (
                 <img
-                  src={currentSong.coverImage}
+                  src={getCoverArt(currentSong)}
                   alt=""
                   className="w-14 h-14 rounded object-cover shadow-md shrink-0 bg-[#282828]"
                 />
@@ -401,11 +423,7 @@ export default function MainLayout() {
                       navigate("/login");
                       return;
                     }
-                    fetch("http://localhost:9000/api/interactions/like", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ userId: user.id, songId: currentSong.id }),
-                    })
+                    api.post("/api/interactions/like", { songId: currentSong.id })
                       .then((r) => r.json())
                       .then((data) => setIsLiked(data.isLiked))
                       .catch((err) => console.error(err));
@@ -413,6 +431,40 @@ export default function MainLayout() {
                   size={18}
                   className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#b3b3b3] hover:text-white"}`}
                 />
+
+                {/* 3-dot Context Menu in Player Bar */}
+                <div className="relative" ref={playerMenuRef}>
+                  <button 
+                    onClick={() => setIsPlayerMenuOpen(!isPlayerMenuOpen)}
+                    className="p-1.5 rounded-full text-[#b3b3b3] hover:text-white transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                  
+                  {isPlayerMenuOpen && (
+                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-[#282828] rounded-md shadow-2xl border border-[#333] py-1 z-[100]">
+                      <AddToPlaylistMenu
+                        songId={currentSong.id}
+                        onCreatePlaylist={() => {
+                          setIsPlayerMenuOpen(false);
+                          setIsPlaylistModalOpen(true);
+                        }}
+                        asMenuItem={true}
+                      />
+                      
+                      <button 
+                        onClick={() => {
+                          setIsPlayerMenuOpen(false);
+                          setIsReportModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+                      >
+                        <Flag size={18} />
+                        <span>Báo cáo bài hát</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : (

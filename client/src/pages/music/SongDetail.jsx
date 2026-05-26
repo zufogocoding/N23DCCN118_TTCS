@@ -1,56 +1,36 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { Play, Heart } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Play, Pause, Heart, MoreHorizontal, Flag } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
 import AddToPlaylistMenu from "../../components/AddToPlaylistMenu";
 import CreatePlaylistModal from "../../components/CreatePlaylistModal";
+import ReportModal from "../../components/ReportModal";
+import useClickOutside from "../../hooks/useClickOutside";
 import { getPrimaryArtistUserId } from "../../utils/artistNav";
+import { api } from "../../utils/api";
+import { getArtistName, getCoverArt, formatDuration } from "../../utils/songHelpers";
 
-// Helper: lấy tên artist
-function getArtistName(song) {
-  if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
-  }
-  if (song.artistName) return song.artistName;
-  return 'Unknown Artist';
-}
 
-// Helper: cover art URL
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=600&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=600&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=600&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
-
-// Format duration
-function formatDuration(ms) {
-  if (!ms) return '0:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
 
 const SongDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { playSong } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlay } = usePlayer();
   const [song, setSong] = useState(null);
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const contextMenuRef = useRef(null);
+  
+  useClickOutside(contextMenuRef, () => setIsContextMenuOpen(false));
 
   useEffect(() => {
     async function fetchSong() {
       try {
-        const res = await fetch(`http://localhost:9000/api/songs/${id}`);
+        const res = await api.get(`/api/songs/${id}`);
         if (res.ok) {
           const data = await res.json();
           setSong(data);
@@ -58,7 +38,7 @@ const SongDetail = () => {
           // Kiểm tra trạng thái like
           const user = JSON.parse(localStorage.getItem('user') || '{}');
           if (user.id) {
-            const likeRes = await fetch(`http://localhost:9000/api/interactions/like/${user.id}/${id}`);
+            const likeRes = await api.get(`/api/interactions/like-status/${id}`);
             if (likeRes.ok) {
               const likeData = await likeRes.json();
               setLiked(likeData.isLiked);
@@ -76,13 +56,17 @@ const SongDetail = () => {
 
   const handlePlay = () => {
     if (!song) return;
-    const playerSong = {
-      id: song.id,
-      title: song.title,
-      artist: { name: getArtistName(song) },
-      coverImage: getCoverArt(song),
-    };
-    playSong(playerSong, [playerSong]);
+    if (currentSong?.id === song.id) {
+      togglePlay();
+    } else {
+      const playerSong = {
+        id: song.id,
+        title: song.title,
+        artist: { name: getArtistName(song) },
+        coverImage: getCoverArt(song),
+      };
+      playSong(playerSong, [playerSong]);
+    }
   };
 
   const handleToggleLike = async () => {
@@ -90,11 +74,7 @@ const SongDetail = () => {
     if (!user.id || !song) return;
 
     try {
-      const res = await fetch('http://localhost:9000/api/interactions/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, songId: song.id })
-      });
+      const res = await api.post('/api/interactions/like', { songId: song.id });
       if (res.ok) {
         const data = await res.json();
         setLiked(data.isLiked);
@@ -128,11 +108,20 @@ const SongDetail = () => {
 
   return (
     <div className={`bg-gradient-to-b ${gradientColor} to-[#121212] rounded-xl -mx-6 -mt-6 overflow-hidden`}>
-      {/* Modal */}
+      {/* Modals */}
       <CreatePlaylistModal
         isOpen={isPlaylistModalOpen}
         onClose={() => setIsPlaylistModalOpen(false)}
       />
+      
+      {song && (
+        <ReportModal 
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetType="SONG"
+          targetId={song.id}
+        />
+      )}
 
       {/* HERO Section */}
       <div className="px-10 pt-16 pb-10 flex flex-col md:flex-row items-center md:items-end gap-8 min-h-[340px]">
@@ -184,7 +173,11 @@ const SongDetail = () => {
           onClick={handlePlay}
           className="bg-[#1ed760] w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 transition shadow-xl"
         >
-          <Play fill="black" color="black" size={32} className="ml-1" />
+          {currentSong?.id === song.id && isPlaying ? (
+            <Pause fill="black" color="black" size={32} />
+          ) : (
+            <Play fill="black" color="black" size={32} className="ml-1" />
+          )}
         </button>
 
         {/* Like */}
@@ -197,11 +190,39 @@ const SongDetail = () => {
           />
         </button>
 
-        {/* Add to Playlist */}
-        <AddToPlaylistMenu
-          songId={song.id}
-          onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
-        />
+        {/* Context Menu (3 chấm) */}
+        <div className="relative" ref={contextMenuRef}>
+          <button 
+            onClick={() => setIsContextMenuOpen(!isContextMenuOpen)}
+            className="p-2 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition"
+          >
+            <MoreHorizontal size={32} />
+          </button>
+          
+          {isContextMenuOpen && (
+            <div className="absolute left-0 top-full mt-2 w-56 bg-[#282828] rounded-md shadow-2xl border border-[#333] py-1 z-50">
+              <AddToPlaylistMenu
+                songId={song.id}
+                onCreatePlaylist={() => {
+                  setIsContextMenuOpen(false);
+                  setIsPlaylistModalOpen(true);
+                }}
+                asMenuItem={true}
+              />
+              
+              <button 
+                onClick={() => {
+                  setIsContextMenuOpen(false);
+                  setIsReportModalOpen(true);
+                }}
+                className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+              >
+                <Flag size={18} />
+                <span>Báo cáo bài hát</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Song info section */}

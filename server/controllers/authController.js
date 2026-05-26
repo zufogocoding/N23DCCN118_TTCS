@@ -3,6 +3,11 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../db/index');
 const { sendOtpEmail } = require('../utils/emailService');
 
+if (!process.env.JWT_SECRET) {
+  console.error("CRITICAL ERROR: JWT_SECRET env variable is missing!");
+  process.exit(1);
+}
+
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // 1. Gửi OTP Đăng ký
@@ -90,6 +95,11 @@ const signup = async (req, res) => {
       return res.status(400).json({ error: "Mã OTP đã hết hạn" });
     }
 
+    // BUG FIX: Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Mật khẩu phải có ít nhất 6 ký tự" });
+    }
+
     // Tiến hành tạo User
 
     const saltRounds = 10;
@@ -101,6 +111,7 @@ const signup = async (req, res) => {
         displayName: username,
         email,
         password: hashedPassword,
+        isVerified: true, // BUG FIX: Đã xác thực OTP, đánh dấu verified
       }
     });
 
@@ -109,11 +120,19 @@ const signup = async (req, res) => {
       where: { email: email, purpose: 'REGISTER' }
     });
 
+    // BUG FIX: Tự động tạo JWT token và login sau signup
+    const token = jwt.sign(
+      { userId: newUser.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     const { password: _, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
       message: "Đăng ký thành công",
-      user: userWithoutPassword
+      user: { ...userWithoutPassword, isArtist: false },
+      token
     });
 
   } catch (error) {
@@ -153,7 +172,7 @@ const login = async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET || 'fallback_secret_key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' } // Token sống 7 ngày
     );
 

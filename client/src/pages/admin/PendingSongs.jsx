@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { 
   Play, Pause, CheckCircle, XCircle, Music, Clock, 
-  Search, Volume2, VolumeX, ChevronDown 
+  Search, Volume2, VolumeX 
 } from "lucide-react";
+import { api, getMediaUrl } from "../../utils/api";
 
 // Helper: lấy tên artist
 function getArtistName(song) {
@@ -33,7 +34,7 @@ function formatTime(seconds) {
 // Helper: get cover art URL
 function getCoverArt(song) {
   if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
+    return getMediaUrl(song.coverArtUrl);
   }
   return null;
 }
@@ -84,15 +85,10 @@ export default function PendingSongs() {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
-  // Fetch pending songs
-  useEffect(() => {
-    fetchPendingSongs();
-  }, []);
-
   async function fetchPendingSongs() {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:9000/api/admin/songs/pending");
+      const res = await api.get("/api/admin/songs/pending");
       const data = await res.json();
       setSongs(data);
     } catch (err) {
@@ -100,7 +96,13 @@ export default function PendingSongs() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  // Fetch pending songs
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchPendingSongs();
+  }, []);
 
   // Play/Pause song
   const togglePlaySong = (songId) => {
@@ -118,7 +120,7 @@ export default function PendingSongs() {
     } else {
       // Play new song
       audio.pause();
-      audio.src = `http://localhost:9000/api/songs/${songId}/stream`;
+      audio.src = `/api/songs/${songId}/stream`;
       audio.play().catch(() => console.warn('Cannot play this song'));
       setPlayingSongId(songId);
       setIsPlaying(true);
@@ -138,7 +140,7 @@ export default function PendingSongs() {
   // Approve song
   const handleApprove = async (id) => {
     try {
-      await fetch(`http://localhost:9000/api/admin/song/${id}/approve`, { method: "PATCH" });
+      await api.patch(`/api/admin/song/${id}/approve`);
       setSongs(songs.filter((song) => song.id !== id));
       setApprovedCount(prev => prev + 1);
       if (playingSongId === id) {
@@ -155,7 +157,7 @@ export default function PendingSongs() {
   // Reject song
   const handleReject = async (id) => {
     try {
-      await fetch(`http://localhost:9000/api/admin/song/${id}/reject`, { method: "PATCH" });
+      await api.patch(`/api/admin/song/${id}/reject`);
       setSongs(songs.filter((song) => song.id !== id));
       setRejectedCount(prev => prev + 1);
       if (playingSongId === id) {

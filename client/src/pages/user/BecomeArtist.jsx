@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic2, Upload, FileAudio, CheckCircle2, AlertCircle, Clock, XCircle, Music } from 'lucide-react';
+import { api } from '../../utils/api';
 
 export default function BecomeArtist() {
   const [formData, setFormData] = useState({ artistName: '' });
@@ -25,9 +26,7 @@ export default function BecomeArtist() {
           return;
         }
 
-        const res = await fetch('http://localhost:9000/api/artist-requests/my-status', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await api.get('/api/artist-requests/my-status');
 
         if (res.ok) {
           const data = await res.json();
@@ -100,13 +99,7 @@ export default function BecomeArtist() {
       submitData.append('idCard', idCardFile);
       submitData.append('demoTrack', demoTrackFile);
 
-      const res = await fetch('http://localhost:9000/api/artist-requests/request', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: submitData
-      });
+      const res = await api.post('/api/artist-requests/request', submitData);
 
       const resData = await res.json();
 

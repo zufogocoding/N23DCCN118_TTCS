@@ -1,4 +1,5 @@
 const prisma = require('../db/index');
+const path = require('path');
 
 const songListInclude = {
   artists: {
@@ -213,7 +214,8 @@ const artistController = {
           },
         });
         const a = await tx.artist.findUnique({ where: { userId: followeeId } });
-        const next = Math.max(0, (a?.followerCount ?? 1) - 1);
+        // BUG FIX: followerCount có thể là 0, không fallback về 1
+        const next = Math.max(0, (a?.followerCount ?? 0) - 1);
         await tx.artist.update({
           where: { userId: followeeId },
           data: { followerCount: next },
@@ -269,14 +271,14 @@ const artistController = {
 
       // Avatar: prefer uploaded file, fallback to text URL from body
       if (avatarFile) {
-        updateData.avatarUrl = `/${avatarFile.path.replace(/\\/g, '/')}`;
+        updateData.avatarUrl = `/${path.relative(process.cwd(), avatarFile.path).replace(/\\/g, '/')}`;
       } else if (req.body.avatarUrl !== undefined) {
         updateData.avatarUrl = req.body.avatarUrl;
       }
 
       // CoverImage: prefer uploaded file (same as banner for user model)
       if (bannerFile) {
-        updateData.coverImageUrl = `/${bannerFile.path.replace(/\\/g, '/')}`;
+        updateData.coverImageUrl = `/${path.relative(process.cwd(), bannerFile.path).replace(/\\/g, '/')}`;
       } else if (req.body.coverImageUrl !== undefined) {
         updateData.coverImageUrl = req.body.coverImageUrl;
       }
@@ -286,14 +288,14 @@ const artistController = {
 
       // Banner for artist model
       if (bannerFile) {
-        artistUpdate.bannerUrl = `/${bannerFile.path.replace(/\\/g, '/')}`;
+        artistUpdate.bannerUrl = `/${path.relative(process.cwd(), bannerFile.path).replace(/\\/g, '/')}`;
       } else if (req.body.bannerUrl !== undefined) {
         artistUpdate.bannerUrl = req.body.bannerUrl;
       }
 
       // Also set artist avatar if file uploaded
       if (avatarFile) {
-        artistUpdate.avatarUrl = `/${avatarFile.path.replace(/\\/g, '/')}`;
+        artistUpdate.avatarUrl = `/${path.relative(process.cwd(), avatarFile.path).replace(/\\/g, '/')}`;
       }
 
       const updatedUser = await prisma.user.update({

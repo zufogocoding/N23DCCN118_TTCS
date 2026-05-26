@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, Heart, Play } from 'lucide-react';
@@ -7,32 +6,10 @@ import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/CreatePlaylistModal';
 import UploadButton from "../../components/layout/UploadButton";
 import { getPrimaryArtistUserId } from '../../utils/artistNav';
+import { api, getMediaUrl } from '../../utils/api';
+import { getArtistName, getCoverArt } from '../../utils/songHelpers';
 
-// Helper: lấy tên artist từ cấu trúc API response
-function getArtistName(song) {
-  if (song.artists && song.artists.length > 0) {
-    return song.artists.map(a => a.artist?.artistName || a.artist?.user?.displayName || a.artist?.user?.username || 'Unknown').join(', ');
-  }
-  // Fallback: lấy từ trường artistName trực tiếp trên Song (do người upload nhập)
-  if (song.artistName) return song.artistName;
-  return 'Unknown Artist';
-}
 
-// Helper: lấy cover art URL
-function getCoverArt(song) {
-  if (song.coverArtUrl) {
-    return song.coverArtUrl.startsWith('http') ? song.coverArtUrl : `http://localhost:9000${song.coverArtUrl}`;
-  }
-  // Fallback dựa trên ID
-  const fallbacks = [
-    'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop',
-  ];
-  return fallbacks[(song.id - 1) % fallbacks.length];
-}
 
 
 export default function Home() {
@@ -42,9 +19,19 @@ export default function Home() {
 
   const [songs, setSongs] = useState([]);
   const [userPlaylists, setUserPlaylists] = useState([]);
+
   const [albums, setAlbums] = useState([]);
+
+  const [dailyChart, setDailyChart] = useState([]);
+  const [weeklyChart, setWeeklyChart] = useState([]);
+  const [monthlyChart, setMonthlyChart] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+
+  const [recommendedSongs, setRecommendedSongs] = useState([]);
+  const [recentSongs, setRecentSongs] = useState([]);
+  const [recentPlaylists, setRecentPlaylists] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -65,14 +52,27 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
+
         const [songsRes, playlistsRes, albumsRes] = await Promise.all([
           fetch('http://localhost:9000/api/songs'),
           user.id ? fetch(`http://localhost:9000/api/playlists/user/${user.id}`) : Promise.resolve(null),
           fetch('http://localhost:9000/api/albums')
+
+        const [songsRes, playlistsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes] = await Promise.all([
+          api.get('/api/songs'),
+          user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
+          api.get('/api/charts/DAILY'),
+          api.get('/api/charts/WEEKLY'),
+          api.get('/api/charts/MONTHLY'),
+          user.id ? api.get('/api/recommendations') : Promise.resolve(null),
+          user.id ? api.get('/api/interactions/recent') : Promise.resolve(null)
+
         ]);
 
+        let fetchedSongs = [];
         if (songsRes.ok) {
           const data = await songsRes.json();
+          fetchedSongs = data;
           setSongs(data);
         }
 
@@ -81,10 +81,49 @@ export default function Home() {
           setUserPlaylists(plData);
         }
 
+
         if (albumsRes && albumsRes.ok) {
           const alData = await albumsRes.json();
           setAlbums(alData);
         }
+
+        if (dailyRes && dailyRes.ok) {
+          const data = await dailyRes.json();
+          setDailyChart(data?.songs || []);
+        }
+
+        if (weeklyRes && weeklyRes.ok) {
+          const data = await weeklyRes.json();
+          setWeeklyChart(data?.songs || []);
+        }
+
+        if (monthlyRes && monthlyRes.ok) {
+          const data = await monthlyRes.json();
+          setMonthlyChart(data?.songs || []);
+        }
+
+        // Set recommendations
+        if (recRes && recRes.ok) {
+          const recData = await recRes.json();
+          setRecommendedSongs(recData);
+        } else {
+          // Guest or Cold Start fallback
+          setRecommendedSongs(fetchedSongs.slice(0, 10));
+        }
+
+        // Set recent history
+        if (recentRes && recentRes.ok) {
+          const recentData = await recentRes.json();
+          setRecentSongs(recentData);
+        } else {
+          // Read from localStorage for guest
+          setRecentSongs(JSON.parse(localStorage.getItem('guest_recent_songs') || '[]'));
+        }
+        
+        // Always read recent playlists from localStorage
+        setRecentPlaylists(JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]'));
+
+
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu:', err);
       } finally {
@@ -92,16 +131,21 @@ export default function Home() {
       }
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleProtectedAction = (action) => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      navigate('/login');
-    } else if (action) {
-      action();
-    }
-  };
+  // Lắng nghe sự kiện cập nhật lịch sử nghe nhạc của khách
+  useEffect(() => {
+    const handleUpdate = () => {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!currentUser.id) {
+        setRecentSongs(JSON.parse(localStorage.getItem('guest_recent_songs') || '[]'));
+        setRecentPlaylists(JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]'));
+      }
+    };
+    window.addEventListener('guestHistoryUpdated', handleUpdate);
+    return () => window.removeEventListener('guestHistoryUpdated', handleUpdate);
+  }, []);
 
   const handlePlaySong = (song, queueList) => {
     const playerSong = {
@@ -145,11 +189,11 @@ export default function Home() {
       <div className="sticky top-0 bg-[#121212]/90 backdrop-blur-md z-10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => {
                 if (searchQuery.trim()) setSearchQuery('');
                 else navigate(-1);
-              }} 
+              }}
               className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white hover:bg-[#333] transition-colors"
             >
               <ChevronLeft size={20} />
@@ -231,7 +275,7 @@ export default function Home() {
                         >
                           <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                             {pl.coverArtUrl ? (
-                              <img src={`http://localhost:9000${pl.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                              <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-4xl">🎵</span>
                             )}
@@ -348,7 +392,7 @@ export default function Home() {
                     >
                       <div className="w-full aspect-square bg-gradient-to-br from-[#00e6e6]/20 to-[#333] rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                         {pl.coverArtUrl ? (
-                          <img src={`http://localhost:9000${pl.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-4xl">🎵</span>
                         )}
@@ -361,6 +405,143 @@ export default function Home() {
               </div>
             )}
 
+            {/* Section: Có thể bạn sẽ thích */}
+            {recommendedSongs.length > 0 && (
+              <div className="mb-10">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00e6e6] to-[#008080] tracking-tight">
+                    Có thể bạn sẽ thích
+                  </h2>
+                  <span className="text-xs text-[#a0a0a0] font-semibold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                    Đề xuất thông minh
+                  </span>
+                </div>
+                <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar">
+                  {recommendedSongs.map(song => (
+                    <div
+                      key={song.id}
+                      className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0 hover:scale-103 shadow-lg"
+                    >
+                      <div className="relative mb-4 overflow-hidden rounded-md" onClick={() => handlePlaySong(song, recommendedSongs)}>
+                        <img
+                          src={getCoverArt(song)}
+                          className="w-full aspect-square object-cover shadow-lg transition-transform duration-500 group-hover:scale-110"
+                          alt={song.title}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button className="w-12 h-12 rounded-full bg-[#00e6e6] text-black flex items-center justify-center shadow-2xl transform translate-y-3 group-hover:translate-y-0 transition-all duration-300 hover:scale-105">
+                            <Play size={24} fill="currentColor" className="ml-1" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1" onClick={() => handlePlaySong(song, recommendedSongs)}>
+                          <h3 className="font-bold text-white truncate text-base mb-1">{song.title}</h3>
+                          <p
+                            className={`text-sm text-[#a0a0a0] truncate ${getPrimaryArtistUserId(song) ? 'hover:text-white hover:underline cursor-pointer' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const uid = getPrimaryArtistUserId(song);
+                              if (uid) navigate(`/artist/${uid}`);
+                            }}
+                          >
+                            {getArtistName(song)}
+                          </p>
+                        </div>
+                        <AddToPlaylistMenu
+                          songId={song.id}
+                          onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Các Bảng Xếp Hạng Nổi Bật */}
+            {(dailyChart.length > 0 || weeklyChart.length > 0 || monthlyChart.length > 0) && (
+              <div className="mb-10">
+                <h2 className="text-2xl font-bold text-white mb-4">Bảng xếp hạng nổi bật</h2>
+                <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar">
+                  
+                  {/* Top 50 Ngày */}
+                  <div 
+                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group relative w-[200px] flex-shrink-0" 
+                    onClick={() => navigate('/chart/DAILY')}
+                  >
+                    <div className="relative mb-4">
+                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#8A2387] via-[#E94057] to-[#F27121]">
+                          <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Ngày</h3>
+                      </div>
+                      <button 
+                        className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1ed760] flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           if(dailyChart.length > 0) handlePlaySong(dailyChart[0].song, dailyChart.map(c => c.song));
+                        }}
+                      >
+                        <Play size={24} fill="black" color="black" className="ml-1" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#a0a0a0] line-clamp-2">Cập nhật hằng ngày những bản nhạc thịnh hành nhất.</p>
+                    </div>
+                  </div>
+
+                  {/* Top 50 Tuần */}
+                  <div 
+                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group relative w-[200px] flex-shrink-0" 
+                    onClick={() => navigate('/chart/WEEKLY')}
+                  >
+                    <div className="relative mb-4">
+                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#00C9FF] to-[#92FE9D]">
+                          <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Tuần</h3>
+                      </div>
+                      <button 
+                        className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1ed760] flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           if(weeklyChart.length > 0) handlePlaySong(weeklyChart[0].song, weeklyChart.map(c => c.song));
+                        }}
+                      >
+                        <Play size={24} fill="black" color="black" className="ml-1" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#a0a0a0] line-clamp-2">Cập nhật hằng tuần những bản nhạc thịnh hành nhất.</p>
+                    </div>
+                  </div>
+
+                  {/* Top 50 Tháng */}
+                  <div 
+                    className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group relative w-[200px] flex-shrink-0" 
+                    onClick={() => navigate('/chart/MONTHLY')}
+                  >
+                    <div className="relative mb-4">
+                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#11998e] to-[#38ef7d]">
+                          <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Tháng</h3>
+                      </div>
+                      <button 
+                        className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1ed760] flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           if(monthlyChart.length > 0) handlePlaySong(monthlyChart[0].song, monthlyChart.map(c => c.song));
+                        }}
+                      >
+                        <Play size={24} fill="black" color="black" className="ml-1" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#a0a0a0] line-clamp-2">Cập nhật hằng tháng những bản nhạc thịnh hành nhất.</p>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            
             {/* Section: All Songs (từ DB - chỉ hiện bài approved) */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-4">
@@ -423,6 +604,67 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {/* Section: Lịch sử nghe nhạc */}
+            {(recentSongs.length > 0 || recentPlaylists.length > 0) && (
+              <div className="mb-10 mt-6 border-t border-[#222] pt-8">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                  <span>⏱️ Trải nghiệm gần đây của bạn</span>
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* CỘT 1: BÀI HÁT GẦN ĐÂY */}
+                  {recentSongs.length > 0 && (
+                    <div className="bg-white/5 border border-white/5 p-5 rounded-2xl backdrop-blur-md">
+                      <h3 className="text-lg font-bold text-[#00e6e6] mb-4">Bài hát vừa phát</h3>
+                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {recentSongs.slice(0, 5).map((song) => (
+                          <div
+                            key={song.id}
+                            onClick={() => handlePlaySong(song, recentSongs)}
+                            className="flex items-center gap-4 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group"
+                          >
+                            <img src={getCoverArt(song)} className="w-12 h-12 object-cover rounded shadow" alt="cover" />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-white text-sm truncate group-hover:text-[#00e6e6] transition-colors">{song.title}</h4>
+                              <p className="text-xs text-[#a0a0a0] truncate">{getArtistName(song)}</p>
+                            </div>
+                            <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded">Vừa xong</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CỘT 2: PLAYLIST GẦN ĐÂY */}
+                  {recentPlaylists.length > 0 && (
+                    <div className="bg-white/5 border border-white/5 p-5 rounded-2xl backdrop-blur-md">
+                      <h3 className="text-lg font-bold text-[#b83280] mb-4">Playlist đã xem</h3>
+                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {recentPlaylists.slice(0, 5).map((pl) => (
+                          <div
+                            key={pl.id}
+                            onClick={() => navigate(`/playlist/${pl.id}`)}
+                            className="flex items-center gap-4 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group"
+                          >
+                            <div className="w-12 h-12 rounded bg-gradient-to-br from-[#b83280] to-[#333] flex items-center justify-center overflow-hidden">
+                              {pl.coverArtUrl ? (
+                                <img src={getMediaUrl(pl.coverArtUrl)} className="w-full h-full object-cover" alt="cover" />
+                              ) : (
+                                <span className="text-lg">🎵</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-white text-sm truncate group-hover:text-[#b83280] transition-colors">{pl.title}</h4>
+                              <p className="text-xs text-[#a0a0a0] truncate">{pl.songCount || 0} bài hát</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
 
