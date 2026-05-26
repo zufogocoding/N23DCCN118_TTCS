@@ -442,6 +442,11 @@ export default function Home() {
                           >
                             {getArtistName(song)}
                           </p>
+                          {song.recommend_reason && (
+                            <span className="text-[10px] text-[#00e6e6] mt-2 block font-semibold truncate bg-[#00e6e6]/10 px-2 py-0.5 rounded border border-[#00e6e6]/10 w-fit">
+                              💡 {song.recommend_reason}
+                            </span>
+                          )}
                         </div>
                         <AddToPlaylistMenu
                           songId={song.id}
