@@ -3,6 +3,7 @@ const router = express.Router();
 const artistController = require('../controllers/artistController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const optionalAuthMiddleware = require('../middlewares/optionalAuthMiddleware');
+const requireActiveArtist = require('../middlewares/requireActiveArtist');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -46,7 +47,7 @@ const uploadProfileImages = multer({
 ]);
 
 router.get('/api/artists/:id', optionalAuthMiddleware, artistController.getArtistProfile);
-router.put('/api/artists/:id/profile', authMiddleware, uploadProfileImages, artistController.updateArtistProfile);
+router.put('/api/artists/:id/profile', authMiddleware, requireActiveArtist, uploadProfileImages, artistController.updateArtistProfile);
 router.post('/api/artists/:id/follow', authMiddleware, artistController.followArtist);
 router.delete('/api/artists/:id/follow', authMiddleware, artistController.unfollowArtist);
 
