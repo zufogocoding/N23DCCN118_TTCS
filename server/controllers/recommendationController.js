@@ -20,7 +20,11 @@ const recommendationController = {
       const cached = await prisma.recommendationCache.findMany({
         where: {
           userId,
-          updatedAt: { gte: oneDayAgo }
+          updatedAt: { gte: oneDayAgo },
+          song: {
+            isDeleted: false,
+            status: 'approved'
+          }
         },
         orderBy: { finalScore: 'desc' },
         take: limit,

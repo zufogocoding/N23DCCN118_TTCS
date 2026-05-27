@@ -297,6 +297,15 @@ const songController = {
         }
       });
       if (!song) return res.status(404).json({ error: 'Không tìm thấy bài hát này!' });
+
+      const requesterId = req.user ? req.user.id : null;
+      const isAdmin = req.user ? req.user.isAdmin : false;
+      const isOwner = song.uploadedById === requesterId;
+
+      if (song.status !== 'approved' && !isOwner && !isAdmin) {
+        return res.status(403).json({ error: 'Bạn không có quyền truy cập bài hát này!' });
+      }
+
       res.status(200).json(song);
     } catch (error) {
       console.error("Lỗi getSongById:", error);
@@ -445,8 +454,21 @@ const songController = {
   getUserSongs: async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
+      const requesterId = req.user ? req.user.id : null;
+      const isAdmin = req.user ? req.user.isAdmin : false;
+
+      const whereClause = {
+        uploadedById: userId,
+        isDeleted: false
+      };
+
+      // Nếu không phải là chủ sở hữu hoặc admin, chỉ hiển thị bài hát đã duyệt
+      if (userId !== requesterId && !isAdmin) {
+        whereClause.status = 'approved';
+      }
+
       const userSongs = await prisma.song.findMany({
-        where: { uploadedById: userId, isDeleted: false },
+        where: whereClause,
         include: {
           artists: {
             include: {

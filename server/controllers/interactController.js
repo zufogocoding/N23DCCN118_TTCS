@@ -59,9 +59,7 @@ const interactController = {
   },
 
   /**
-   * Toggle Like / Unlike bài hát
-   * Tìm record interaction gần nhất của user với bài hát đó và toggle isLiked
-   * Nếu chưa có record nào → tạo record mới với isLiked = true
+   * Toggle Like / Unlike bài hát sử dụng bảng SongLike
    */
   toggleLike: async (req, res) => {
     try {
@@ -84,39 +82,33 @@ const interactController = {
         return res.status(404).json({ error: "Bài hát không tồn tại hoặc đã bị xóa" });
       }
 
-      // Tìm record liked gần nhất (interaction mới nhất mà isLiked = true)
-      const existingLike = await prisma.interaction.findFirst({
+      // Kiểm tra xem đã thích chưa
+      const existingLike = await prisma.songLike.findUnique({
         where: {
-          userId: parsedUserId,
-          songId: parsedSongId,
-          isLiked: true
-        },
-        orderBy: { timeStamp: 'desc' }
+          userId_songId: {
+            userId: parsedUserId,
+            songId: parsedSongId
+          }
+        }
       });
 
       if (existingLike) {
-        // Đã like rồi → unlike (cập nhật record đó thành isLiked = false)
-        await prisma.interaction.update({
+        // Đã thích -> Bỏ thích
+        await prisma.songLike.delete({
           where: {
-            userId_songId_timeStamp: {
-              userId: existingLike.userId,
-              songId: existingLike.songId,
-              timeStamp: existingLike.timeStamp
+            userId_songId: {
+              userId: parsedUserId,
+              songId: parsedSongId
             }
-          },
-          data: { isLiked: false }
+          }
         });
         return res.status(200).json({ message: "Đã bỏ thích", isLiked: false });
       } else {
-        // Chưa like → tạo record mới với isLiked = true
-        await prisma.interaction.create({
+        // Chưa thích -> Thích
+        await prisma.songLike.create({
           data: {
             userId: parsedUserId,
-            songId: parsedSongId,
-            isLiked: true,
-            isSkipped: false,
-            durationPlayed: 0,
-            completionRate: 0
+            songId: parsedSongId
           }
         });
         return res.status(200).json({ message: "Đã thích", isLiked: true });
@@ -128,22 +120,23 @@ const interactController = {
   },
 
   /**
-   * Kiểm tra trạng thái like của user với 1 bài hát
+   * Kiểm tra trạng thái thích của user với 1 bài hát
    */
   checkLikeStatus: async (req, res) => {
     try {
       const userId = req.user.id;
       const songId = parseInt(req.params.songId);
 
-      const likedInteraction = await prisma.interaction.findFirst({
+      const liked = await prisma.songLike.findUnique({
         where: {
-          userId,
-          songId,
-          isLiked: true
+          userId_songId: {
+            userId,
+            songId
+          }
         }
       });
 
-      res.status(200).json({ isLiked: Boolean(likedInteraction) });
+      res.status(200).json({ isLiked: Boolean(liked) });
     } catch (error) {
       console.error("Lỗi checkLikeStatus:", error);
       res.status(500).json({ error: "Lỗi server" });
@@ -151,23 +144,19 @@ const interactController = {
   },
 
   /**
-   * Lấy danh sách tất cả bài hát đã like của user
+   * Lấy danh sách tất cả bài hát đã thích của user
    */
   getLikedSongs: async (req, res) => {
     try {
       const userId = req.user.id;
 
-      // Tìm tất cả songId mà user đã like (isLiked = true)
-      const likedInteractions = await prisma.interaction.findMany({
-        where: {
-          userId,
-          isLiked: true
-        },
-        select: { songId: true },
-        distinct: ['songId']
+      // Tìm tất cả songId mà user đã thích
+      const likedSongsRelation = await prisma.songLike.findMany({
+        where: { userId },
+        select: { songId: true }
       });
 
-      const songIds = likedInteractions.map(i => i.songId);
+      const songIds = likedSongsRelation.map(i => i.songId);
 
       if (songIds.length === 0) {
         return res.status(200).json([]);
@@ -258,16 +247,15 @@ const interactController = {
 
       const parsedSongIds = songIds.map(id => parseInt(id)).filter(id => !isNaN(id));
 
-      const likedInteractions = await prisma.interaction.findMany({
+      const likedList = await prisma.songLike.findMany({
         where: {
           userId,
-          songId: { in: parsedSongIds },
-          isLiked: true
+          songId: { in: parsedSongIds }
         },
         select: { songId: true }
       });
 
-      const likedSet = new Set(likedInteractions.map(i => i.songId));
+      const likedSet = new Set(likedList.map(i => i.songId));
       const statusMap = {};
       parsedSongIds.forEach(id => {
         statusMap[id] = likedSet.has(id);
