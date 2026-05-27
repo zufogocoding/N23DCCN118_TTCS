@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getMediaUrl } from '../../utils/api';
 import useClickOutside from '../../hooks/useClickOutside';
 import { User, Music, LogIn, UserPlus } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
 const [user, setUser] = useState({});
   const isLoggedIn = !!user.username || !!user.email;
@@ -39,10 +41,8 @@ const [user, setUser] = useState({});
   useClickOutside(dropdownRef, () => setIsOpen(false));
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
     setIsOpen(false);
-    navigate('/login');
+    logout();
   };
 
   if (!user || (!user.username && !user.email)) {
