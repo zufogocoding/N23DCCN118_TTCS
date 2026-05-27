@@ -1,13 +1,17 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell, ArrowLeft, Clock, BarChart } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../../utils/api';
+import useClickOutside from '../../hooks/useClickOutside';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingCount, setPendingCount] = useState(0);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  useClickOutside(dropdownRef, () => setShowNotifDropdown(false));
 
   // Fetch pending count
   const fetchPendingCount = async () => {
@@ -129,13 +133,14 @@ export default function AdminLayout() {
             </span>
 
             {/* Bell Notification Button */}
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => {
                   if (pendingCount > 0) {
                     navigate('/admin/pending-songs');
+                  } else {
+                    setShowNotifDropdown(!showNotifDropdown);
                   }
-                  setShowNotifDropdown(!showNotifDropdown);
                 }}
                 className="relative p-2 rounded-full hover:bg-[#222] text-[#00e6e6] transition-colors"
               >
@@ -191,14 +196,6 @@ export default function AdminLayout() {
           <Outlet />
         </div>
       </main>
-
-      {/* Click outside to close dropdown */}
-      {showNotifDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowNotifDropdown(false)}
-        />
-      )}
     </div>
   );
 }

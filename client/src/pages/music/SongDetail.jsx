@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { Play, Pause, Heart, MoreHorizontal, Flag, UserPlus, UserMinus, Loader2 } from "lucide-react";
+import { Play, Pause, Heart, MoreHorizontal, Flag, Loader2 } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
 import { useAuth } from "../../context/AuthContext";
 import AddToPlaylistMenu from "../../components/common/AddToPlaylistMenu";
@@ -224,7 +224,7 @@ const SongDetail = () => {
       <div className="px-10 py-6 flex items-center gap-8 bg-black/20 backdrop-blur-sm">
         <button
           onClick={handlePlay}
-          className="bg-[#1ed760] w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-xl"
+          className="bg-[#00e6e6] w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-xl"
         >
           {currentSong?.id === song.id && isPlaying ? (
             <Pause fill="black" color="black" size={32} />
@@ -238,7 +238,7 @@ const SongDetail = () => {
           <Heart
             size={36}
             className={`transition-colors ${
-              liked ? 'text-[#1ed760] fill-[#1ed760]' : 'text-[#a0a0a0] hover:text-white'
+              liked ? 'text-[#00e6e6] fill-[#00e6e6]' : 'text-[#a0a0a0] hover:text-white'
             }`}
           />
         </button>

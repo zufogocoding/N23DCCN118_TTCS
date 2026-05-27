@@ -9,7 +9,7 @@ import { getPrimaryArtistUserId } from '../../utils/artistNav';
 export default function ChartDetail() {
   const { type } = useParams(); // DAILY, WEEKLY, MONTHLY
   const navigate = useNavigate();
-  const { currentSong, isPlaying, playSong, pauseSong } = usePlayer();
+  const { currentSong, isPlaying, playSong, togglePlay } = usePlayer();
   
   const [chart, setChart] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ export default function ChartDetail() {
   const handlePlayAll = () => {
     if (songs.length === 0) return;
     if (isPlayingThisChart) {
-      pauseSong();
+      togglePlay();
     } else {
       playSong(songs[0], songs);
     }
@@ -115,7 +115,7 @@ export default function ChartDetail() {
 
         {/* Tracks */}
         <div className="flex flex-col gap-1">
-          {chart.songs?.map((item, index) => {
+          {chart.songs?.map((item) => {
             const song = item.song;
             const isCurrent = currentSong?.id === song.id;
             

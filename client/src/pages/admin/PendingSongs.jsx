@@ -189,7 +189,7 @@ export default function PendingSongs() {
             <div className="w-10 h-10 rounded-lg bg-[#00e6e6]/10 flex items-center justify-center">
               <Clock size={20} className="text-[#00e6e6]" />
             </div>
-            <p className="text-sm font-semibold text-[#a0a0a0]">Pending Review</p>
+            <p className="text-sm font-semibold text-[#a0a0a0]">Chờ duyệt</p>
           </div>
           <h2 className="text-4xl font-bold text-[#00e6e6]">{songs.length}</h2>
           <p className="text-xs text-[#666] mt-1">bài hát đang chờ duyệt</p>
@@ -202,7 +202,7 @@ export default function PendingSongs() {
             <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
               <CheckCircle size={20} className="text-emerald-400" />
             </div>
-            <p className="text-sm font-semibold text-[#a0a0a0]">Approved (Session)</p>
+            <p className="text-sm font-semibold text-[#a0a0a0]">Đã duyệt (Phiên này)</p>
           </div>
           <h2 className="text-4xl font-bold text-emerald-400">{approvedCount}</h2>
           <p className="text-xs text-[#666] mt-1">bài đã duyệt trong phiên này</p>
@@ -215,7 +215,7 @@ export default function PendingSongs() {
             <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
               <XCircle size={20} className="text-red-400" />
             </div>
-            <p className="text-sm font-semibold text-[#a0a0a0]">Rejected (Session)</p>
+            <p className="text-sm font-semibold text-[#a0a0a0]">Đã từ chối (Phiên này)</p>
           </div>
           <h2 className="text-4xl font-bold text-red-400">{rejectedCount}</h2>
           <p className="text-xs text-[#666] mt-1">bài đã từ chối trong phiên này</p>

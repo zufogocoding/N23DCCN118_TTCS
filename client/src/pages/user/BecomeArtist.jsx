@@ -20,12 +20,6 @@ export default function BecomeArtist() {
   useEffect(() => {
     async function checkStatus() {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
         const res = await api.get('/api/artist-requests/my-status');
 
         if (res.ok) {
@@ -88,12 +82,6 @@ export default function BecomeArtist() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
       const submitData = new FormData();
       submitData.append('artistName', formData.artistName);
       submitData.append('idCard', idCardFile);

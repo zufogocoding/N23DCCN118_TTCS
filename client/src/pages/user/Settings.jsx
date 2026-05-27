@@ -14,6 +14,7 @@ export default function Settings() {
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   
   // Error states
@@ -25,6 +26,7 @@ export default function Settings() {
 
   // Form states
   const [passwordForm, setPasswordForm] = useState({ old: '', new: '', confirm: '' });
+  const [deletePassword, setDeletePassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePasswordSubmit = async (e) => {
@@ -68,12 +70,21 @@ export default function Settings() {
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = async (e) => {
+    if (e) e.preventDefault();
     setDeleteError('');
+    
+    if (!deletePassword) {
+      setDeleteError('Vui lòng nhập mật khẩu để xác nhận');
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      const response = await api.delete('/api/auth/delete-account');
+      const response = await api.delete('/api/auth/delete-account', {
+        body: { password: deletePassword }
+      });
       
       const data = await response.json();
       
@@ -251,34 +262,30 @@ export default function Settings() {
                     <button 
                       onClick={() => handleThemeChange('dark')}
                       className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all relative ${
-                        theme === 'dark' ? 'border-[#1ed760] bg-[#333]' : 'border-[#3e3e3e] bg-[#222] hover:border-gray-500'
+                        theme === 'dark' ? 'border-[#00e6e6] bg-[#333]' : 'border-[#3e3e3e] bg-[#222] hover:border-gray-500'
                       }`}
                     >
                       <Moon size={24} className="mb-2 text-white" />
                       <span className="font-medium text-xs text-white">Chế độ Tối</span>
-                      {theme === 'dark' && <CheckCircle2 size={14} className="text-[#1ed760] absolute top-2 right-2" />}
+                      {theme === 'dark' && <CheckCircle2 size={14} className="text-[#00e6e6] absolute top-2 right-2" />}
                     </button>
                     
                     <button 
-                      onClick={() => handleThemeChange('light')}
-                      className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                        theme === 'light' ? 'border-[#1ed760] bg-white' : 'border-[#3e3e3e] bg-gray-100 hover:border-gray-300'
-                      }`}
+                      disabled
+                      title="Tính năng đang được phát triển"
+                      className="relative flex flex-col items-center justify-center p-4 rounded-lg border-2 border-[#3e3e3e] bg-[#1a1a1a] opacity-50 cursor-not-allowed"
                     >
-                      <Sun size={24} className="mb-2 text-black" />
-                      <span className="font-medium text-xs text-black">Chế độ Sáng</span>
-                      {theme === 'light' && <CheckCircle2 size={14} className="text-[#1ed760] absolute top-2 right-2" />}
+                      <Sun size={24} className="mb-2 text-[#666]" />
+                      <span className="font-medium text-xs text-[#666]">Chế độ Sáng</span>
                     </button>
 
                     <button 
-                      onClick={() => handleThemeChange('system')}
-                      className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                        theme === 'system' ? 'border-[#1ed760] bg-[#333]' : 'border-[#3e3e3e] bg-[#222] hover:border-gray-500'
-                      }`}
+                      disabled
+                      title="Tính năng đang được phát triển"
+                      className="relative flex flex-col items-center justify-center p-4 rounded-lg border-2 border-[#3e3e3e] bg-[#1a1a1a] opacity-50 cursor-not-allowed"
                     >
-                      <Monitor size={24} className="mb-2 text-[#a0a0a0]" />
-                      <span className="font-medium text-xs text-white">Theo Hệ thống</span>
-                      {theme === 'system' && <CheckCircle2 size={14} className="text-[#1ed760] absolute top-2 right-2" />}
+                      <Monitor size={24} className="mb-2 text-[#666]" />
+                      <span className="font-medium text-xs text-[#666]">Theo Hệ thống</span>
                     </button>
                   </div>
                 </div>
@@ -295,7 +302,13 @@ export default function Settings() {
                     <span className="text-2xl">🎵</span>
                   </div>
                   <h3 className="text-lg font-black text-white mb-1">Soundwave</h3>
-                  <p className="text-[#a0a0a0] text-xs mb-5">Phiên bản 1.0.0 (Beta)</p>
+                  <p className="text-[#a0a0a0] text-xs mb-3">Phiên bản 1.0.0 (Beta)</p>
+                  <button 
+                    onClick={() => setShowChangelogModal(true)}
+                    className="mb-5 px-4 py-1.5 rounded-full border border-white/20 text-xs font-bold text-white hover:bg-white/10 transition-colors"
+                  >
+                    Xem thay đổi (Changelog)
+                  </button>
                   
                   <div className="w-full border-t border-[#3e3e3e] pt-4 flex justify-around">
                     <a href="#" className="text-xs text-[#00e6e6] hover:underline">Điều khoản dịch vụ</a>
@@ -402,24 +415,37 @@ export default function Settings() {
                 </div>
               )}
               
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 rounded-full border border-[#333] text-white text-xs font-medium hover:bg-white/5 transition-colors"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
-                  disabled={isSubmitting}
-                  className="flex items-center justify-center px-4 py-2 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
-                >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Xóa tài khoản'}
-                </button>
-              </div>
+              <form onSubmit={handleDeleteAccount} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Mật khẩu xác nhận</label>
+                  <input
+                    type="password"
+                    required
+                    value={deletePassword}
+                    onChange={e => setDeletePassword(e.target.value)}
+                    placeholder="Nhập mật khẩu của bạn"
+                    className={`w-full bg-[#181818] border ${deleteError ? 'border-red-500/50' : 'border-[#333] focus:border-red-500'} rounded-md px-3 py-2 text-sm text-white outline-none transition-colors`}
+                  />
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 rounded-full border border-[#333] text-white text-xs font-medium hover:bg-white/5 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center justify-center px-4 py-2 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Xóa tài khoản'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -451,6 +477,40 @@ export default function Settings() {
             >
               Vui lòng đăng nhập lại
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* CHANGELOG MODAL */}
+      {showChangelogModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#181818] border border-[#333] rounded-xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="p-5 border-b border-[#333] flex justify-between items-center bg-[#121212]">
+              <h2 className="text-lg font-bold">Changelog v1.0.0 (Beta)</h2>
+              <button onClick={() => setShowChangelogModal(false)} className="text-[#a0a0a0] hover:text-white">
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-[#00e6e6] mb-2">🎉 Tính năng mới</h3>
+                <ul className="list-disc pl-5 text-xs text-[#d0d0d0] space-y-1">
+                  <li>Hệ thống tài khoản và phân quyền (Người dùng / Nghệ sĩ / Quản trị viên).</li>
+                  <li>Trình phát nhạc (Player) với tính năng lặp lại, phát ngẫu nhiên, xem lời bài hát.</li>
+                  <li>Tính năng tạo Playlist và yêu thích bài hát.</li>
+                  <li>Giao diện Dark Mode lấy cảm hứng từ những ứng dụng nghe nhạc tốt nhất.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-emerald-400 mb-2">✨ Cải tiến & Sửa lỗi</h3>
+                <ul className="list-disc pl-5 text-xs text-[#d0d0d0] space-y-1">
+                  <li>Fix lỗi bảo mật hiển thị File CCCD trực tiếp.</li>
+                  <li>Chặn auto-play audio không mong muốn ở Dashboard Admin.</li>
+                  <li>Khắc phục lỗi khi lấy thông tin nghệ sĩ ở trang chi tiết.</li>
+                  <li>Làm mịn giao diện Dark Mode với màu Cyan đặc trưng.</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       )}
