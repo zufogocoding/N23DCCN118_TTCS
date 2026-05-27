@@ -113,6 +113,45 @@ const searchController = {
       console.error("Lỗi searchAll:", error);
       res.status(500).json({ error: "Lỗi server" });
     }
+  },
+
+  browseByGenre: async (req, res) => {
+    try {
+      const genreId = parseInt(req.params.genreId);
+      if (isNaN(genreId)) return res.status(400).json({ error: 'genreId không hợp lệ' });
+
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+
+      const songs = await prisma.song.findMany({
+        where: {
+          isDeleted: false,
+          status: 'approved',
+          genres: { some: { genreId } }
+        },
+        include: {
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true, displayName: true } } }
+              }
+            }
+          }
+        },
+        orderBy: { playCount: 'desc' },
+        skip,
+        take: limit + 1
+      });
+
+      const hasNextPage = songs.length > limit;
+      if (hasNextPage) songs.pop();
+
+      res.status(200).json({ songs, page, hasNextPage });
+    } catch (error) {
+      console.error('Lỗi browseByGenre:', error);
+      res.status(500).json({ error: 'Lỗi server' });
+    }
   }
 };
 
