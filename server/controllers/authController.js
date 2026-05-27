@@ -330,6 +330,32 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// 7. Get current user
+const getMe = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        artist: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Người dùng không tồn tại" });
+    }
+
+    const { password: _, artist, ...userWithoutPassword } = user;
+    res.status(200).json({
+      ...userWithoutPassword,
+      isArtist: !!artist
+    });
+  } catch (error) {
+    console.error("Lỗi tại getMe:", error);
+    res.status(500).json({ error: "Lỗi server khi lấy thông tin user" });
+  }
+};
+
 module.exports = {
   requestRegisterOtp,
   signup,
@@ -337,5 +363,7 @@ module.exports = {
   requestForgotPasswordOtp,
   resetPassword,
   changePassword,
-  deleteAccount
+  changePassword,
+  deleteAccount,
+  getMe
 };

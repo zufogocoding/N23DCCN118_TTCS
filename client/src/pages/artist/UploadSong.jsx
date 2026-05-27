@@ -19,6 +19,7 @@ export default function UploadSong() {
   const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
   const genreRef = useRef(null);
   const [description, setDescription] = useState("");
+  const [lyrics, setLyrics] = useState("");
   const [isOriginal, setIsOriginal] = useState(isArtistUser);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -124,6 +125,9 @@ export default function UploadSong() {
       if (coverImage) formData.append("coverImage", coverImage);
       formData.append("title", title);
       formData.append("artistName", artistName);
+      if (lyrics.trim()) {
+        formData.append("lyrics", lyrics.trim());
+      }
       if (selectedGenreIds.length > 0) {
         formData.append("genreIds", JSON.stringify(selectedGenreIds));
       }
@@ -257,6 +261,7 @@ export default function UploadSong() {
                 setArtistName(isArtistUser ? (currentUser.displayName || currentUser.username || "") : "");
                 setSelectedGenreIds([]);
                 setDescription("");
+                setLyrics("");
                 setCoverImage(null);
                 setCoverPreview(null);
                 setAudioFile(null);
@@ -636,6 +641,20 @@ export default function UploadSong() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors resize-none placeholder-[#444]"
+            />
+          </div>
+
+          {/* LYRICS */}
+          <div>
+            <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
+              Lời bài hát (Tùy chọn)
+            </label>
+            <textarea
+              rows="6"
+              placeholder="Nhập lời bài hát của bạn tại đây..."
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors resize-y placeholder-[#444] custom-scrollbar"
             />
           </div>
 

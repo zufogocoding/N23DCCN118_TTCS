@@ -1,11 +1,22 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle } from 'lucide-react';
 import TrackEditModal from '../../components/TrackEditModal';
-import { api, getMediaUrl } from '../../utils/api';
-import { formatDuration } from '../../utils/songHelpers';
 
 const ALBUM_TYPES = ['Single', 'EP', 'Album', 'Mixtape'];
+
+function getCover(url) {
+  if (!url) return null;
+  return url.startsWith('http') ? url : `http://localhost:9000${url}`;
+}
+
+function formatDuration(ms) {
+  if (!ms) return '0:00';
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
 
 export default function ReleaseManager() {
   const { albumId } = useParams();
@@ -56,25 +67,27 @@ export default function ReleaseManager() {
   const dragItem = useRef(null);
   const dragOver = useRef(null);
 
+  const token = localStorage.getItem('token');
+  const authH = token ? { Authorization: `Bearer ${token}` } : {};
+
   const location = useLocation();
 
   // Open add‑tracks modal automatically when URL contains ?add=true (after creating a new album)
   useEffect(() => {
     if (album && location.search.includes('add=true')) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowAddTracks(true);
     }
   }, [album, location.search]);
 
   // Load genres
   useEffect(() => {
-    api.get('/api/genres').then(r => r.ok ? r.json() : []).then(setGenres).catch(() => { });
+    fetch('http://localhost:9000/api/genres').then(r => r.json()).then(setGenres).catch(() => { });
   }, []);
 
   // Load my uploads
   useEffect(() => {
     if (!currentUser.id) return;
-    api.get('/api/songs/my-uploaded')
+    fetch('http://localhost:9000/api/songs/my-uploaded', { headers: authH })
       .then(r => r.ok ? r.json() : []).then(setMyUploads).catch(() => { });
   }, [currentUser.id]);
 
@@ -94,23 +107,22 @@ export default function ReleaseManager() {
     if (isNew) return;
     setLoading(true);
     try {
-      const res = await api.get(`/api/albums/${albumId}/manage`);
+      const res = await fetch(`http://localhost:9000/api/albums/${albumId}/manage`, { headers: authH });
       if (res.ok) {
         const data = await res.json();
         setAlbum(data.album);
         setTracks(data.tracks || []);
         setTitle(data.album.title || '');
         setType(data.album.type || '');
-        setCoverPreview(getMediaUrl(data.album.coverArtUrl));
+        setCoverPreview(getCover(data.album.coverArtUrl));
         setScheduledAt(data.album.scheduledAt ? new Date(data.album.scheduledAt).toISOString().slice(0, 16) : '');
       } else {
         navigate('/');
       }
     } catch { navigate('/'); }
     finally { setLoading(false); }
-  }, [albumId, isNew, navigate]);
+  }, [albumId, isNew]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadAlbum(); }, [loadAlbum]);
 
   const handleCoverChange = (e) => {
@@ -129,9 +141,9 @@ export default function ReleaseManager() {
       if (coverFile) fd.append('coverImage', coverFile);
       if (scheduledAt) fd.append('scheduledAt', scheduledAt);
 
-      const res = isNew
-        ? await api.post('/api/albums', fd)
-        : await api.put(`/api/albums/${albumId}`, fd);
+      const url = isNew ? 'http://localhost:9000/api/albums' : `http://localhost:9000/api/albums/${albumId}`;
+      const method = isNew ? 'POST' : 'PUT';
+      const res = await fetch(url, { method, headers: authH, body: fd });
 
       if (res.ok) {
         const data = await res.json();
@@ -152,7 +164,10 @@ export default function ReleaseManager() {
   // Add track (existing)
   const handleAddTrack = async (songId) => {
     try {
-      const res = await api.post(`/api/albums/${album.id}/songs`, { songId });
+      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
+        method: 'POST', headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songId }),
+      });
       if (res.ok) { loadAlbum(); setShowAddTracks(false); }
     } catch (err) {
       console.error('Error adding track:', err);
@@ -245,7 +260,6 @@ export default function ReleaseManager() {
 
       // XMLHttpRequest để lấy progress
       const xhr = new XMLHttpRequest();
-      const token = localStorage.getItem('token');
       const uploadedSong = await new Promise((resolve, reject) => {
         xhr.upload.addEventListener('progress', (ev) => {
           if (ev.lengthComputable) setAudioUploadProgress(Math.round((ev.loaded / ev.total) * 100));
@@ -255,13 +269,17 @@ export default function ReleaseManager() {
           else reject(new Error('Upload thất bại'));
         });
         xhr.addEventListener('error', () => reject(new Error('Lỗi kết nối')));
-        xhr.open('POST', '/api/songs/upload');
+        xhr.open('POST', 'http://localhost:9000/api/songs/upload');
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         xhr.send(formData);
       });
 
       // Nối bài hát vừa tạo vào album
-      await api.post(`/api/albums/${album.id}/songs`, { songId: uploadedSong.song?.id || uploadedSong.id });
+      await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
+        method: 'POST',
+        headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songId: uploadedSong.song?.id || uploadedSong.id }),
+      });
 
       // Làm mới dữ liệu album
       loadAlbum();
@@ -278,7 +296,9 @@ export default function ReleaseManager() {
   const handleRemoveTrack = async (songId) => {
     if (!confirm('Gỡ bài này khỏi album?')) return;
     try {
-      await api.delete(`/api/albums/${album.id}/songs/${songId}`);
+      await fetch(`http://localhost:9000/api/albums/${album.id}/songs/${songId}`, {
+        method: 'DELETE', headers: authH,
+      });
       loadAlbum();
     } catch (err) {
       console.error('Error removing track:', err);
@@ -299,7 +319,10 @@ export default function ReleaseManager() {
 
     // Persist order
     try {
-      await api.put(`/api/albums/${album.id}/reorder`, { songIds: items.map(t => t.id) });
+      await fetch(`http://localhost:9000/api/albums/${album.id}/reorder`, {
+        method: 'PUT', headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songIds: items.map(t => t.id) }),
+      });
     } catch (err) {
       console.error('Error persisting order:', err);
     }
@@ -323,21 +346,19 @@ export default function ReleaseManager() {
     if (!confirm(msg)) return;
     setActionBusy('release');
     try {
-      const res = await api.post(`/api/albums/${album.id}/release`, {});
-      if (res.ok) {
-        const data = await res.json();
-        loadAlbum();
-        alert(data.message || 'Album đã được phát hành!');
-      } else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch (err) {
-      console.error('Error releasing album:', err);
-    } finally { setActionBusy(''); }
+      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/release`, {
+        method: 'POST', headers: authH,
+      });
+      if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
+      else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
+    } catch { } finally { setActionBusy(''); }
   };
 
   // Schedule
   const handleSchedule = async () => {
     if (!scheduledAt) { alert('Chọn thời gian phát hành'); return; }
 
+    const pendingTracks = tracks.filter(t => t.status === 'pending');
     const approvedTracks = tracks.filter(t => t.status === 'approved');
 
     if (approvedTracks.length === 0) {
@@ -347,7 +368,10 @@ export default function ReleaseManager() {
 
     setActionBusy('schedule');
     try {
-      const res = await api.post(`/api/albums/${album.id}/schedule`, { scheduledAt });
+      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/schedule`, {
+        method: 'POST', headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledAt }),
+      });
       if (res.ok) { loadAlbum(); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
     } catch (err) {
@@ -359,7 +383,9 @@ export default function ReleaseManager() {
   const handleUnschedule = async () => {
     setActionBusy('unschedule');
     try {
-      const res = await api.post(`/api/albums/${album.id}/unschedule`, {});
+      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/unschedule`, {
+        method: 'POST', headers: authH,
+      });
       if (res.ok) { loadAlbum(); }
     } catch (err) {
       console.error('Error unscheduling album:', err);
@@ -370,7 +396,9 @@ export default function ReleaseManager() {
   const handleDelete = async () => {
     if (!confirm('Xóa album này? Các bài hát vẫn còn trên hệ thống.')) return;
     try {
-      const res = await api.delete(`/api/albums/${album.id}`);
+      const res = await fetch(`http://localhost:9000/api/albums/${album.id}`, {
+        method: 'DELETE', headers: authH,
+      });
       if (res.ok) navigate(`/artist/${currentUser.id}`);
     } catch (err) {
       console.error('Error deleting album:', err);
@@ -524,7 +552,7 @@ export default function ReleaseManager() {
                       <GripVertical size={16} className="text-[#444] cursor-grab shrink-0 opacity-0 group-hover:opacity-100" />
                     )}
                     <span className="text-[#666] text-sm w-6 text-right shrink-0">{index + 1}</span>
-                    <img src={getMediaUrl(song.coverArtUrl) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>'} alt=""
+                    <img src={getCover(song.coverArtUrl) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>'} alt=""
                       className="w-10 h-10 rounded object-cover bg-[#222] shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{song.title}</p>
@@ -622,7 +650,7 @@ export default function ReleaseManager() {
                 <div className="space-y-2">
                   {filteredAddableSongs.map(s => (
                     <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#222]">
-                      <img src={getMediaUrl(s.coverArtUrl) || ''} alt="" className="w-10 h-10 rounded object-cover bg-[#222]" />
+                      <img src={getCover(s.coverArtUrl) || ''} alt="" className="w-10 h-10 rounded object-cover bg-[#222]" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{s.title}</p>
                         <p className="text-xs text-[#666]">{s.artistName || 'Unknown'} • {s.status}</p>

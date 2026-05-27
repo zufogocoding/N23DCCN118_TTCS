@@ -5,7 +5,7 @@ import { ArrowLeft, Play, Trash2, Plus, Loader2, Pencil } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { api, getMediaUrl } from '../../utils/api';
 import { getCoverArt, formatDuration, getArtistName } from '../../utils/songHelpers';
-import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
+import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 
 export default function AlbumView() {
   const { albumId } = useParams();

@@ -8,6 +8,9 @@ import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
 import AdminLayout from './components/layout/AdminLayout';
 
+// Context
+import { AuthProvider, useAuth } from './context/AuthContext';
+
 // Pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -45,28 +48,18 @@ const LoadingSpinner = () => (
 
 // Component kiểm tra đăng nhập: Chưa có Token/User thì đuổi ra trang Login
 const ProtectedRoute = ({ children }) => {
-  const user = localStorage.getItem('user');
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };
 
 // Component bảo vệ Route dành riêng cho Admin
 const AdminRoute = ({ children }) => {
-  const userStr = localStorage.getItem('user');
-  if (!userStr) return <Navigate to="/login" replace />;
-
-  let isAdmin = false;
-  let parseError = false;
-  try {
-    const user = JSON.parse(userStr);
-    isAdmin = user.isAdmin;
-  } catch {
-    parseError = true;
-  }
-
-  if (parseError) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
-
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.isAdmin) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -82,9 +75,10 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Suspense fallback={<LoadingSpinner />}>
-        <Routes>
+    <AuthProvider>
+      <BrowserRouter>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
 
           {/* NHÓM XÁC THỰC (Không cần đăng nhập) */}
           <Route element={<AuthLayout />}>
@@ -177,7 +171,8 @@ function App() {
         </Routes>
       </Suspense>
 
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

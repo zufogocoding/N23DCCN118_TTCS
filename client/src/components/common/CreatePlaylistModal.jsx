@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Music, X } from 'lucide-react';
-import { api } from '../utils/api';
+import { api } from '../../utils/api';
 
 export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');

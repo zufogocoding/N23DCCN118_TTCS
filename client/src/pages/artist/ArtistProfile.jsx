@@ -14,7 +14,7 @@ import {
   UserMinus,
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
-import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
+import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 import { api, getMediaUrl } from '../../utils/api';
 import { getCoverArt, formatDuration } from '../../utils/songHelpers';
 

@@ -11,6 +11,7 @@ router.post('/api/auth/forgot-password-otp', authController.requestForgotPasswor
 router.post('/api/auth/reset-password', authController.resetPassword);
 
 // API yêu cầu xác thực
+router.get('/api/auth/me', authMiddleware, authController.getMe);
 router.put('/api/auth/change-password', authMiddleware, authController.changePassword);
 router.delete('/api/auth/delete-account', authMiddleware, authController.deleteAccount);
 

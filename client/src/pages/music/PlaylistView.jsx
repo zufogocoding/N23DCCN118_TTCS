@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Play, Clock, MoreHorizontal, House, Heart, Trash2 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
-import AddToPlaylistMenu from '../../components/AddToPlaylistMenu';
-import CreatePlaylistModal from '../../components/CreatePlaylistModal';
-import EditPlaylistModal from '../../components/EditPlaylistModal';
+import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
+import CreatePlaylistModal from '../../components/common/CreatePlaylistModal';
+import EditPlaylistModal from '../../components/common/EditPlaylistModal';
 import { api, getMediaUrl } from '../../utils/api';
 import { getArtistName, getCoverArt, formatDuration } from '../../utils/songHelpers';
 

@@ -29,17 +29,13 @@ const syncChart = async (chartType) => {
     throw new Error(`Chart with type ${chartType} not found. Please seed the database first.`);
   }
 
-  // Query bảng Interaction: đếm lượt nghe hợp lệ, gom nhóm theo songId
+  // Query bảng Interaction: đếm lượt nghe, gom nhóm theo songId
   const interactions = await prisma.interaction.groupBy({
     by: ['songId'],
     where: {
       timeStamp: {
         gte: startTime,
         lte: now,
-      },
-      isSkipped: false,
-      completionRate: {
-        gte: 0.3,
       }
     },
     _count: {

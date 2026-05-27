@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
+import { useAuth } from "../../context/AuthContext";
 
 import {
   Home,
@@ -22,11 +23,11 @@ import {
   Flag,
 } from "lucide-react";
 
-import UserDropdown from "../UserDropdown";
-import NotificationDropdown from "../NotificationDropdown.jsx";
-import CreatePlaylistModal from "../CreatePlaylistModal";
-import ReportModal from "../ReportModal";
-import AddToPlaylistMenu from "../AddToPlaylistMenu";
+import UserDropdown from "../common/UserDropdown";
+import NotificationDropdown from "../common/NotificationDropdown.jsx";
+import CreatePlaylistModal from "../common/CreatePlaylistModal";
+import ReportModal from "../common/ReportModal";
+import AddToPlaylistMenu from "../common/AddToPlaylistMenu";
 import { api } from "../../utils/api";
 import { getCoverArt } from "../../utils/songHelpers";
 import useClickOutside from "../../hooks/useClickOutside";
@@ -49,6 +50,7 @@ export default function MainLayout() {
   const [userPlaylists, setUserPlaylists] = useState([]);
 
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const {
     currentSong,
@@ -113,9 +115,7 @@ export default function MainLayout() {
   }, [currentSong?.id]);
 
   const fetchPlaylists = async () => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-    if (user.id) {
+    if (user && user.id) {
       try {
         const res = await api.get(
           `/api/playlists/user/${user.id}`
@@ -142,8 +142,7 @@ export default function MainLayout() {
       setIsLiked(false);
       return;
     }
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!user.id) {
+    if (!user || !user.id) {
       setIsLiked(false);
       return;
     }
@@ -160,7 +159,6 @@ export default function MainLayout() {
   }, [currentSong?.id]);
 
   const handleProtectedAction = (action) => {
-    const user = localStorage.getItem("user");
     if (!user) {
       navigate("/login");
     } else if (action) {
@@ -169,7 +167,7 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden">
 
       <CreatePlaylistModal
         isOpen={isPlaylistModalOpen}
@@ -189,7 +187,7 @@ export default function MainLayout() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT SIDEBAR */}
-        <div className="w-[240px] bg-black border-r border-[#222] flex flex-col hidden md:flex">
+        <div className="w-[240px] bg-background border-r border-border flex flex-col hidden md:flex">
 
           <div className="p-6">
             <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#00e6e6] to-[#008080]">
@@ -201,7 +199,7 @@ export default function MainLayout() {
 
             <Link
               to="/"
-              className="flex items-center gap-4 text-white"
+              className="flex items-center gap-4 text-text hover:text-primary transition-colors"
             >
               <Home size={24} />
               Trang chủ
@@ -209,7 +207,7 @@ export default function MainLayout() {
 
             <Link
               to="/search"
-              className="flex items-center gap-4 hover:text-white transition-colors"
+              className="flex items-center gap-4 hover:text-text transition-colors"
             >
               <Search size={24} />
               Tìm kiếm
@@ -217,7 +215,7 @@ export default function MainLayout() {
 
             <Link
               to="/library"
-              className="flex items-center gap-4 hover:text-white transition-colors"
+              className="flex items-center gap-4 hover:text-text transition-colors"
             >
               <Library size={24} />
               Thư viện
@@ -233,7 +231,7 @@ export default function MainLayout() {
                   setIsPlaylistModalOpen(true)
                 )
               }
-              className="flex items-center gap-4 hover:text-white transition-colors"
+              className="flex items-center gap-4 hover:text-text transition-colors"
             >
               <PlusSquare size={24} />
               Tạo Playlist
@@ -246,9 +244,9 @@ export default function MainLayout() {
 
             <button
               onClick={() => handleProtectedAction(() => navigate('/playlist/liked'))}
-              className="w-full text-left flex items-center gap-4 hover:text-white transition-colors text-[#00e6e6] mb-4"
+              className="w-full text-left flex items-center gap-4 hover:text-text transition-colors text-primary mb-4"
             >
-              <Heart size={24} className="fill-current" /> Bài hát đã thích
+              <Heart size={24} className="fill-current text-primary" /> Bài hát đã thích
             </button>
 
             <ul className="text-sm text-[#a0a0a0] flex flex-col gap-3">
@@ -262,7 +260,7 @@ export default function MainLayout() {
                   <li key={playlist.id}>
                     <Link
                       to={`/playlist/${playlist.id}`}
-                      className="hover:text-white cursor-pointer truncate transition-colors block"
+                      className="hover:text-text cursor-pointer truncate transition-colors block"
                     >
                       {playlist.title}
                     </Link>
@@ -276,11 +274,11 @@ export default function MainLayout() {
         </div>
 
         {/* MAIN CONTENT */}
-        <div className="flex-1 bg-[#121212] overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
+        <div className="flex-1 bg-surface overflow-y-auto rounded-lg m-2 relative flex flex-col shadow-inner">
 
-          <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-3 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-md">
-            {localStorage.getItem('user') ? (
-              <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
+          <div className="sticky top-0 z-50 flex items-center justify-end px-6 py-3 bg-gradient-to-b from-background/60 to-transparent backdrop-blur-md">
+            {user ? (
+              <div className="flex items-center gap-2 bg-background/40 p-1 rounded-full border border-border/50">
                 <NotificationDropdown />
                 <UserDropdown />
               </div>
@@ -308,118 +306,35 @@ export default function MainLayout() {
 
         </div>
 
-        {/* CỘT 3: NOW PLAYING BÊN PHẢI */}
-        <div className="w-[300px] bg-black p-4 hidden lg:flex flex-col border-l border-[#222]">
-          <div className="flex justify-between items-center mb-6 relative z-20" ref={nowPlayingMenuRef}>
-            <h3 className="font-bold text-sm uppercase tracking-widest text-[#00e6e6]">Đang phát</h3>
-            <button
-              type="button"
-              onClick={() => setNowPlayingMenuOpen((o) => !o)}
-              className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white hover:bg-white/10 transition-colors"
-              aria-label="Tùy chọn đang phát"
-              aria-expanded={nowPlayingMenuOpen}
-              aria-haspopup="menu"
-            >
-              <MoreHorizontal size={20} />
-            </button>
-            {nowPlayingMenuOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 top-full mt-1 w-52 rounded-lg border border-[#333] bg-[#282828] py-1 shadow-2xl z-[80]"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!currentSong}
-                  className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
-                  onClick={() => {
-                    setNowPlayingMenuOpen(false);
-                    if (currentSong) navigate(`/song/${currentSong.id}`);
-                  }}
-                >
-                  Xem trang bài hát
-                </button>
-              </div>
-            )}
-          </div>
-
-          <img
-            src={getCoverArt(currentSong) || "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=400&auto=format&fit=crop"}
-            alt="Now Playing"
-            className="w-full aspect-square object-cover rounded-xl mb-4 shadow-2xl shadow-[#00e6e6]/10"
-          />
-
-          <div className="flex justify-between items-start mb-4">
-            <div className="overflow-hidden pr-2">
-              <h2 className="font-bold text-xl hover:underline cursor-pointer truncate">
-                {currentSong?.title || "Chưa phát bài nào"}
-              </h2>
-              <p className="text-[#a0a0a0] text-sm hover:underline cursor-pointer truncate">
-                {currentSong?.artist?.name || "Nghệ sĩ"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 mt-1 shrink-0">
-              <Heart
-                size={20}
-                className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#a0a0a0] hover:text-white"}`}
-                onClick={() => {
-                  if (!currentSong) return;
-                  const user = JSON.parse(localStorage.getItem("user") || "{}");
-                  if (!user.id) { navigate("/login"); return; }
-                  api.post("/api/interactions/like", { songId: currentSong.id })
-                    .then((r) => r.json())
-                    .then((data) => setIsLiked(data.isLiked))
-                    .catch((err) => console.error(err));
-                }}
-              />
-              {currentSong && (
-                <AddToPlaylistMenu
-                  songId={currentSong.id}
-                  onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="bg-[#181818] p-4 rounded-xl mt-4 border border-[#333]">
-            <h4 className="font-bold text-sm mb-2">Về nghệ sĩ</h4>
-            <p className="text-xs text-[#a0a0a0] line-clamp-3 leading-relaxed">
-              {currentSong 
-                ? `${currentSong.artist?.name} là nghệ sĩ đang phát trên Soundwave. Hãy theo dõi để cập nhật những sản phẩm mới nhất của họ.`
-                : "Chọn một bài hát để xem thông tin nghệ sĩ."}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER HOẠT ĐỘNG */}
-      <div className="min-h-[96px] shrink-0 bg-[#121212] border-t border-[#2a2a2a] flex items-center justify-between gap-3 px-4 py-2 z-50">
+      <div className="min-h-[96px] shrink-0 bg-[#0a0a0a] border-t border-[#222] flex items-center justify-between gap-4 px-6 py-2 z-50">
 
         {/* 1. Trái: Info bài hát */}
-        <div className="flex items-center gap-3 min-w-0 flex-[1.1] max-w-[28vw]">
+        <div className="flex items-center gap-4 min-w-0 flex-[1.2] max-w-[30vw]">
           {currentSong ? (
             <>
               {getCoverArt(currentSong) ? (
                 <img
                   src={getCoverArt(currentSong)}
                   alt=""
-                  className="w-14 h-14 rounded object-cover shadow-md shrink-0 bg-[#282828]"
+                  className="w-16 h-16 rounded-md object-cover shadow-[0_4px_12px_rgba(0,0,0,0.5)] shrink-0 bg-[#282828]"
                 />
               ) : (
-                <div className="w-14 h-14 rounded shrink-0 bg-[#282828] flex items-center justify-center">
-                  <Music size={22} className="text-[#666]" strokeWidth={1.5} />
+                <div className="w-16 h-16 rounded-md shrink-0 bg-[#282828] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+                  <Music size={24} className="text-[#666]" strokeWidth={1.5} />
                 </div>
               )}
               <div className="hidden sm:block min-w-0 flex-1">
-                <h4 className="font-semibold text-sm text-white truncate leading-tight">{currentSong.title}</h4>
-                <p className="text-xs text-[#b3b3b3] truncate mt-0.5">{currentSong.artist?.name || "Nghệ sĩ"}</p>
+                <h4 className="font-bold text-sm md:text-base text-white hover:underline cursor-pointer truncate leading-tight">{currentSong.title}</h4>
+                <p className="text-xs md:text-sm text-[#a0a0a0] hover:underline cursor-pointer truncate mt-0.5">{currentSong.artist?.name || "Nghệ sĩ"}</p>
               </div>
-              <div className="hidden sm:flex items-center gap-1 shrink-0">
+              <div className="hidden sm:flex items-center gap-2 shrink-0 ml-2">
                 <Heart
                   onClick={() => {
                     if (!currentSong) return;
-                    const user = JSON.parse(localStorage.getItem("user") || "{}");
-                    if (!user.id) {
+                    if (!user || !user.id) {
                       navigate("/login");
                       return;
                     }
@@ -428,21 +343,21 @@ export default function MainLayout() {
                       .then((data) => setIsLiked(data.isLiked))
                       .catch((err) => console.error(err));
                   }}
-                  size={18}
-                  className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#b3b3b3] hover:text-white"}`}
+                  size={20}
+                  className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#a0a0a0] hover:text-white"}`}
                 />
 
                 {/* 3-dot Context Menu in Player Bar */}
                 <div className="relative" ref={playerMenuRef}>
                   <button 
                     onClick={() => setIsPlayerMenuOpen(!isPlayerMenuOpen)}
-                    className="p-1.5 rounded-full text-[#b3b3b3] hover:text-white transition-colors"
+                    className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors"
                   >
-                    <MoreHorizontal size={18} />
+                    <MoreHorizontal size={20} />
                   </button>
                   
                   {isPlayerMenuOpen && (
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-[#282828] rounded-md shadow-2xl border border-[#333] py-1 z-[100]">
+                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-1 z-[100]">
                       <AddToPlaylistMenu
                         songId={currentSong.id}
                         onCreatePlaylist={() => {
@@ -457,7 +372,7 @@ export default function MainLayout() {
                           setIsPlayerMenuOpen(false);
                           setIsReportModalOpen(true);
                         }}
-                        className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+                        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
                       >
                         <Flag size={18} />
                         <span>Báo cáo bài hát</span>
@@ -469,67 +384,67 @@ export default function MainLayout() {
             </>
           ) : (
             <>
-              <div className="w-14 h-14 rounded shrink-0 bg-[#282828] flex items-center justify-center opacity-70">
-                <Music size={22} className="text-[#555]" strokeWidth={1.5} />
+              <div className="w-16 h-16 rounded-md shrink-0 bg-[#181818] flex items-center justify-center border border-[#333]">
+                <Music size={24} className="text-[#444]" strokeWidth={1.5} />
               </div>
-              <div className="hidden sm:block text-xs text-[#b3b3b3]">Chưa phát bài nào</div>
+              <div className="hidden sm:block text-sm text-[#666] font-medium">Chưa phát bài nào</div>
             </>
           )}
         </div>
 
         {/* 2. Giữa: điều khiển + thanh tua */}
-        <div className="flex flex-col items-stretch justify-center flex-[1.6] max-w-[560px] w-full min-w-0">
-          <div className="flex items-center justify-center gap-5 mb-1.5">
+        <div className="flex flex-col items-stretch justify-center flex-[1.6] max-w-[600px] w-full min-w-0">
+          <div className="flex items-center justify-center gap-6 md:gap-8 mb-2">
             <button
               type="button"
               onClick={toggleShuffle}
-              className={`p-1 rounded transition-colors ${isShuffle ? "text-[#00e6e6]" : "text-[#b3b3b3] hover:text-white"}`}
+              className={`p-1.5 rounded-full transition-colors ${isShuffle ? "text-[#1db954]" : "text-[#a0a0a0] hover:text-white"}`}
               aria-label="Trộn bài"
             >
-              <Shuffle size={17} strokeWidth={1.75} />
+              <Shuffle size={18} strokeWidth={2} />
             </button>
             <button
               type="button"
               onClick={playPrev}
-              className="p-1 rounded text-[#b3b3b3] hover:text-white transition-colors"
+              className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors hover:scale-105 active:scale-95"
               aria-label="Bài trước"
             >
-              <SkipBack size={20} fill="currentColor" />
+              <SkipBack size={24} fill="currentColor" />
             </button>
             <button
               type="button"
               onClick={() => {
                 togglePlay();
               }}
-              className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-[1.06] active:scale-95 transition-transform shadow-md"
+              className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg hover:bg-gray-200"
               aria-label={isPlaying ? "Tạm dừng" : "Phát"}
             >
               {isPlaying ? (
                 <Pause size={22} className="text-black" fill="currentColor" />
               ) : (
-                <Play size={22} className="text-black ml-[3px]" fill="currentColor" />
+                <Play size={22} className="text-black ml-1" fill="currentColor" />
               )}
             </button>
             <button
               type="button"
               onClick={playNext}
-              className="p-1 rounded text-[#b3b3b3] hover:text-white transition-colors"
+              className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors hover:scale-105 active:scale-95"
               aria-label="Bài tiếp"
             >
-              <SkipForward size={20} fill="currentColor" />
+              <SkipForward size={24} fill="currentColor" />
             </button>
             <button
               type="button"
               onClick={toggleRepeat}
-              className={`p-1 rounded transition-colors ${isRepeat ? "text-[#00e6e6]" : "text-[#b3b3b3] hover:text-white"}`}
+              className={`p-1.5 rounded-full transition-colors ${isRepeat ? "text-[#1db954]" : "text-[#a0a0a0] hover:text-white"}`}
               aria-label="Lặp lại"
             >
-              <Repeat size={17} strokeWidth={1.75} />
+              <Repeat size={18} strokeWidth={2} />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 w-full">
-            <span className="text-[11px] text-[#b3b3b3] tabular-nums w-10 text-right shrink-0">
+          <div className="flex items-center gap-3 w-full group/progress">
+            <span className="text-[12px] font-medium text-[#a0a0a0] tabular-nums w-10 text-right shrink-0">
               {formatPlayerClock(currentTime)}
             </span>
             <div
@@ -539,7 +454,7 @@ export default function MainLayout() {
               aria-valuenow={Math.round(progressPct)}
               aria-valuemin={0}
               aria-valuemax={100}
-              className={`relative flex-1 h-5 flex items-center ${currentSong && duration > 0 ? "cursor-pointer" : "cursor-default opacity-50"}`}
+              className={`relative flex-1 h-4 flex items-center ${currentSong && duration > 0 ? "cursor-pointer" : "cursor-default opacity-50"}`}
               onMouseDown={(e) => {
                 if (!currentSong || !Number.isFinite(duration) || duration <= 0) return;
                 e.preventDefault();
@@ -558,32 +473,33 @@ export default function MainLayout() {
                 }
               }}
             >
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-[#4d4d4d]" />
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 group-hover/progress:h-1.5 rounded-full bg-[#333] transition-all duration-200" />
               <div
-                className="absolute left-0 top-1/2 -translate-y-1/2 h-[4px] rounded-full bg-white pointer-events-none transition-[width] duration-150 ease-linear"
+                className="absolute left-0 top-1/2 -translate-y-1/2 h-1 group-hover/progress:h-1.5 rounded-full bg-white group-hover/progress:bg-[#1db954] pointer-events-none transition-all duration-200"
                 style={{ width: `${progressPct}%` }}
               />
               <div
-                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md pointer-events-none ring-2 ring-[#121212]"
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md pointer-events-none opacity-0 group-hover/progress:opacity-100 transition-opacity duration-200"
                 style={{ left: `calc(${progressPct}% - 6px)` }}
               />
             </div>
-            <span className="text-[11px] text-[#b3b3b3] tabular-nums w-10 shrink-0">
+            <span className="text-[12px] font-medium text-[#a0a0a0] tabular-nums w-10 shrink-0">
               {formatPlayerClock(duration)}
             </span>
           </div>
         </div>
 
         {/* 3. Phải: âm lượng, lyrics */}
-        <div className="hidden md:flex items-center justify-end gap-2 flex-[1.1] min-w-0 max-w-[28vw]">
+        <div className="hidden md:flex items-center justify-end gap-3 flex-[1.2] min-w-0 max-w-[30vw]">
           <button
             type="button"
             onClick={() => setVolume(volume > 0 ? 0 : 1)}
-            className="p-1.5 rounded text-[#b3b3b3] hover:text-white transition-colors shrink-0"
+            className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors shrink-0"
             aria-label={volume === 0 ? "Bật tiếng" : "Tắt tiếng"}
           >
-            {volume === 0 ? <VolumeX size={18} strokeWidth={1.75} /> : <Volume2 size={18} strokeWidth={1.75} />}
+            {volume === 0 ? <VolumeX size={20} strokeWidth={1.75} /> : <Volume2 size={20} strokeWidth={1.75} />}
           </button>
+          
           <input
             type="range"
             min={0}
@@ -591,18 +507,19 @@ export default function MainLayout() {
             step={0.01}
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-[88px] h-1 accent-white cursor-pointer shrink-0 opacity-90 hover:opacity-100"
+            className="w-[90px] h-1 bg-[#333] hover:h-1.5 rounded-full appearance-none cursor-pointer hover:accent-[#1db954] accent-white transition-all"
             aria-label="Âm lượng"
           />
+          
           <button
             type="button"
             disabled={!currentSong}
             onClick={() => currentSong && navigate(`/song/${currentSong.id}`)}
-            className="p-1.5 rounded text-[#b3b3b3] hover:text-white transition-colors shrink-0 disabled:opacity-35 disabled:pointer-events-none"
+            className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors shrink-0 disabled:opacity-35 disabled:pointer-events-none ml-2"
             title="Lời bài hát"
             aria-label="Xem lời bài hát"
           >
-            <Mic2 size={18} strokeWidth={1.75} />
+            <Mic2 size={20} strokeWidth={1.75} />
           </button>
         </div>
       </div>

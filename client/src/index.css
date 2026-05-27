@@ -1,65 +1,37 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
 
-/* LIGHT THEME OVERRIDES (Cool Blue / Slate Theme - Thiên thanh dịu mát) */
-html.light-theme, html.light-theme body {
-  background-color: #f0f4f8 !important; /* Xanh xám cực nhạt, rất dịu và hiện đại */
-  color: #1e293b !important; /* Xanh than sẫm thay cho màu đen */
-}
+@layer base {
+  :root {
+    --background: #121212;
+    --surface: #181818;
+    --surface-hover: #282828;
+    --primary: #00e6e6;
+    --primary-hover: #008080;
+    --text: #ffffff;
+    --text-muted: #a0a0a0;
+    --border: #222222;
+    --danger: #ff4d4f;
+  }
 
-/* Force Inputs & Fields */
-html.light-theme input,
-html.light-theme textarea,
-html.light-theme select {
-  background-color: #ffffff !important;
-  color: #0f172a !important; /* Đảm bảo chữ luôn đen trên nền trắng */
-  border-color: #cbd5e1 !important;
-}
+  html.light-theme {
+    --background: #f0f4f8;
+    --surface: #ffffff;
+    --surface-hover: #e2e8f0;
+    --primary: #0ea5e9;
+    --primary-hover: #0284c7;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --border: #cbd5e1;
+    --danger: #ef4444;
+  }
 
-/* Force Backgrounds using attribute selectors to avoid Tailwind escaping issues */
-html.light-theme [class*="bg-[#0"],
-html.light-theme [class*="bg-[#1"],
-html.light-theme [class*="bg-[#2"],
-html.light-theme [class*="bg-[#3"] {
-  background-color: #ffffff !important;
-  box-shadow: 0 4px 6px -1px rgba(30, 41, 59, 0.05);
-}
-
-/* Backgrounds that should match body */
-html.light-theme [class*="bg-[#0f0f0f]"],
-html.light-theme [class*="bg-[#0a0a0a]"],
-html.light-theme [class*="bg-black"] {
-  background-color: #e2e8f0 !important;
-}
-
-/* Force Text Colors using attribute selectors */
-html.light-theme [class*="text-white"],
-html.light-theme [class*="text-[#eaeaea]"],
-html.light-theme [class*="text-[#f"] {
-  color: #0f172a !important; /* Xanh than đậm */
+  body {
+    background-color: var(--background);
+    color: var(--text);
+  }
 }
 
-html.light-theme [class*="text-[#a0a0a0]"],
-html.light-theme [class*="text-[#888]"],
-html.light-theme [class*="text-[#666]"],
-html.light-theme [class*="text-[#b3b3b3]"],
-html.light-theme [class*="text-gray"] {
-  color: #475569 !important; /* Xanh xám vừa */
-}
-
-/* Preserve primary colors */
-html.light-theme [class*="bg-[#1ed760]"] {
-  background-color: #0ea5e9 !important; /* Đổi nút xanh lá -> Xanh ngọc lục bảo/Cyan */
-  color: #ffffff !important;
-}
-html.light-theme [class*="text-[#1ed760]"] {
-  color: #0284c7 !important;
-}
-
-/* Borders */
-html.light-theme [class*="border-[#3"],
-html.light-theme [class*="border-[#2"] {
-  border-color: #cbd5e1 !important;
-}
 
 /* SLEEK CUSTOM SCROLLBARS GLOBALLY */
 ::-webkit-scrollbar {

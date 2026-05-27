@@ -4,6 +4,7 @@ import { User, Lock, Eye, EyeOff } from 'lucide-react'; // Đổi Mail thành Us
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useAuth } from '../../context/AuthContext';
 
 import { api } from '../../utils/api';
 
@@ -22,6 +23,7 @@ export default function Login() {
   const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const onSubmit = async (data) => {
     setIsLoading(true);
@@ -35,10 +37,7 @@ export default function Login() {
       const resData = await res.json();
 
       if (res.ok) {
-        localStorage.setItem('user', JSON.stringify(resData.user || resData));
-        if (resData.token) {
-          localStorage.setItem('token', resData.token);
-        }
+        login(resData.user || resData, resData.token);
         navigate('/');
       } else {
         setServerError(resData.error || resData.message || "Sai thông tin đăng nhập!");
