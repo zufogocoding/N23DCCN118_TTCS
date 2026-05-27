@@ -49,6 +49,7 @@ model User {
   recommendationCache RecommendationCache[]
   notifications       Notification[]
   reports             Report[]
+  likes               SongLike[]
 }
 
 model Artist {
@@ -127,6 +128,7 @@ model Song {
   artists             ArtistSong[]
   charts              ChartSong[]
   recommendationCache RecommendationCache[]
+  likes               SongLike[]
 
   // Tối ưu câu lệnh WHERE isDeleted = false khi quét toàn bộ bảng
   @@index([isDeleted])
@@ -301,4 +303,15 @@ model Report {
   createdAt   DateTime @default(now())
 
   @@index([status, createdAt])
+}
+
+model SongLike {
+  userId    Int
+  songId    Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([userId, songId])
 }

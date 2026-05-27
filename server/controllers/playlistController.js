@@ -176,8 +176,17 @@ const playlistController = {
         return res.status(403).json({ error: 'Playlist này là riêng tư' });
       }
 
-      // Lọc bỏ bài hát đã bị soft delete
-      playlist.songs = playlist.songs.filter(ps => !ps.song.isDeleted);
+      // Lọc bỏ bài hát đã bị soft delete hoặc chưa được duyệt (trừ khi là chủ sở hữu hoặc admin)
+      playlist.songs = playlist.songs.filter(ps => {
+        const isSongDeleted = ps.song.isDeleted;
+        if (isSongDeleted) return false;
+
+        const isSongApproved = ps.song.status === 'approved';
+        if (isSongApproved) return true;
+
+        const isSongOwner = ps.song.uploadedById === requesterId;
+        return isSongOwner || isAdmin;
+      });
 
       res.status(200).json(playlist);
     } catch (error) {

@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 
+const prisma = require('../db/index');
+
 // BUG FIX: Load dotenv để process.env.JWT_SECRET có giá trị
 try {
   require('dotenv').config();
@@ -12,7 +14,7 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -29,9 +31,20 @@ const authMiddleware = (req, res, next) => {
       return res.status(401).json({ error: 'Token không hợp lệ' });
     }
 
-    req.user = {
-      id: userId
-    };
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isActive: true, isAdmin: true, role: true }
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: "Tài khoản không tồn tại hoặc đã bị xóa" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa" });
+    }
+
+    req.user = user;
 
     next();
   } catch (error) {

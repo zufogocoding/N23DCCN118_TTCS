@@ -165,6 +165,10 @@ const login = async (req, res) => {
       return res.status(401).json({ error: "Tài khoản không tồn tại" });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa" });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Sai mật khẩu" });

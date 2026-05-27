@@ -13,13 +13,15 @@ router.post('/request', authMiddleware, uploadArtistRequest.fields([
   { name: 'demoTrack', maxCount: 1 }
 ]), artistRequestController.createRequest);
 
+const requireAdmin = require('../middlewares/requireAdmin');
+
 // 2. Admin: Xem danh sách yêu cầu chờ duyệt
-router.get('/admin/pending', authMiddleware, artistRequestController.getPendingRequests);
+router.get('/admin/pending', authMiddleware, requireAdmin, artistRequestController.getPendingRequests);
 
 // 3. Admin: Duyệt yêu cầu
-router.put('/admin/:id/approve', authMiddleware, artistRequestController.approveRequest);
+router.put('/admin/:id/approve', authMiddleware, requireAdmin, artistRequestController.approveRequest);
 
 // 4. Admin: Từ chối yêu cầu
-router.put('/admin/:id/reject', authMiddleware, artistRequestController.rejectRequest);
+router.put('/admin/:id/reject', authMiddleware, requireAdmin, artistRequestController.rejectRequest);
 
 module.exports = router;
