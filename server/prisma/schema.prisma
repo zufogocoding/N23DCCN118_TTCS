@@ -283,7 +283,7 @@ model Notification {
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   message   String   @db.Text
-  type      String   @default("info") @db.VarChar(50) // info, artist_approved, artist_rejected
+  type      String   @default("info") @db.VarChar(50) // info, artist_approved, artist_rejected, new_album, new_song
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 

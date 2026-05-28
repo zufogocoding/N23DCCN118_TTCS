@@ -17,6 +17,9 @@ export default {
         border: 'var(--border)',
         danger: 'var(--danger)',
       },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
     },
   },
   plugins: [],

@@ -1,4 +1,5 @@
 const prisma = require('../db/index');
+const { notifyFollowersAboutAlbumRelease } = require('../services/notificationService');
 
 /**
  * Background worker to automatically publish scheduled albums when their release time arrives.
@@ -60,14 +61,18 @@ function startReleaseWorker() {
             continue;
           }
 
-          await prisma.album.update({
-            where: { id: album.id },
-            data: {
-              status: 'released',
-              releasedDate: now,
-              scheduledAt: null,
-            },
+          const notificationCount = await prisma.$transaction(async (tx) => {
+            await tx.album.update({
+              where: { id: album.id },
+              data: {
+                status: 'released',
+                releasedDate: now,
+                scheduledAt: null,
+              },
+            });
+            return notifyFollowersAboutAlbumRelease(tx, album.id);
           });
+          console.log(`[Notification] Created ${notificationCount} new_album notifications for scheduled album ${album.id}`);
           console.log(`[Release Worker] ✓ Album "${album.title}" (ID: ${album.id}) đã được phát hành thành công.`);
         }
       }
