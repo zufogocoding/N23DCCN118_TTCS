@@ -13,6 +13,12 @@ router.post('/request', authMiddleware, uploadArtistRequest.fields([
   { name: 'demoTrack', maxCount: 1 }
 ]), artistRequestController.createRequest);
 
+// 2b. User: Gửi lại yêu cầu làm nghệ sĩ sau khi bị từ chối
+router.put('/resubmit', authMiddleware, uploadArtistRequest.fields([
+  { name: 'idCard', maxCount: 1 },
+  { name: 'demoTrack', maxCount: 1 }
+]), artistRequestController.resubmitRequest);
+
 const requireAdmin = require('../middlewares/requireAdmin');
 
 // 2. Admin: Xem danh sách yêu cầu chờ duyệt

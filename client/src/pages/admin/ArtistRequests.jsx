@@ -27,11 +27,18 @@ export default function ArtistRequests() {
 
   const handleAction = async (id, action) => {
     try {
+      let body = {};
+      if (action === 'reject') {
+        const reason = window.prompt('Nhập lý do từ chối hồ sơ này (Không bắt buộc):');
+        if (reason === null) return; // Người dùng bấm Hủy (Cancel)
+        body = { rejectionReason: reason };
+      }
+
       const endpoint = action === 'approve' 
         ? `/api/artist-requests/admin/${id}/approve`
         : `/api/artist-requests/admin/${id}/reject`;
 
-      const res = await api.put(endpoint);
+      const res = await api.put(endpoint, body);
 
       if (res.ok) {
         // Xóa request khỏi danh sách hiển thị
