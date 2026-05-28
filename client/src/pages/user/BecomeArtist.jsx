@@ -75,24 +75,37 @@ export default function BecomeArtist() {
     setError('');
     setSuccess('');
 
-    if (!formData.artistName || !idCardFile || !demoTrackFile) {
-      setError('Vui lòng điền đầy đủ thông tin và upload cả 2 file!');
-      setLoading(false);
-      return;
+    if (requestStatus !== 'REJECTED') {
+      if (!formData.artistName || !idCardFile || !demoTrackFile) {
+        setError('Vui lòng điền đầy đủ thông tin và upload cả 2 file!');
+        setLoading(false);
+        return;
+      }
+    } else {
+      if (!formData.artistName && !idCardFile && !demoTrackFile) {
+        setError('Vui lòng nhập nghệ danh hoặc đính kèm file mới để nộp lại!');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
       const submitData = new FormData();
-      submitData.append('artistName', formData.artistName);
-      submitData.append('idCard', idCardFile);
-      submitData.append('demoTrack', demoTrackFile);
+      if (formData.artistName) submitData.append('artistName', formData.artistName);
+      if (idCardFile) submitData.append('idCard', idCardFile);
+      if (demoTrackFile) submitData.append('demoTrack', demoTrackFile);
 
-      const res = await api.post('/api/artist-requests/request', submitData);
+      const res = requestStatus === 'REJECTED'
+        ? await api.put('/api/artist-requests/resubmit', submitData)
+        : await api.post('/api/artist-requests/request', submitData);
 
       const resData = await res.json();
 
       if (res.ok) {
-        setSuccess('Yêu cầu đã được gửi thành công! Quản trị viên sẽ xem xét sớm nhất.');
+        setSuccess(requestStatus === 'REJECTED' 
+          ? 'Đã nộp lại hồ sơ thành công! Đang chờ Quản trị viên phê duyệt.' 
+          : 'Yêu cầu đã được gửi thành công! Quản trị viên sẽ xem xét sớm nhất.'
+        );
         setFormData({ artistName: '' });
         setIdCardFile(null);
         setDemoTrackFile(null);
@@ -100,7 +113,8 @@ export default function BecomeArtist() {
       } else {
         setError(resData.error || 'Có lỗi xảy ra khi gửi yêu cầu');
       }
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
       setError('Lỗi kết nối đến server');
     } finally {
       setLoading(false);
@@ -179,9 +193,20 @@ export default function BecomeArtist() {
 
       {/* Thông báo bị từ chối trước đó */}
       {requestStatus === 'REJECTED' && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg flex items-center gap-3 mb-8">
-          <XCircle size={20} />
-          <p>Yêu cầu trước đó của bạn đã bị từ chối. Bạn có thể gửi lại yêu cầu mới bên dưới.</p>
+        <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-6 rounded-2xl space-y-3 mb-8">
+          <div className="flex items-center gap-3">
+            <XCircle size={24} className="text-red-500" />
+            <p className="font-bold text-lg">Hồ sơ đăng ký của bạn đã bị từ chối</p>
+          </div>
+          {statusData?.rejectionReason && (
+            <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-xl text-sm text-red-300">
+              <strong>Lý do từ chối từ Ban quản trị:</strong>
+              <p className="mt-1 leading-relaxed italic">"{statusData.rejectionReason}"</p>
+            </div>
+          )}
+          <p className="text-xs text-[#a0a0a0]">
+            Vui lòng xem kỹ lý do từ chối trên, điều chỉnh thông tin nghệ danh hoặc đính kèm các tài liệu mới bên dưới và nộp lại đơn xét duyệt. Các tài liệu cũ của bạn vẫn được lưu giữ trên hệ thống trừ khi bạn tải lên tài liệu mới để thay thế.
+          </p>
         </div>
       )}
 
@@ -232,7 +257,7 @@ export default function BecomeArtist() {
                   </>
                 )}
               </div>
-              <input type="file" className="hidden" accept="image/*" onChange={handleIdCardChange} required />
+              <input type="file" className="hidden" accept="image/*" onChange={handleIdCardChange} required={requestStatus !== 'REJECTED'} />
             </label>
           </div>
 
@@ -255,7 +280,7 @@ export default function BecomeArtist() {
                   </>
                 )}
               </div>
-              <input type="file" className="hidden" accept="audio/*" onChange={handleDemoTrackChange} required />
+              <input type="file" className="hidden" accept="audio/*" onChange={handleDemoTrackChange} required={requestStatus !== 'REJECTED'} />
             </label>
           </div>
         </div>

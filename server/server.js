@@ -105,9 +105,11 @@ app.use((err, req, res, next) => {
 });
 
 const startReleaseWorker = require('./workers/releaseWorker.js');
+const { startMaintenanceWorker } = require('./workers/maintenanceWorker.js');
 
 const PORT = process.env.PORT || 9000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`)
   startReleaseWorker();
-})
+  startMaintenanceWorker();
+});

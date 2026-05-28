@@ -43,6 +43,7 @@ model User {
   artist              Artist?
   artistRequest       ArtistRequest?
   playlists           Playlist[]
+  collaborativePlaylists PlaylistCollaborator[]
   follows             Follow[]              @relation("Follower")
   followedBy          Follow[]              @relation("Followee")
   interactions        Interaction[]
@@ -76,12 +77,14 @@ model Playlist {
   coverArtUrl String?  @db.VarChar(500)
   playlistUrl String   @unique @db.VarChar(255)
   isPublic    Boolean  @default(true)
+  isCollaborative Boolean  @default(false)
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   songs PlaylistSong[]
+  collaborators PlaylistCollaborator[]
 }
 
 model Album {
@@ -279,6 +282,7 @@ model ArtistRequest {
   idCardUrl    String   @db.VarChar(500)
   demoTrackUrl String   @db.VarChar(500)
   status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  rejectionReason String?  @db.Text
   createdAt    DateTime @default(now())
 }
 
@@ -318,4 +322,15 @@ model SongLike {
   song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
 
   @@id([userId, songId])
+}
+
+model PlaylistCollaborator {
+  playlistId Int
+  userId     Int
+  createdAt  DateTime @default(now())
+
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, userId])
 }

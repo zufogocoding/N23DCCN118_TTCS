@@ -8,6 +8,12 @@ const artistRequestController = {
       const userId = req.user.id;
       const { artistName } = req.body;
 
+      // Bảo mật: Kiểm tra tài khoản có bị khóa không
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user || !user.isActive) {
+        return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa hoặc không tồn tại." });
+      }
+
       // Kiểm tra user đã là nghệ sĩ chưa
       const existingArtist = await prisma.artist.findUnique({ where: { userId } });
       if (existingArtist) {
@@ -27,7 +33,7 @@ const artistRequestController = {
       const idCardUrl = `/uploads/artist_requests/${req.files['idCard'][0].filename}`;
       const demoTrackUrl = `/uploads/artist_requests/${req.files['demoTrack'][0].filename}`;
 
-      // Xóa request cũ nếu bị reject trước đó
+      // Xóa request cũ nếu bị reject trước đó (trường hợp tạo mới hoàn toàn thay vì gọi API resubmit)
       if (existingRequest && existingRequest.status === 'REJECTED') {
         await prisma.artistRequest.delete({ where: { userId } });
       }
@@ -87,7 +93,7 @@ const artistRequestController = {
         // 1. Cập nhật trạng thái thành APPROVED
         await tx.artistRequest.update({
           where: { id: parseInt(id) },
-          data: { status: 'APPROVED' }
+          data: { status: 'APPROVED', rejectionReason: null }
         });
 
         // 2. Tạo bản ghi Artist
@@ -131,6 +137,7 @@ const artistRequestController = {
   rejectRequest: async (req, res) => {
     try {
       const { id } = req.params;
+      const { rejectionReason } = req.body;
       
       const request = await prisma.artistRequest.findUnique({ where: { id: parseInt(id) } });
       if (!request) return res.status(404).json({ error: "Không tìm thấy yêu cầu" });
@@ -138,17 +145,21 @@ const artistRequestController = {
 
       // Dùng transaction
       await prisma.$transaction(async (tx) => {
-        // 1. Cập nhật trạng thái thành REJECTED
+        // 1. Cập nhật trạng thái thành REJECTED và lưu lý do từ chối
         await tx.artistRequest.update({
           where: { id: parseInt(id) },
-          data: { status: 'REJECTED' }
+          data: { 
+            status: 'REJECTED',
+            rejectionReason: rejectionReason || null
+          }
         });
 
-        // 2. Tạo thông báo cho user
+        // 2. Tạo thông báo cho user kèm lý do từ chối cụ thể
+        const reasonText = rejectionReason ? ` Lý do: ${rejectionReason}.` : '';
         await tx.notification.create({
           data: {
             userId: request.userId,
-            message: `Yêu cầu trở thành nghệ sĩ của bạn đã bị từ chối. Bạn có thể gửi lại yêu cầu mới.`,
+            message: `Yêu cầu trở thành nghệ sĩ của bạn đã bị từ chối.${reasonText} Bạn có thể chỉnh sửa và gửi lại yêu cầu mới.`,
             type: 'artist_rejected'
           }
         });
@@ -188,11 +199,73 @@ const artistRequestController = {
       res.status(200).json({ 
         status: request.status, 
         artistName: request.artistName,
-        createdAt: request.createdAt
+        createdAt: request.createdAt,
+        rejectionReason: request.rejectionReason,
+        idCardUrl: request.idCardUrl,
+        demoTrackUrl: request.demoTrackUrl
       });
     } catch (error) {
       console.error("Lỗi getMyRequestStatus:", error);
       res.status(500).json({ error: "Lỗi server" });
+    }
+  },
+
+  // 6. User nộp lại hồ sơ sau khi bị từ chối
+  resubmitRequest: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { artistName } = req.body;
+
+      // Bảo mật: Kiểm tra tài khoản có bị khóa không
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user || !user.isActive) {
+        return res.status(403).json({ error: "Tài khoản của bạn đã bị khóa hoặc không tồn tại." });
+      }
+
+      // Kiểm tra user đã là nghệ sĩ chưa
+      const existingArtist = await prisma.artist.findUnique({ where: { userId } });
+      if (existingArtist) {
+        return res.status(400).json({ error: "Bạn đã là nghệ sĩ rồi!" });
+      }
+
+      // Kiểm tra yêu cầu cũ có phải là REJECTED không
+      const request = await prisma.artistRequest.findUnique({ where: { userId } });
+      if (!request) {
+        return res.status(404).json({ error: "Không tìm thấy hồ sơ cũ để nộp lại." });
+      }
+
+      if (request.status !== 'REJECTED') {
+        return res.status(400).json({ error: "Bạn chỉ có thể gửi lại hồ sơ khi đơn cũ bị từ chối." });
+      }
+
+      let idCardUrl = request.idCardUrl;
+      let demoTrackUrl = request.demoTrackUrl;
+
+      // Nếu có upload file mới thì thay thế file cũ
+      if (req.files) {
+        if (req.files['idCard'] && req.files['idCard'][0]) {
+          idCardUrl = `/uploads/artist_requests/${req.files['idCard'][0].filename}`;
+        }
+        if (req.files['demoTrack'] && req.files['demoTrack'][0]) {
+          demoTrackUrl = `/uploads/artist_requests/${req.files['demoTrack'][0].filename}`;
+        }
+      }
+
+      const updatedRequest = await prisma.artistRequest.update({
+        where: { userId },
+        data: {
+          artistName: artistName || request.artistName,
+          idCardUrl,
+          demoTrackUrl,
+          status: 'PENDING',
+          rejectionReason: null // Xóa lý do từ chối cũ
+        }
+      });
+
+      res.status(200).json({ message: "Nộp lại hồ sơ thành công! Vui lòng chờ Admin phê duyệt.", request: updatedRequest });
+    } catch (error) {
+      console.error("Lỗi resubmitRequest:", error);
+      res.status(500).json({ error: `Lỗi server khi gửi lại hồ sơ: ${error.message}` });
     }
   }
 };
