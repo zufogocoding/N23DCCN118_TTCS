@@ -310,7 +310,7 @@ export default function Search() {
                           onClick={() => navigate(`/album/${album.id}`)}
                         >
                           <img
-                            src={album.coverArtUrl ? `http://localhost:9000${album.coverArtUrl}` : '/default-cover.png'}
+                            src={album.coverArtUrl ? getMediaUrl(album.coverArtUrl) : '/default-cover.png'}
                             alt="cover"
                             className="w-full aspect-square object-cover rounded-md mb-4 shadow-lg"
                           />

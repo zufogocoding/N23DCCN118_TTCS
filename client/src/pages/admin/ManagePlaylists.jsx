@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Trash2, Loader2, Globe, Lock, Play, Music, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getMediaUrl } from '../../utils/api';
 
 export default function ManagePlaylists() {
   const [playlists, setPlaylists] = useState([]);
@@ -21,7 +22,7 @@ export default function ManagePlaylists() {
   async function fetchPlaylists() {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:9000/api/admin/playlists');
+      const res = await fetch('/api/admin/playlists');
       if (!res.ok) throw new Error('Không thể tải danh sách playlist');
       const data = await res.json();
       setPlaylists(data);
@@ -42,7 +43,7 @@ export default function ManagePlaylists() {
     
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:9000/api/admin/playlists/${deleteModal.id}`, {
+      const res = await fetch(`/api/admin/playlists/${deleteModal.id}`, {
         method: 'DELETE',
       });
       
@@ -150,7 +151,7 @@ export default function ManagePlaylists() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-md overflow-hidden bg-[#282828] flex-shrink-0 flex items-center justify-center">
                           {playlist.coverArtUrl ? (
-                            <img src={`http://localhost:9000${playlist.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                            <img src={getMediaUrl(playlist.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
                           ) : (
                             <Music size={16} className="text-[#a0a0a0]" />
                           )}

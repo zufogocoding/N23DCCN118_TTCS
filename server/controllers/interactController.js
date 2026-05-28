@@ -17,7 +17,7 @@ const interactController = {
 
       // Kiểm tra bài hát có tồn tại và chưa bị xóa không
       const song = await prisma.song.findFirst({
-        where: { id: parseInt(songId), isDeleted: false }
+        where: { id: parseInt(songId), isDeleted: false, status: 'approved' }
       });
 
       if (!song) {
@@ -41,15 +41,17 @@ const interactController = {
         }
       });
 
-      // Tăng playCount cho bài hát
-      await prisma.song.update({
-        where: { id: parseInt(songId) },
-        data: {
-          playCount: {
-            increment: 1
+      // Chỉ tăng playCount khi nghe hợp lệ (không skip và nghe >= 30%)
+      if (!Boolean(isSkipped) && completionRate >= 0.3) {
+        await prisma.song.update({
+          where: { id: parseInt(songId) },
+          data: {
+            playCount: {
+              increment: 1
+            }
           }
-        }
-      });
+        });
+      }
 
       res.status(200).json({ message: "Đã ghi nhận tương tác", data: interaction });
     } catch (error) {
@@ -75,7 +77,7 @@ const interactController = {
 
       // Kiểm tra bài hát có tồn tại không
       const song = await prisma.song.findFirst({
-        where: { id: parsedSongId, isDeleted: false }
+        where: { id: parsedSongId, isDeleted: false, status: 'approved' }
       });
 
       if (!song) {
@@ -166,7 +168,8 @@ const interactController = {
       const songs = await prisma.song.findMany({
         where: {
           id: { in: songIds },
-          isDeleted: false
+          isDeleted: false,
+          status: 'approved'
         },
         include: {
           artists: {
@@ -210,7 +213,8 @@ const interactController = {
       const songs = await prisma.song.findMany({
         where: {
           id: { in: songIds },
-          isDeleted: false
+          isDeleted: false,
+          status: 'approved'
         },
         include: {
           artists: {

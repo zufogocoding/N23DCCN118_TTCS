@@ -6,6 +6,7 @@ const requireAdmin = require('../middlewares/requireAdmin');
 
 router.get('/api/admin/reports', authMiddleware, requireAdmin, adminReportController.getReports);
 router.put('/api/admin/reports/:id/resolve', authMiddleware, requireAdmin, adminReportController.resolveReport);
+router.put('/api/admin/reports/:id/warn', authMiddleware, requireAdmin, adminReportController.warnReport);
 router.put('/api/admin/reports/:id/reject', authMiddleware, requireAdmin, adminReportController.rejectReport);
 
 module.exports = router;

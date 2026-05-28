@@ -25,39 +25,35 @@ const getReports = async (req, res) => {
 
     const total = await prisma.report.count({ where });
 
-    // Lấy thêm thông tin target (Ví dụ: bài hát, album, nghệ sĩ)
+    // Lấy thêm thông tin target
     const formattedReports = await Promise.all(reports.map(async (report) => {
       let targetInfo = null;
-      if (report.targetType === 'SONG') {
-        const song = await prisma.song.findUnique({
-          where: { id: report.targetId },
-          select: { id: true, title: true, coverArtUrl: true, audioUrl: true, status: true, isDeleted: true, uploadedById: true }
-        });
-        targetInfo = song;
-      } else if (report.targetType === 'ALBUM') {
-        const album = await prisma.album.findUnique({
-          where: { id: report.targetId },
-          select: { id: true, title: true, coverArtUrl: true, status: true, artistId: true }
-        });
-        targetInfo = album;
-      } else if (report.targetType === 'ARTIST') {
-        const artist = await prisma.artist.findUnique({
-          where: { userId: report.targetId },
-          select: {
-            userId: true,
-            status: true,
-            user: {
-              select: { username: true, displayName: true, email: true, avatarUrl: true }
+      try {
+        if (report.targetType === 'SONG') {
+          targetInfo = await prisma.song.findUnique({
+            where: { id: report.targetId },
+            select: { id: true, title: true, coverArtUrl: true, audioUrl: true, status: true, isDeleted: true, uploadedById: true }
+          });
+        } else if (report.targetType === 'ALBUM') {
+          targetInfo = await prisma.album.findUnique({
+            where: { id: report.targetId },
+            select: { id: true, title: true, coverArtUrl: true, status: true, artistId: true }
+          });
+        } else if (report.targetType === 'ARTIST') {
+          targetInfo = await prisma.artist.findUnique({
+            where: { userId: report.targetId },
+            include: {
+              user: {
+                select: { id: true, username: true, displayName: true, email: true, avatarUrl: true }
+              }
             }
-          }
-        });
-        targetInfo = artist;
+          });
+        }
+      } catch (e) {
+        console.warn(`Target không tìm thấy cho report #${report.id}:`, e.message);
       }
 
-      return {
-        ...report,
-        targetInfo
-      };
+      return { ...report, targetInfo };
     }));
 
     res.json({
@@ -90,59 +86,127 @@ const resolveReport = async (req, res) => {
       });
 
       if (report.targetType === 'SONG') {
-        const updatedSong = await tx.song.update({
-          where: { id: report.targetId },
-          data: { status: 'rejected', isDeleted: true }
-        });
-
-        if (updatedSong.uploadedById) {
-          await tx.notification.create({
-            data: {
-              userId: updatedSong.uploadedById,
-              type: 'info',
-              message: `CẢNH BÁO: Bài hát "${updatedSong.title}" của bạn đã bị gỡ bỏ do vi phạm quy định (Lý do bị báo cáo: ${report.reason}).`
-            }
+        // Chỉ đổi status, KHÔNG đặt isDeleted=true
+        try {
+          const updatedSong = await tx.song.update({
+            where: { id: report.targetId },
+            data: { status: 'rejected' }
           });
+
+          if (updatedSong.uploadedById) {
+            await tx.notification.create({
+              data: {
+                userId: updatedSong.uploadedById,
+                type: 'info',
+                message: `CẢNH BÁO: Bài hát "${updatedSong.title}" của bạn đã bị ẩn do vi phạm quy định (Lý do: ${report.reason}). Vui lòng liên hệ admin nếu bạn cho rằng đây là nhầm lẫn.`
+              }
+            });
+          }
+        } catch (e) {
+          console.warn(`Không thể cập nhật Song #${report.targetId}:`, e.message);
         }
       } else if (report.targetType === 'ALBUM') {
-        const updatedAlbum = await tx.album.update({
-          where: { id: report.targetId },
-          data: { status: 'draft' }
-        });
-
-        if (updatedAlbum.artistId) {
-          await tx.notification.create({
-            data: {
-              userId: updatedAlbum.artistId,
-              type: 'info',
-              message: `CẢNH BÁO: Album "${updatedAlbum.title}" của bạn đã bị gỡ bỏ (chuyển về nháp) do vi phạm quy định (Lý do bị báo cáo: ${report.reason}).`
-            }
+        // Thống nhất dùng 'banned' giống takedownAlbum
+        try {
+          const updatedAlbum = await tx.album.update({
+            where: { id: report.targetId },
+            data: { status: 'banned' }
           });
+
+          if (updatedAlbum.artistId) {
+            await tx.notification.create({
+              data: {
+                userId: updatedAlbum.artistId,
+                type: 'info',
+                message: `CẢNH BÁO: Album "${updatedAlbum.title}" của bạn đã bị gỡ bỏ do vi phạm quy định (Lý do: ${report.reason}). Vui lòng liên hệ admin nếu bạn cho rằng đây là nhầm lẫn.`
+              }
+            });
+          }
+        } catch (e) {
+          console.warn(`Không thể cập nhật Album #${report.targetId}:`, e.message);
         }
       } else if (report.targetType === 'ARTIST') {
-        await tx.artist.update({
-          where: { userId: report.targetId },
-          data: { status: 'banned' }
-        });
+        try {
+          await tx.artist.update({
+            where: { userId: report.targetId },
+            data: { status: 'banned' }
+          });
 
-        await tx.user.update({
-          where: { id: report.targetId },
-          data: { isActive: false }
-        });
+          await tx.user.update({
+            where: { id: report.targetId },
+            data: { isActive: false }
+          });
 
-        await tx.notification.create({
-          data: {
-            userId: report.targetId,
-            type: 'info',
-            message: `Tài khoản nghệ sĩ của bạn đã bị khóa do vi phạm quy định nghiêm trọng (Lý do bị báo cáo: ${report.reason}).`
-          }
-        });
+          await tx.notification.create({
+            data: {
+              userId: report.targetId,
+              type: 'info',
+              message: `Tài khoản nghệ sĩ của bạn đã bị khóa do vi phạm quy định nghiêm trọng (Lý do: ${report.reason}).`
+            }
+          });
+        } catch (e) {
+          console.warn(`Không thể cập nhật Artist #${report.targetId}:`, e.message);
+        }
       }
     });
 
     res.json({ message: "Đã xử lý vi phạm thành công." });
   } catch (error) {
     console.error("Lỗi khi xử lý báo cáo (resolve):", error);
+    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+  }
+};
+
+// PUT /api/admin/reports/:id/warn
+const warnReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const report = await prisma.report.findUnique({ where: { id: parseInt(id) } });
+    if (!report) return res.status(404).json({ error: "Không tìm thấy báo cáo." });
+    if (report.status !== 'PENDING') return res.status(400).json({ error: "Báo cáo này đã được xử lý." });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.report.update({
+        where: { id: parseInt(id) },
+        data: { status: 'WARNED' }
+      });
+
+      // Gửi cảnh cáo cho owner nhưng KHÔNG gỡ nội dung
+      let ownerId = null;
+      let targetTitle = '';
+
+      if (report.targetType === 'SONG') {
+        const song = await tx.song.findUnique({
+          where: { id: report.targetId },
+          select: { uploadedById: true, title: true }
+        });
+        if (song) { ownerId = song.uploadedById; targetTitle = song.title; }
+      } else if (report.targetType === 'ALBUM') {
+        const album = await tx.album.findUnique({
+          where: { id: report.targetId },
+          select: { artistId: true, title: true }
+        });
+        if (album) { ownerId = album.artistId; targetTitle = album.title; }
+      } else if (report.targetType === 'ARTIST') {
+        ownerId = report.targetId;
+        targetTitle = 'tài khoản nghệ sĩ';
+      }
+
+      if (ownerId) {
+        await tx.notification.create({
+          data: {
+            userId: ownerId,
+            type: 'info',
+            message: `Cảnh cáo: Nội dung "${targetTitle}" của bạn đã bị báo cáo vì "${report.reason}". Vui lòng kiểm tra và chỉnh sửa nếu cần. Nội dung vi phạm nhiều lần có thể bị gỡ bỏ.`
+          }
+        });
+      }
+    });
+
+    res.json({ message: "Đã gửi cảnh cáo thành công." });
+  } catch (error) {
+    console.error("Lỗi khi cảnh cáo (warn):", error);
     res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
   }
 };
@@ -171,5 +235,6 @@ const rejectReport = async (req, res) => {
 module.exports = {
   getReports,
   resolveReport,
+  warnReport,
   rejectReport
 };

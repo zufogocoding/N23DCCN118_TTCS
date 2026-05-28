@@ -29,14 +29,15 @@ const syncChart = async (chartType) => {
     throw new Error(`Chart with type ${chartType} not found. Please seed the database first.`);
   }
 
-  // Query bảng Interaction: đếm lượt nghe, gom nhóm theo songId
+  // Query bảng Interaction: đếm lượt nghe hợp lệ, gom nhóm theo songId
   const interactions = await prisma.interaction.groupBy({
     by: ['songId'],
     where: {
       timeStamp: {
         gte: startTime,
         lte: now,
-      }
+      },
+      isSkipped: false,
     },
     _count: {
       songId: true,
@@ -46,11 +47,27 @@ const syncChart = async (chartType) => {
         songId: 'desc',
       }
     },
-    take: 50,
+    take: 100, // Lấy nhiều hơn để sau khi lọc vẫn đủ 50
   });
 
+  // Lọc chỉ giữ bài approved và chưa bị xóa
+  const songIds = interactions.map(i => i.songId);
+  const validSongs = await prisma.song.findMany({
+    where: {
+      id: { in: songIds },
+      isDeleted: false,
+      status: 'approved',
+    },
+    select: { id: true },
+  });
+  const validSongIds = new Set(validSongs.map(s => s.id));
+
+  const filteredInteractions = interactions
+    .filter(i => validSongIds.has(i.songId))
+    .slice(0, 50);
+
   // Chuẩn bị dữ liệu insert vào ChartSong
-  const chartSongsData = interactions.map((interaction, index) => ({
+  const chartSongsData = filteredInteractions.map((interaction, index) => ({
     chartId: chart.id,
     songId: interaction.songId,
     totalScore: interaction._count.songId,

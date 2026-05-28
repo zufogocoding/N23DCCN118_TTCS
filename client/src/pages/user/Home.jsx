@@ -296,7 +296,7 @@ export default function Home() {
                         >
                           <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-border rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                             {al.coverArtUrl ? (
-                              <img src={`http://localhost:9000${al.coverArtUrl}`} alt="cover" className="w-full h-full object-cover" />
+                              <img src={getMediaUrl(al.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-4xl">🎵</span>
                             )}

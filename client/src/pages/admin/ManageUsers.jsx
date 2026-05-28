@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Trash2, Loader2, AlertTriangle, User, Mail, Shield, ShieldAlert, Star } from 'lucide-react';
+import { getMediaUrl } from '../../utils/api';
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -20,7 +21,7 @@ export default function ManageUsers() {
   async function fetchUsers() {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:9000/api/admin/users');
+      const res = await fetch('/api/admin/users');
       if (!res.ok) throw new Error('Không thể tải danh sách người dùng');
       const data = await res.json();
       setUsers(data);
@@ -41,7 +42,7 @@ export default function ManageUsers() {
     
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:9000/api/admin/users/${deleteModal.id}`, {
+      const res = await fetch(`/api/admin/users/${deleteModal.id}`, {
         method: 'DELETE',
       });
       
@@ -151,7 +152,7 @@ export default function ManageUsers() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-[#282828] flex-shrink-0 flex items-center justify-center">
                           {user.avatarUrl ? (
-                            <img src={`http://localhost:9000${user.avatarUrl}`} alt="avatar" className="w-full h-full object-cover" />
+                            <img src={getMediaUrl(user.avatarUrl)} alt="avatar" className="w-full h-full object-cover" />
                           ) : (
                             <User size={16} className="text-[#a0a0a0]" />
                           )}

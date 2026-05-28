@@ -11,7 +11,7 @@ router.get('/api/songs/:id/stream', async (req, res) => {
     const songId = parseInt(req.params.id);
 
     const song = await prisma.song.findUnique({
-      where: { id: songId, isDeleted: false }
+      where: { id: songId, isDeleted: false, status: 'approved' }
     });
 
     if (!song) return res.status(404).send('Không tìm thấy bài hát');

@@ -52,7 +52,7 @@ export default function UploadSong() {
       setMyAlbums([]);
       return;
     }
-    api.get(`/api/artists/${u.id}/albums`)
+    api.get(`/api/artists/${u.id}/albums/all`)
       .then((r) => (r.ok ? r.json() : { albums: [] }))
       .then((data) => setMyAlbums(data.albums || []))
       .catch(() => setMyAlbums([]));

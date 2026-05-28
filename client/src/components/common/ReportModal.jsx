@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle } from 'lucide-react';
 import { api } from '../../utils/api';
 
 export default function ReportModal({ isOpen, onClose, targetType, targetId }) {
@@ -7,12 +7,29 @@ export default function ReportModal({ isOpen, onClose, targetType, targetId }) {
   const [description, setDescription] = useState('');
   const [proofUrl, setProofUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: string }
 
   if (!isOpen) return null;
+
+  const showFeedback = (message, type = 'success') => {
+    setFeedback({ type, message });
+    if (type === 'success') {
+      setTimeout(() => {
+        setFeedback(null);
+        onClose();
+        setDescription('');
+        setProofUrl('');
+        setReason('COPYRIGHT');
+      }, 2500);
+    } else {
+      setTimeout(() => setFeedback(null), 5000);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setFeedback(null);
 
     try {
       const res = await api.post('/api/reports', {
@@ -23,19 +40,15 @@ export default function ReportModal({ isOpen, onClose, targetType, targetId }) {
         proofUrl
       });
 
+      const data = await res.json();
       if (res.ok) {
-        alert('Đã gửi báo cáo thành công. Cảm ơn bạn đã đóng góp!');
-        onClose();
-        setDescription('');
-        setProofUrl('');
-        setReason('COPYRIGHT');
+        showFeedback(data.message || 'Đã gửi báo cáo thành công. Cảm ơn bạn đã đóng góp!', 'success');
       } else {
-        const data = await res.json();
-        alert(data.error || 'Có lỗi xảy ra khi gửi báo cáo');
+        showFeedback(data.error || 'Có lỗi xảy ra khi gửi báo cáo', 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('Lỗi kết nối server');
+      showFeedback('Lỗi kết nối server', 'error');
     } finally {
       setLoading(false);
     }
@@ -43,7 +56,8 @@ export default function ReportModal({ isOpen, onClose, targetType, targetId }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-[#282828] w-full max-w-md rounded-xl shadow-2xl border border-[#333] overflow-hidden">
+      <div className="bg-[#282828] w-full max-w-md rounded-xl shadow-2xl border border-[#333] overflow-hidden relative">
+        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#333]">
           <div className="flex items-center gap-2 text-[#ff4d4d]">
             <AlertTriangle size={20} />
@@ -54,6 +68,19 @@ export default function ReportModal({ isOpen, onClose, targetType, targetId }) {
           </button>
         </div>
 
+        {/* Feedback Banner */}
+        {feedback && (
+          <div className={`flex items-start gap-2.5 px-4 py-3 mx-4 mt-4 rounded-lg text-sm border font-medium transition-all
+            ${feedback.type === 'success' 
+              ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400' 
+              : 'bg-red-950/40 border-red-500/30 text-red-400'}`}
+          >
+            {feedback.type === 'success' ? <CheckCircle size={16} className="shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="shrink-0 mt-0.5" />}
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Lý do báo cáo</label>

@@ -1,14 +1,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
 import TrackEditModal from '../../components/TrackEditModal';
+import { api, getMediaUrl } from '../../utils/api';
 
 const ALBUM_TYPES = ['Single', 'EP', 'Album', 'Mixtape'];
 
 function getCover(url) {
-  if (!url) return null;
-  return url.startsWith('http') ? url : `http://localhost:9000${url}`;
+  return url ? getMediaUrl(url) : null;
 }
 
 function formatDuration(ms) {
@@ -81,13 +81,13 @@ export default function ReleaseManager() {
 
   // Load genres
   useEffect(() => {
-    fetch('http://localhost:9000/api/genres').then(r => r.json()).then(setGenres).catch(() => { });
+    fetch('/api/genres').then(r => r.json()).then(setGenres).catch(() => { });
   }, []);
 
   // Load my uploads
   useEffect(() => {
     if (!currentUser.id) return;
-    fetch('http://localhost:9000/api/songs/my-uploaded', { headers: authH })
+    fetch('/api/songs/my-uploaded', { headers: authH })
       .then(r => r.ok ? r.json() : []).then(setMyUploads).catch(() => { });
   }, [currentUser.id]);
 
@@ -107,7 +107,7 @@ export default function ReleaseManager() {
     if (isNew) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${albumId}/manage`, { headers: authH });
+      const res = await fetch(`/api/albums/${albumId}/manage`, { headers: authH });
       if (res.ok) {
         const data = await res.json();
         setAlbum(data.album);
@@ -141,7 +141,7 @@ export default function ReleaseManager() {
       if (coverFile) fd.append('coverImage', coverFile);
       if (scheduledAt) fd.append('scheduledAt', scheduledAt);
 
-      const url = isNew ? 'http://localhost:9000/api/albums' : `http://localhost:9000/api/albums/${albumId}`;
+      const url = isNew ? '/api/albums' : `/api/albums/${albumId}`;
       const method = isNew ? 'POST' : 'PUT';
       const res = await fetch(url, { method, headers: authH, body: fd });
 
@@ -164,7 +164,7 @@ export default function ReleaseManager() {
   // Add track (existing)
   const handleAddTrack = async (songId) => {
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
+      const res = await fetch(`/api/albums/${album.id}/songs`, {
         method: 'POST', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songId }),
       });
@@ -269,13 +269,13 @@ export default function ReleaseManager() {
           else reject(new Error('Upload thất bại'));
         });
         xhr.addEventListener('error', () => reject(new Error('Lỗi kết nối')));
-        xhr.open('POST', 'http://localhost:9000/api/songs/upload');
+        xhr.open('POST', '/api/songs/upload');
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         xhr.send(formData);
       });
 
       // Nối bài hát vừa tạo vào album
-      await fetch(`http://localhost:9000/api/albums/${album.id}/songs`, {
+      await fetch(`/api/albums/${album.id}/songs`, {
         method: 'POST',
         headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songId: uploadedSong.song?.id || uploadedSong.id }),
@@ -296,7 +296,7 @@ export default function ReleaseManager() {
   const handleRemoveTrack = async (songId) => {
     if (!confirm('Gỡ bài này khỏi album?')) return;
     try {
-      await fetch(`http://localhost:9000/api/albums/${album.id}/songs/${songId}`, {
+      await fetch(`/api/albums/${album.id}/songs/${songId}`, {
         method: 'DELETE', headers: authH,
       });
       loadAlbum();
@@ -319,7 +319,7 @@ export default function ReleaseManager() {
 
     // Persist order
     try {
-      await fetch(`http://localhost:9000/api/albums/${album.id}/reorder`, {
+      await fetch(`/api/albums/${album.id}/reorder`, {
         method: 'PUT', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ songIds: items.map(t => t.id) }),
       });
@@ -330,23 +330,20 @@ export default function ReleaseManager() {
 
   // Release now
   const handleRelease = async () => {
-    // Kiểm tra có bài pending không để hiển warning
     const pendingTracks = tracks.filter(t => t.status === 'pending');
-    const approvedTracks = tracks.filter(t => t.status === 'approved');
+    const rejectedTracks = tracks.filter(t => t.status === 'rejected');
 
-    if (approvedTracks.length === 0) {
-      alert('Cần ít nhất 1 bài hát đã được duyệt để phát hành album!');
+    if (pendingTracks.length > 0 || rejectedTracks.length > 0 || tracks.length === 0) {
+      alert(`Không thể phát hành: Tất cả bài hát trong album phải được duyệt. Hiện có ${pendingTracks.length} bài chờ duyệt và ${rejectedTracks.length} bài bị từ chối.`);
       return;
     }
 
-    const msg = pendingTracks.length > 0
-      ? `Phát hành album với ${approvedTracks.length} bài đã duyệt? ${pendingTracks.length} bài đang chờ duyệt sẽ tự xuất hiện sau khi được phê duyệt (giống cách Spotify hoạt động).`
-      : 'Phát hành album ngay bây giờ?';
+    const msg = 'Phát hành album ngay bây giờ?';
 
     if (!confirm(msg)) return;
     setActionBusy('release');
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/release`, {
+      const res = await fetch(`/api/albums/${album.id}/release`, {
         method: 'POST', headers: authH,
       });
       if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
@@ -358,16 +355,16 @@ export default function ReleaseManager() {
   const handleSchedule = async () => {
     if (!scheduledAt) { alert('Chọn thời gian phát hành'); return; }
 
-    const approvedTracks = tracks.filter(t => t.status === 'approved');
+    const unapprovedTracks = tracks.filter(t => t.status !== 'approved');
 
-    if (approvedTracks.length === 0) {
-      alert('Cần ít nhất 1 bài hát đã được duyệt để lên lịch phát hành!');
+    if (unapprovedTracks.length > 0 || tracks.length === 0) {
+      alert(`Không thể lên lịch: Tất cả bài hát phải được duyệt. Còn ${unapprovedTracks.length} bài chưa được duyệt.`);
       return;
     }
 
     setActionBusy('schedule');
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/schedule`, {
+      const res = await fetch(`/api/albums/${album.id}/schedule`, {
         method: 'POST', headers: { ...authH, 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduledAt }),
       });
@@ -382,7 +379,7 @@ export default function ReleaseManager() {
   const handleUnschedule = async () => {
     setActionBusy('unschedule');
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${album.id}/unschedule`, {
+      const res = await fetch(`/api/albums/${album.id}/unschedule`, {
         method: 'POST', headers: authH,
       });
       if (res.ok) { loadAlbum(); }
@@ -395,7 +392,7 @@ export default function ReleaseManager() {
   const handleDelete = async () => {
     if (!confirm('Xóa album này? Các bài hát vẫn còn trên hệ thống.')) return;
     try {
-      const res = await fetch(`http://localhost:9000/api/albums/${album.id}`, {
+      const res = await fetch(`/api/albums/${album.id}`, {
         method: 'DELETE', headers: authH,
       });
       if (res.ok) navigate(`/artist/${currentUser.id}`);
@@ -593,13 +590,13 @@ export default function ReleaseManager() {
           <div className="bg-[#121212] border border-[#222] rounded-2xl p-6 mb-6">
             <h2 className="text-lg font-bold mb-4">Phát hành</h2>
             <div className="flex flex-wrap gap-3">
-              <button onClick={handleRelease} disabled={!!actionBusy || tracks.length === 0}
+              <button onClick={handleRelease} disabled={!!actionBusy || tracks.length === 0 || tracks.some(t => t.status !== 'approved')}
                 className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-[#00e6e6] to-[#00b8d4] text-black disabled:opacity-40 text-sm hover:shadow-lg hover:shadow-[#00e6e6]/20">
                 {actionBusy === 'release' ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}
                 Phát hành ngay
               </button>
               {isDraft && scheduledAt && (
-                <button onClick={handleSchedule} disabled={!!actionBusy || tracks.length === 0}
+                <button onClick={handleSchedule} disabled={!!actionBusy || tracks.length === 0 || tracks.some(t => t.status !== 'approved')}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold border border-amber-500/50 text-amber-400 disabled:opacity-40 text-sm hover:bg-amber-500/10">
                   {actionBusy === 'schedule' ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
                   Lên lịch phát hành
@@ -618,6 +615,12 @@ export default function ReleaseManager() {
             </div>
             {tracks.length === 0 && (
               <p className="text-xs text-[#666] mt-3">* Thêm ít nhất 1 bài hát để phát hành</p>
+            )}
+            {tracks.length > 0 && tracks.some(t => t.status !== 'approved') && (
+              <p className="text-xs text-amber-400 mt-3 flex items-center gap-1.5 font-semibold">
+                <AlertTriangle size={12} className="shrink-0" />
+                Tất cả các bài hát trong album phải được duyệt trước khi phát hành hoặc lên lịch!
+              </p>
             )}
           </div>
         )}
