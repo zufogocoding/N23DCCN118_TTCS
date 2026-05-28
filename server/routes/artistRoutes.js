@@ -46,6 +46,7 @@ const uploadProfileImages = multer({
   { name: 'bannerFile', maxCount: 1 },
 ]);
 
+router.get('/api/artists/analytics', authMiddleware, requireActiveArtist, artistController.getAnalytics);
 router.get('/api/artists/:id', optionalAuthMiddleware, artistController.getArtistProfile);
 router.put('/api/artists/:id/profile', authMiddleware, requireActiveArtist, uploadProfileImages, artistController.updateArtistProfile);
 router.post('/api/artists/:id/follow', authMiddleware, artistController.followArtist);

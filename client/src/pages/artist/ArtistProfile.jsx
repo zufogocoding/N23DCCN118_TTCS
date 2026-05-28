@@ -520,6 +520,12 @@ export default function ArtistProfile() {
         {currentUser.id === parseInt(id, 10) && currentUser.isArtist && (
           <div className="flex items-center gap-3">
             <Link
+              to="/artist/analytics"
+              className="px-4 py-2 rounded-full border border-[#00e6e6] text-[#00e6e6] text-sm font-bold hover:bg-[#00e6e6] hover:text-black transition-colors flex items-center gap-2"
+            >
+              <BarChart3 size={16} /> Thống kê hiệu năng
+            </Link>
+            <Link
               to="/release/new"
               className="px-4 py-2 rounded-full border border-white text-white text-sm font-bold hover:bg-white hover:text-black transition-colors"
             >

@@ -34,6 +34,7 @@ const ManageGenres = lazy(() => import('./pages/admin/ManageGenres'));
 const AdminAlbums = lazy(() => import('./pages/admin/AdminAlbums'));
 const ManagePlaylists = lazy(() => import('./pages/admin/ManagePlaylists'));
 const ReleaseManager = lazy(() => import('./pages/artist/ReleaseManager'));
+const AnalyticsDashboard = lazy(() => import('./pages/artist/AnalyticsDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/adminUser'));
 const ManageSongs = lazy(() => import('./pages/admin/ManageSongs'));
 const ManageReports = lazy(() => import('./pages/admin/ManageReports'));
@@ -139,6 +140,7 @@ function App() {
             />
             <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
             <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
+            <Route path="artist/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
 
             {/* Song detail, Playlist, Album view */}
             <Route path="song/:id" element={<SongDetail />} />

@@ -357,6 +357,143 @@ const artistController = {
       res.status(500).json({ error: 'Lỗi server khi ghim bài hát' });
     }
   },
+
+  getAnalytics: async (req, res) => {
+    try {
+      const artistId = req.user.id;
+
+      // Tìm tất cả bài hát thuộc về nghệ sĩ này
+      const artistSongs = await prisma.song.findMany({
+        where: {
+          OR: [
+            { uploadedById: artistId },
+            { artists: { some: { artistId } } }
+          ],
+          isDeleted: false
+        },
+        select: { id: true }
+      });
+
+      const songIds = artistSongs.map(s => s.id);
+
+      if (songIds.length === 0) {
+        return res.status(200).json({
+          playTrend: [],
+          averageCompletionRate: 0,
+          skipRate: 0,
+          topSongs: [],
+          totalSongs: 0,
+          totalPlays: 0
+        });
+      }
+
+      // 1. Lượt nghe theo thời gian (30 ngày qua)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+      const interactions = await prisma.interaction.findMany({
+        where: {
+          songId: { in: songIds },
+          timeStamp: { gte: thirtyDaysAgo }
+        },
+        select: {
+          timeStamp: true
+        }
+      });
+
+      const playsByDate = {};
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        playsByDate[dateStr] = 0;
+      }
+
+      interactions.forEach(inter => {
+        const dateStr = inter.timeStamp.toISOString().split('T')[0];
+        if (playsByDate[dateStr] !== undefined) {
+          playsByDate[dateStr] += 1;
+        }
+      });
+
+      const playTrend = Object.keys(playsByDate).map(date => ({
+        date,
+        count: playsByDate[date]
+      }));
+
+      // 2. Average Completion Rate (chỉ tính lượt không skip và có completionRate)
+      const completionRateAggregate = await prisma.interaction.aggregate({
+        where: {
+          songId: { in: songIds },
+          isSkipped: false,
+          completionRate: { not: null }
+        },
+        _avg: {
+          completionRate: true
+        }
+      });
+      const averageCompletionRate = completionRateAggregate._avg.completionRate || 0;
+
+      // 3. Skip Rate
+      const totalPlayCount = await prisma.interaction.count({
+        where: { songId: { in: songIds } }
+      });
+      const skipPlayCount = await prisma.interaction.count({
+        where: { songId: { in: songIds }, isSkipped: true }
+      });
+      const skipRate = totalPlayCount > 0 ? (skipPlayCount / totalPlayCount) : 0;
+
+      // 4. Top 5 bài hát thịnh hành của nghệ sĩ
+      const topSongs = await prisma.song.findMany({
+        where: {
+          id: { in: songIds },
+          status: 'approved',
+          isDeleted: false
+        },
+        orderBy: {
+          playCount: 'desc'
+        },
+        take: 5,
+        select: {
+          id: true,
+          title: true,
+          coverArtUrl: true,
+          playCount: true
+        }
+      });
+
+      const topSongsData = await Promise.all(topSongs.map(async (song) => {
+        const songPlays = await prisma.interaction.count({ where: { songId: song.id } });
+        const songSkips = await prisma.interaction.count({ where: { songId: song.id, isSkipped: true } });
+        const songAvgCompletion = await prisma.interaction.aggregate({
+          where: { songId: song.id, isSkipped: false, completionRate: { not: null } },
+          _avg: { completionRate: true }
+        });
+
+        return {
+          id: song.id,
+          title: song.title,
+          coverArtUrl: song.coverArtUrl,
+          playCount: song.playCount,
+          skipRate: songPlays > 0 ? (songSkips / songPlays) : 0,
+          averageCompletionRate: songAvgCompletion._avg.completionRate || 0
+        };
+      }));
+
+      res.status(200).json({
+        playTrend,
+        averageCompletionRate,
+        skipRate,
+        topSongs: topSongsData,
+        totalSongs: songIds.length,
+        totalPlays: totalPlayCount
+      });
+    } catch (error) {
+      console.error('Lỗi getAnalytics:', error);
+      res.status(500).json({ error: 'Lỗi server khi lấy thống kê phân tích' });
+    }
+  },
 };
 
 module.exports = artistController;
