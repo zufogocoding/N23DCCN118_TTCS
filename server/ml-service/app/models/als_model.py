@@ -27,8 +27,26 @@ class ImplicitALSModel:
         Fetch all user-song interactions and unique users/songs from database.
         """
         query_interactions = """
-            SELECT "userId", "songId", "completionRate", "isLiked", "isSkipped", "durationPlayed"
-            FROM "Interaction"
+            SELECT 
+              i."userId", 
+              i."songId", 
+              i."completionRate", 
+              CASE WHEN l."songId" IS NOT NULL THEN true ELSE false END AS "isLiked", 
+              i."isSkipped", 
+              i."durationPlayed"
+            FROM "Interaction" i
+            LEFT JOIN "SongLike" l ON i."userId" = l."userId" AND i."songId" = l."songId"
+            
+            UNION ALL
+            
+            SELECT 
+              "userId", 
+              "songId", 
+              1.0 AS "completionRate", 
+              true AS "isLiked", 
+              false AS "isSkipped", 
+              0 AS "durationPlayed"
+            FROM "SongLike"
         """
         query_users = 'SELECT id FROM "User" WHERE "isActive" = true'
         query_songs = 'SELECT id FROM "Song" WHERE "isDeleted" = false AND status = \'approved\''

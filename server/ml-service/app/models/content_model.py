@@ -123,9 +123,22 @@ class ContentModel:
         from psycopg2.extras import execute_values
 
         query_positive_interactions = """
-            SELECT "userId", "songId", "isLiked", "completionRate"
-            FROM "Interaction"
-            WHERE "isLiked" = true OR "completionRate" >= 0.5
+            SELECT 
+              "userId", 
+              "songId", 
+              bool_or("isLiked") AS "isLiked", 
+              MAX("completionRate") AS "completionRate"
+            FROM (
+              SELECT "userId", "songId", false AS "isLiked", "completionRate"
+              FROM "Interaction"
+              
+              UNION ALL
+              
+              SELECT "userId", "songId", true AS "isLiked", 1.0 AS "completionRate"
+              FROM "SongLike"
+            ) AS combined
+            GROUP BY "userId", "songId"
+            HAVING bool_or("isLiked") = true OR MAX("completionRate") >= 0.5
         """
         query_active_users = 'SELECT id FROM "User" WHERE "isActive" = true'
         query_song_vectors = 'SELECT id, "contentVector"::text as content_vector FROM "Song" WHERE "contentVector" IS NOT NULL'

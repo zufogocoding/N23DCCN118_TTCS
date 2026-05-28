@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, Heart, Play } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
@@ -32,6 +32,18 @@ export default function Home() {
   const [recommendedSongs, setRecommendedSongs] = useState([]);
   const [recentSongs, setRecentSongs] = useState([]);
   const [recentPlaylists, setRecentPlaylists] = useState([]);
+
+  // Refs for slide containers
+  const recommendedRef = useRef(null);
+  const chartsRef = useRef(null);
+  const songsRef = useRef(null);
+
+  const scrollContainer = (ref, direction) => {
+    if (ref.current) {
+      const scrollAmount = direction === 'left' ? -640 : 640;
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -402,16 +414,34 @@ export default function Home() {
 
             {/* Section: Có thể bạn sẽ thích */}
             {recommendedSongs.length > 0 && (
-              <div className="mb-10">
+              <div className="mb-10 animate-fade-in">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-hover tracking-tight">
                     Có thể bạn sẽ thích
                   </h2>
-                  <span className="text-xs text-text-muted font-semibold uppercase tracking-wider bg-surface-hover px-3 py-1 rounded-full border border-border">
-                    Đề xuất thông minh
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted font-semibold uppercase tracking-wider bg-surface-hover px-3 py-1 rounded-full border border-border mr-2 hidden sm:inline-block">
+                      Đề xuất thông minh
+                    </span>
+                    <div className="flex gap-1.5">
+                      <button 
+                        onClick={() => scrollContainer(recommendedRef, 'left')}
+                        className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all"
+                        title="Trượt sang trái"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button 
+                        onClick={() => scrollContainer(recommendedRef, 'right')}
+                        className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all"
+                        title="Trượt sang phải"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                <div ref={recommendedRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar scroll-smooth">
                   {recommendedSongs.map(song => (
                     <div
                       key={song.id}
@@ -461,9 +491,27 @@ export default function Home() {
 
             {/* Các Bảng Xếp Hạng Nổi Bật */}
             {(dailyChart.length > 0 || weeklyChart.length > 0 || monthlyChart.length > 0) && (
-              <div className="mb-10">
-                <h2 className="text-2xl font-bold text-text mb-4">Bảng xếp hạng nổi bật</h2>
-                <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+              <div className="mb-10 animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-text">Bảng xếp hạng nổi bật</h2>
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={() => scrollContainer(chartsRef, 'left')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all"
+                      title="Trượt sang trái"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button 
+                      onClick={() => scrollContainer(chartsRef, 'right')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all"
+                      title="Trượt sang phải"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div ref={chartsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar scroll-smooth">
                   
                   {/* Top 50 Ngày */}
                   <div 
@@ -543,11 +591,29 @@ export default function Home() {
 
             
             {/* Section: All Songs (từ DB - chỉ hiện bài approved) */}
-            <div className="mb-10">
+            <div className="mb-10 animate-fade-in">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-text">
                   {songs.length > 0 ? 'Trending Songs' : 'Bài hát'}
                 </h2>
+                {songs.length > 0 && (
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={() => scrollContainer(songsRef, 'left')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all"
+                      title="Trượt sang trái"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button 
+                      onClick={() => scrollContainer(songsRef, 'right')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all"
+                      title="Trượt sang phải"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {loading ? (
@@ -566,7 +632,7 @@ export default function Home() {
                   <p className="text-xs text-text-muted mt-2">Hãy upload bài hát qua trang Upload.</p>
                 </div>
               ) : (
-                <div className="flex overflow-x-auto gap-5 pb-4 no-scrollbar">
+                <div ref={songsRef} className="flex overflow-x-auto gap-5 pb-4 no-scrollbar scroll-smooth">
                   {songs.map(song => (
                     <div
                       key={song.id}
