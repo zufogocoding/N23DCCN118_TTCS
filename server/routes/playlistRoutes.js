@@ -34,4 +34,11 @@ router.post('/api/playlists/:id/songs', authMiddleware, playlistController.addSo
 // Xóa bài hát khỏi playlist
 router.delete('/api/playlists/:id/songs/:songId', authMiddleware, playlistController.removeSongFromPlaylist);
 
+// Thêm/Xóa người cộng tác (Collaborators)
+router.post('/api/playlists/:id/collaborators', authMiddleware, playlistController.addCollaborator);
+router.delete('/api/playlists/:id/collaborators/:userId', authMiddleware, playlistController.removeCollaborator);
+
+// Sao chép playlist
+router.post('/api/playlists/:id/clone', authMiddleware, playlistController.clonePlaylist);
+
 module.exports = router;

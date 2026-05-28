@@ -1,15 +1,13 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Play, Clock, MoreHorizontal, House, Heart, Trash2 } from 'lucide-react';
+import { Play, Clock, MoreHorizontal, House, Heart, Trash2, Users } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/common/CreatePlaylistModal';
 import EditPlaylistModal from '../../components/common/EditPlaylistModal';
 import { api, getMediaUrl } from '../../utils/api';
 import { getArtistName, getCoverArt, formatDuration } from '../../utils/songHelpers';
-
-
 
 const PlaylistView = () => {
   const { playlistId } = useParams();
@@ -24,6 +22,10 @@ const PlaylistView = () => {
   const [playlistToolbarMenuOpen, setPlaylistToolbarMenuOpen] = useState(false);
   const playlistToolbarMenuRef = useRef(null);
   const [likedSongIds, setLikedSongIds] = useState(new Set());
+
+  // Collaboration Panel states
+  const [collabUsername, setCollabUsername] = useState('');
+  const [collabLoading, setCollabLoading] = useState(false);
 
   const fetchPlaylistData = async () => {
     setLoading(true);
@@ -174,6 +176,84 @@ const PlaylistView = () => {
     } catch (err) { console.error(err); }
   };
 
+  // ── Collaboration settings ────────────────────────────────────────────────
+  const handleToggleCollaborative = async () => {
+    try {
+      const nextState = !playlist.isCollaborative;
+      const res = await api.put(`/api/playlists/${playlist.id}`, {
+        isCollaborative: nextState
+      });
+      if (res.ok) {
+        setPlaylist(prev => ({ ...prev, isCollaborative: nextState }));
+      } else {
+        alert('Lỗi cập nhật chế độ cộng tác.');
+      }
+    } catch {
+      alert('Lỗi kết nối.');
+    }
+  };
+
+  const handleAddCollaborator = async (e) => {
+    e.preventDefault();
+    if (!collabUsername.trim()) return;
+    setCollabLoading(true);
+    try {
+      const res = await api.post(`/api/playlists/${playlist.id}/collaborators`, {
+        usernameOrEmail: collabUsername.trim()
+      });
+      if (res.ok) {
+        alert('Đã thêm người cộng tác thành công!');
+        setCollabUsername('');
+        fetchPlaylistData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Lỗi thêm người cộng tác.');
+      }
+    } catch {
+      alert('Lỗi kết nối.');
+    } finally {
+      setCollabLoading(false);
+    }
+  };
+
+  const handleRemoveCollaborator = async (collabUserId) => {
+    if (!window.confirm('Xóa người cộng tác này khỏi playlist?')) return;
+    try {
+      const res = await api.delete(`/api/playlists/${playlist.id}/collaborators/${collabUserId}`);
+      if (res.ok) {
+        fetchPlaylistData();
+      } else {
+        alert('Lỗi khi xóa người cộng tác.');
+      }
+    } catch {
+      alert('Lỗi kết nối.');
+    }
+  };
+
+  // ── Playlist Cloning ──────────────────────────────────────────────────────
+  const handleClonePlaylist = async () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) {
+      navigate('/login');
+      return;
+    }
+    if (!window.confirm('Tạo một bản sao của playlist này về thư viện cá nhân của bạn?')) return;
+    try {
+      const res = await api.post(`/api/playlists/${playlist.id}/clone`);
+      if (res.ok) {
+        const data = await res.json();
+        alert('Sao chép playlist thành công!');
+        setPlaylistToolbarMenuOpen(false);
+        navigate(`/playlist/${data.playlist.id}`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Lỗi khi sao chép playlist.');
+      }
+    } catch {
+      alert('Lỗi kết nối.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -193,6 +273,13 @@ const PlaylistView = () => {
     !isLikedPage &&
     playlist?.user?.id != null &&
     Number(playlist.user.id) === Number(currentUser.id);
+
+  // Cộng tác viên cũng có quyền thêm/xóa bài hát
+  const isCollaborator =
+    !isLikedPage &&
+    playlist?.collaborators?.some(c => Number(c.userId) === Number(currentUser.id));
+
+  const canEditSongs = isPlaylistOwner || isCollaborator;
 
   const copyPageLink = async () => {
     try {
@@ -282,7 +369,14 @@ const PlaylistView = () => {
           </div>
         )}
         <div>
-          <p className="text-xs font-bold uppercase">Playlist</p>
+          <p className="text-xs font-bold uppercase flex items-center gap-2">
+            Playlist
+            {playlist.isCollaborative && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#00e6e6] bg-[#00e6e6]/10 px-2 py-0.5 rounded-full border border-[#00e6e6]/30 normal-case">
+                <Users size={10} /> Cộng tác
+              </span>
+            )}
+          </p>
           <h1 className="text-5xl md:text-7xl font-black my-2">{playlist.title}</h1>
           <p className="text-gray-300 text-sm font-bold">
             {playlist.user?.displayName || playlist.user?.username || 'Unknown'} • {songs.length} bài hát
@@ -323,6 +417,19 @@ const PlaylistView = () => {
               >
                 Sao chép link
               </button>
+              
+              {/* Nút tạo bản sao (Clone) cho người xem khác nếu playlist công khai */}
+              {!isLikedPage && !isPlaylistOwner && playlist.isPublic && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full px-4 py-2.5 text-left text-sm text-[#00e6e6] hover:bg-[#00e6e6]/10 font-bold"
+                  onClick={handleClonePlaylist}
+                >
+                  Tạo bản sao
+                </button>
+              )}
+
               {!isLikedPage && isPlaylistOwner && (
                 <>
                   <button
@@ -350,6 +457,76 @@ const PlaylistView = () => {
           )}
         </div>
       </div>
+
+      {/* Collaboration Manager Panel (Only for owner) */}
+      {!isLikedPage && isPlaylistOwner && (
+        <div className="mx-8 mb-8 p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4 max-w-xl backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-base text-white">Chế độ cộng tác (Collaborative)</h3>
+              <p className="text-xs text-[#a0a0a0] mt-0.5">Cho phép cộng tác viên thêm hoặc xóa bài hát vào playlist.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleCollaborative}
+              className={`px-4 py-1.5 rounded-full font-bold text-xs transition ${playlist.isCollaborative ? 'bg-[#00e6e6] text-black hover:scale-102' : 'bg-white/10 text-white hover:bg-white/20'}`}
+            >
+              {playlist.isCollaborative ? 'Đang bật' : 'Đang tắt'}
+            </button>
+          </div>
+
+          {playlist.isCollaborative && (
+            <div className="space-y-4 pt-4 border-t border-white/5">
+              <form onSubmit={handleAddCollaborator} className="flex gap-2">
+                <input
+                  type="text"
+                  value={collabUsername}
+                  onChange={(e) => setCollabUsername(e.target.value)}
+                  placeholder="Username hoặc Email người cộng tác"
+                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00e6e6] transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={collabLoading}
+                  className="bg-white hover:bg-gray-200 text-black text-xs font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Thêm
+                </button>
+              </form>
+
+              {playlist.collaborators && playlist.collaborators.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-[#a0a0a0] uppercase tracking-wider">Cộng tác viên ({playlist.collaborators.length})</p>
+                  <div className="grid gap-2">
+                    {playlist.collaborators.map(c => {
+                      const u = c.user;
+                      return (
+                        <div key={c.userId} className="flex items-center justify-between p-2.5 bg-black/20 rounded-lg border border-white/5">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={getMediaUrl(u.avatarUrl) || 'https://i.pravatar.cc/150'}
+                              alt=""
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                            <span className="text-sm font-medium text-white">{u.displayName || u.username}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCollaborator(c.userId)}
+                            className="text-xs font-bold text-red-400 hover:text-red-300 px-2 py-1"
+                          >
+                            Gỡ
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Danh sách bài hát */}
       <div className="px-8 pb-32">
@@ -414,13 +591,17 @@ const PlaylistView = () => {
                           className={`transition-colors ${likedSongIds.has(song.id) ? 'text-[#00e6e6] fill-current' : 'text-gray-400 hover:text-white'}`}
                         />
                       </button>
+                      
+                      {/* Cho phép cộng tác viên hoặc chủ sở hữu thêm bài này sang playlist khác */}
                       {!isLikedPage && (
                         <AddToPlaylistMenu
                           songId={song.id}
                           onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
                         />
                       )}
-                      {isPlaylistOwner && !isLikedPage && (
+
+                      {/* Xóa bài khỏi playlist: Chỉ chủ sở hữu hoặc cộng tác viên được thực hiện */}
+                      {canEditSongs && !isLikedPage && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRemoveSong(song.id); }}
                           className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors"

@@ -59,8 +59,20 @@ const playlistController = {
         return res.status(404).json({ error: 'Playlist không tồn tại' });
       }
 
-      // Chỉ chủ playlist mới được thêm bài (bắt buộc xác thực userId)
-      if (playlist.userId !== userId) {
+      // Quyền chỉnh sửa: Chủ sở hữu hoặc Collaborator (nếu playlist ở chế độ cộng tác)
+      const isOwner = playlist.userId === userId;
+      let isCollaborator = false;
+
+      if (!isOwner && playlist.isCollaborative) {
+        const collab = await prisma.playlistCollaborator.findUnique({
+          where: {
+            playlistId_userId: { playlistId, userId }
+          }
+        });
+        isCollaborator = !!collab;
+      }
+
+      if (!isOwner && !isCollaborator) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 
@@ -113,8 +125,20 @@ const playlistController = {
         return res.status(404).json({ error: 'Playlist không tồn tại' });
       }
 
-      // Kiểm tra quyền sở hữu
-      if (playlist.userId !== userId) {
+      // Quyền chỉnh sửa: Chủ sở hữu hoặc Collaborator (nếu playlist ở chế độ cộng tác)
+      const isOwner = playlist.userId === userId;
+      let isCollaborator = false;
+
+      if (!isOwner && playlist.isCollaborative) {
+        const collab = await prisma.playlistCollaborator.findUnique({
+          where: {
+            playlistId_userId: { playlistId, userId }
+          }
+        });
+        isCollaborator = !!collab;
+      }
+
+      if (!isOwner && !isCollaborator) {
         return res.status(403).json({ error: 'Bạn không có quyền chỉnh sửa Playlist này' });
       }
 
@@ -143,6 +167,11 @@ const playlistController = {
         where: { id: playlistId },
         include: {
           user: { select: { id: true, username: true, avatarUrl: true } },
+          collaborators: {
+            include: {
+              user: { select: { id: true, username: true, displayName: true, avatarUrl: true } }
+            }
+          },
           songs: { // Gọi vào bảng trung gian PlaylistSong
             include: {
               song: {
@@ -164,7 +193,7 @@ const playlistController = {
 
       if (!playlist) return res.status(404).json({ error: 'Không tìm thấy Playlist này!' });
 
-      // Nếu playlist không public, chỉ chủ playlist hoặc admin mới có quyền xem
+      // Nếu playlist không public, chỉ chủ playlist, collaborator hoặc admin mới có quyền xem
       const requesterId = req.user ? req.user.id : null;
       let isAdmin = false;
       if (requesterId) {
@@ -172,7 +201,10 @@ const playlistController = {
         isAdmin = requesterUser ? requesterUser.isAdmin : false;
       }
 
-      if (!playlist.isPublic && playlist.userId !== requesterId && !isAdmin) {
+      const isOwner = playlist.userId === requesterId;
+      const isCollab = playlist.collaborators.some(c => c.userId === requesterId);
+
+      if (!playlist.isPublic && !isOwner && !isCollab && !isAdmin) {
         return res.status(403).json({ error: 'Playlist này là riêng tư' });
       }
 
@@ -203,14 +235,36 @@ const playlistController = {
 
       let playlists;
       if (targetUserId === requestUserId) {
-        // Lấy tất cả playlist của bản thân (cả public và private)
-        playlists = await prisma.playlist.findMany({
+        // Lấy tất cả playlist của bản thân (cả public và private), cộng thêm playlist cộng tác
+        const ownPlaylists = await prisma.playlist.findMany({
           where: { userId: targetUserId },
           include: {
             _count: { select: { songs: true } }
           },
           orderBy: { updatedAt: 'desc' }
         });
+
+        const collabPlaylists = await prisma.playlist.findMany({
+          where: {
+            collaborators: {
+              some: { userId: targetUserId }
+            }
+          },
+          include: {
+            _count: { select: { songs: true } }
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+
+        // Kết hợp và xóa bỏ trùng lặp (nếu có)
+        const combined = [...ownPlaylists];
+        collabPlaylists.forEach(cp => {
+          if (!combined.some(p => p.id === cp.id)) {
+            combined.push(cp);
+          }
+        });
+
+        playlists = combined;
       } else {
         // Lấy các playlist public của người khác
         playlists = await prisma.playlist.findMany({
@@ -247,7 +301,12 @@ const playlistController = {
       const rows = await prisma.playlistSong.findMany({
         where: {
           songId,
-          playlist: { userId: requestUserId }
+          playlist: {
+            OR: [
+              { userId: requestUserId },
+              { collaborators: { some: { userId: requestUserId } } }
+            ]
+          }
         },
         select: { playlistId: true }
       });
@@ -289,12 +348,12 @@ const playlistController = {
     }
   },
 
-  // 7. Cập nhật thông tin Playlist (title, description, isPublic)
+  // 7. Cập nhật thông tin Playlist (title, description, isPublic, isCollaborative)
   updatePlaylist: async (req, res) => {
     try {
       const playlistId = parseInt(req.params.id);
       const userId = req.user.id;
-      const { title, description, isPublic } = req.body;
+      const { title, description, isPublic, isCollaborative } = req.body;
 
       let coverArtUrl;
       if (req.file) {
@@ -316,6 +375,7 @@ const playlistController = {
       if (title !== undefined && title !== '') updateData.title = title;
       if (description !== undefined) updateData.description = description;
       if (isPublic !== undefined) updateData.isPublic = isPublic === 'true' || isPublic === true;
+      if (isCollaborative !== undefined) updateData.isCollaborative = isCollaborative === 'true' || isCollaborative === true;
       if (coverArtUrl !== undefined) updateData.coverArtUrl = coverArtUrl;
 
       const updatedPlaylist = await prisma.playlist.update({
@@ -327,6 +387,160 @@ const playlistController = {
     } catch (error) {
       console.error("Lỗi updatePlaylist:", error);
       res.status(500).json({ error: 'Lỗi server khi cập nhật Playlist' });
+    }
+  },
+
+  // 8. Thêm người cộng tác vào Playlist
+  addCollaborator: async (req, res) => {
+    try {
+      const playlistId = parseInt(req.params.id, 10);
+      const ownerId = req.user.id;
+      const { usernameOrEmail } = req.body;
+
+      if (!usernameOrEmail) {
+        return res.status(400).json({ error: 'Vui lòng cung cấp username hoặc email.' });
+      }
+
+      const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
+      if (!playlist) {
+        return res.status(404).json({ error: 'Playlist không tồn tại.' });
+      }
+
+      if (playlist.userId !== ownerId) {
+        return res.status(403).json({ error: 'Chỉ chủ sở hữu mới có quyền thêm người cộng tác.' });
+      }
+
+      const collaboratorUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: usernameOrEmail },
+            { email: usernameOrEmail }
+          ]
+        }
+      });
+
+      if (!collaboratorUser) {
+        return res.status(404).json({ error: 'Không tìm thấy người dùng này.' });
+      }
+
+      if (collaboratorUser.id === ownerId) {
+        return res.status(400).json({ error: 'Bạn là chủ sở hữu playlist, không thể tự cộng tác.' });
+      }
+
+      // Kiểm tra xem đã là collaborator chưa
+      const existing = await prisma.playlistCollaborator.findUnique({
+        where: {
+          playlistId_userId: {
+            playlistId,
+            userId: collaboratorUser.id
+          }
+        }
+      });
+
+      if (existing) {
+        return res.status(400).json({ error: 'Người dùng này đã tham gia cộng tác rồi.' });
+      }
+
+      await prisma.playlistCollaborator.create({
+        data: {
+          playlistId,
+          userId: collaboratorUser.id
+        }
+      });
+
+      res.status(200).json({ message: 'Đã thêm người cộng tác thành công.' });
+    } catch (error) {
+      console.error('Lỗi addCollaborator:', error);
+      res.status(500).json({ error: 'Lỗi server khi thêm người cộng tác.' });
+    }
+  },
+
+  // 9. Xóa người cộng tác khỏi Playlist
+  removeCollaborator: async (req, res) => {
+    try {
+      const playlistId = parseInt(req.params.id, 10);
+      const targetUserId = parseInt(req.params.userId, 10);
+      const ownerId = req.user.id;
+
+      const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
+      if (!playlist) {
+        return res.status(404).json({ error: 'Playlist không tồn tại.' });
+      }
+
+      if (playlist.userId !== ownerId) {
+        return res.status(403).json({ error: 'Chỉ chủ sở hữu mới có quyền xóa người cộng tác.' });
+      }
+
+      await prisma.playlistCollaborator.delete({
+        where: {
+          playlistId_userId: {
+            playlistId,
+            userId: targetUserId
+          }
+        }
+      });
+
+      res.status(200).json({ message: 'Đã xóa người cộng tác thành công.' });
+    } catch (error) {
+      console.error('Lỗi removeCollaborator:', error);
+      res.status(500).json({ error: 'Lỗi server khi xóa người cộng tác.' });
+    }
+  },
+
+  // 10. Sao chép Playlist công khai (Playlist Cloning)
+  clonePlaylist: async (req, res) => {
+    try {
+      const originalPlaylistId = parseInt(req.params.id, 10);
+      const userId = req.user.id;
+
+      const originalPlaylist = await prisma.playlist.findUnique({
+        where: { id: originalPlaylistId },
+        include: {
+          songs: true
+        }
+      });
+
+      if (!originalPlaylist) {
+        return res.status(404).json({ error: 'Không tìm thấy playlist gốc.' });
+      }
+
+      if (!originalPlaylist.isPublic) {
+        return res.status(403).json({ error: 'Không thể sao chép playlist riêng tư.' });
+      }
+
+      // Tạo URL ngẫu nhiên cho playlist mới
+      const generatedUrl = `playlist-clone-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // Tạo playlist nhân bản
+      const clonedPlaylist = await prisma.playlist.create({
+        data: {
+          title: `Bản sao của ${originalPlaylist.title}`,
+          description: originalPlaylist.description || 'Playlist được sao chép',
+          playlistUrl: generatedUrl,
+          userId: userId,
+          coverArtUrl: originalPlaylist.coverArtUrl,
+          isPublic: false // Mặc định riêng tư khi sao chép
+        }
+      });
+
+      // Sao chép tất cả các bài hát sang playlist mới
+      if (originalPlaylist.songs.length > 0) {
+        const songData = originalPlaylist.songs.map(ps => ({
+          playlistId: clonedPlaylist.id,
+          songId: ps.songId
+        }));
+        await prisma.playlistSong.createMany({
+          data: songData
+        });
+      }
+
+      res.status(201).json({
+        message: 'Sao chép playlist thành công!',
+        playlist: clonedPlaylist
+      });
+    } catch (error) {
+      console.error('Lỗi clonePlaylist:', error);
+      res.status(500).json({ error: 'Lỗi server khi sao chép playlist.' });
     }
   }
 };
