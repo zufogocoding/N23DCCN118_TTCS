@@ -76,6 +76,7 @@ model Playlist {
   coverArtUrl String?  @db.VarChar(500)
   playlistUrl String   @unique @db.VarChar(255)
   isPublic    Boolean  @default(true)
+  isSystem    Boolean  @default(false)
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())

@@ -9,6 +9,8 @@ const optionalAuthMiddleware = require('../middlewares/optionalAuthMiddleware');
 // Tạo playlist mới
 router.post('/api/playlists', authMiddleware, uploadPlaylistCover.single('cover'), playlistController.createPlaylist);
 
+router.get('/api/playlists/system', playlistController.getSystemPlaylists);
+
 // Lấy danh sách playlist của 1 user
 router.get('/api/playlists/user/:userId', authMiddleware, playlistController.getUserPlaylists);
 

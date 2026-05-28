@@ -328,6 +328,29 @@ const playlistController = {
       console.error("Lỗi updatePlaylist:", error);
       res.status(500).json({ error: 'Lỗi server khi cập nhật Playlist' });
     }
+  },
+
+  getSystemPlaylists: async (req, res) => {
+    try {
+      const playlists = await prisma.playlist.findMany({
+        where: { isSystem: true, isPublic: true },
+        include: {
+          _count: {
+            select: { songs: true }
+          },
+          songs: {
+            include: {
+              song: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(playlists);
+    } catch (error) {
+      console.error("Lỗi lấy system playlists:", error);
+      res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+    }
   }
 };
 

@@ -19,6 +19,7 @@ export default function Home() {
 
   const [songs, setSongs] = useState([]);
   const [userPlaylists, setUserPlaylists] = useState([]);
+  const [systemPlaylists, setSystemPlaylists] = useState([]);
 
   const [albums, setAlbums] = useState([]);
 
@@ -53,7 +54,7 @@ export default function Home() {
     async function fetchData() {
       try {
 
-        const [songsRes, playlistsRes, albumsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes] = await Promise.all([
+        const [songsRes, playlistsRes, albumsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes, systemPlaylistsRes] = await Promise.all([
           api.get('/api/songs'),
           user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
           api.get('/api/albums'),
@@ -61,7 +62,8 @@ export default function Home() {
           api.get('/api/charts/WEEKLY'),
           api.get('/api/charts/MONTHLY'),
           user.id ? api.get('/api/recommendations') : Promise.resolve(null),
-          user.id ? api.get('/api/interactions/recent') : Promise.resolve(null)
+          user.id ? api.get('/api/interactions/recent') : Promise.resolve(null),
+          api.get('/api/playlists/system')
         ]);
 
         let fetchedSongs = [];
@@ -95,6 +97,11 @@ export default function Home() {
         if (monthlyRes && monthlyRes.ok) {
           const data = await monthlyRes.json();
           setMonthlyChart(data?.songs || []);
+        }
+
+        if (systemPlaylistsRes && systemPlaylistsRes.ok) {
+          const data = await systemPlaylistsRes.json();
+          setSystemPlaylists(data);
         }
 
         // Set recommendations
@@ -360,40 +367,33 @@ export default function Home() {
               {user.username && <h2 className="text-xl font-bold text-text">{user.artistName || user.displayName || user.username}</h2>}
             </div>
 
-            {/* Section: My Library - User Playlists từ DB */}
-            {user.id && (
+            {/* Section: Danh sách phát phổ biến */}
+            {systemPlaylists.length > 0 && (
               <div className="mb-10">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-primary">My Library</h2>
+                  <h2 className="text-xl font-bold text-primary">Danh sách phát phổ biến</h2>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {/* Liked Songs Card */}
-                  <div
-                    onClick={() => navigate('/playlist/liked')}
-                    className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group shadow-lg"
-                  >
-                    <div className="w-full aspect-square bg-gradient-to-br from-indigo-600 to-purple-800 rounded-md mb-4 shadow-lg flex items-center justify-center">
-                      <Heart size={48} className="text-white fill-current" />
-                    </div>
-                    <h3 className="font-bold truncate text-text">Liked Songs</h3>
-                  </div>
-
-                  {/* User playlists từ DB */}
-                  {userPlaylists.map(pl => (
+                  {systemPlaylists.map(pl => (
                     <div
                       key={pl.id}
                       onClick={() => navigate(`/playlist/${pl.id}`)}
                       className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group shadow-lg"
                     >
-                      <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-border rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
+                      <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-border rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden relative">
                         {pl.coverArtUrl ? (
-                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover" />
+                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
                           <span className="text-4xl">🎵</span>
                         )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                           <button className="w-12 h-12 rounded-full bg-primary text-black flex items-center justify-center shadow-2xl transform translate-y-3 group-hover:translate-y-0 transition-all duration-300 hover:scale-105">
+                             <Play size={24} fill="currentColor" className="ml-1" />
+                           </button>
+                        </div>
                       </div>
                       <h3 className="font-bold truncate text-text">{pl.title}</h3>
-                      <p className="text-xs text-text-muted mt-1">{pl._count?.songs || 0} bài hát</p>
+                      <p className="text-xs text-text-muted mt-1">{pl._count?.songs || pl.songs?.length || 0} bài hát</p>
                     </div>
                   ))}
                 </div>

@@ -206,7 +206,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Tổng người dùng" value={stats.totalUsers} loading={loading} />
         <StatCard title="Tổng bài hát" value={stats.totalSongs} loading={loading} />
-        <StatCard title="Tổng playlist" value={stats.totalPlaylists} loading={loading} />
+        <StatCard title="Tổng danh sách phát hệ thống" value={stats.totalPlaylists} loading={loading} />
         <StatCard title="Yêu cầu nghệ sĩ chờ duyệt" value={stats.pendingArtists} loading={loading} />
       </div>
 

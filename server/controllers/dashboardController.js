@@ -7,7 +7,7 @@ const dashboardController = {
       const [totalUsers, totalSongs, totalPlaylists, pendingArtists] = await Promise.all([
         prisma.user.count(),
         prisma.song.count({ where: { isDeleted: false } }),
-        prisma.playlist.count(),
+        prisma.playlist.count({ where: { isSystem: true } }),
         prisma.artistRequest.count({ where: { status: 'PENDING' } }) // Đếm yêu cầu đăng ký chưa được duyệt
       ]);
 
