@@ -1,4 +1,5 @@
 const prisma = require('../db/index');
+const { sendTakedownEmail } = require('../utils/emailService');
 
 // GET /api/admin/reports
 const getReports = async (req, res) => {
@@ -79,6 +80,8 @@ const resolveReport = async (req, res) => {
     if (!report) return res.status(404).json({ error: "Không tìm thấy báo cáo." });
     if (report.status !== 'PENDING') return res.status(400).json({ error: "Báo cáo này đã được xử lý." });
 
+    let emailToSend = null;
+
     await prisma.$transaction(async (tx) => {
       await tx.report.update({
         where: { id: parseInt(id) },
@@ -94,11 +97,25 @@ const resolveReport = async (req, res) => {
           });
 
           if (updatedSong.uploadedById) {
+            const userToEmail = await tx.user.findUnique({
+              where: { id: updatedSong.uploadedById }
+            });
+            if (userToEmail) {
+              emailToSend = {
+                email: userToEmail.email,
+                artistName: userToEmail.displayName || userToEmail.username,
+                title: updatedSong.title,
+                type: 'SONG',
+                reason: report.reason,
+                proofUrl: report.proofUrl
+              };
+            }
+
             await tx.notification.create({
               data: {
                 userId: updatedSong.uploadedById,
                 type: 'info',
-                message: `CẢNH BÁO: Bài hát "${updatedSong.title}" của bạn đã bị ẩn do vi phạm quy định (Lý do: ${report.reason}). Vui lòng liên hệ admin nếu bạn cho rằng đây là nhầm lẫn.`
+                message: `CẢNH BÁO: Bài hát "${updatedSong.title}" của bạn đã bị ẩn do vi phạm quy định (Lý do: ${report.reason}). Vui lòng kiểm tra email để biết hướng dẫn kháng cáo bản quyền.`
               }
             });
           }
@@ -114,11 +131,25 @@ const resolveReport = async (req, res) => {
           });
 
           if (updatedAlbum.artistId) {
+            const userToEmail = await tx.user.findUnique({
+              where: { id: updatedAlbum.artistId }
+            });
+            if (userToEmail) {
+              emailToSend = {
+                email: userToEmail.email,
+                artistName: userToEmail.displayName || userToEmail.username,
+                title: updatedAlbum.title,
+                type: 'ALBUM',
+                reason: report.reason,
+                proofUrl: report.proofUrl
+              };
+            }
+
             await tx.notification.create({
               data: {
                 userId: updatedAlbum.artistId,
                 type: 'info',
-                message: `CẢNH BÁO: Album "${updatedAlbum.title}" của bạn đã bị gỡ bỏ do vi phạm quy định (Lý do: ${report.reason}). Vui lòng liên hệ admin nếu bạn cho rằng đây là nhầm lẫn.`
+                message: `CẢNH BÁO: Album "${updatedAlbum.title}" của bạn đã bị gỡ bỏ do vi phạm quy định (Lý do: ${report.reason}). Vui lòng kiểm tra email để biết hướng dẫn kháng cáo bản quyền.`
               }
             });
           }
@@ -149,6 +180,17 @@ const resolveReport = async (req, res) => {
         }
       }
     });
+
+    if (emailToSend) {
+      sendTakedownEmail(
+        emailToSend.email,
+        emailToSend.artistName,
+        emailToSend.title,
+        emailToSend.type,
+        emailToSend.reason,
+        emailToSend.proofUrl
+      ).catch(err => console.error("Lỗi khi gửi email takedown:", err));
+    }
 
     res.json({ message: "Đã xử lý vi phạm thành công." });
   } catch (error) {

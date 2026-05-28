@@ -76,6 +76,57 @@ const createReport = async (req, res) => {
       },
     });
 
+    // Tự động kiểm tra ngưỡng báo cáo để cảnh báo admin
+    try {
+      const pendingCount = await prisma.report.count({
+        where: {
+          targetType: normalizedType,
+          targetId: parsedTargetId,
+          status: 'PENDING'
+        }
+      });
+
+      if (pendingCount >= 3) {
+        let targetTitle = `đối tượng #${parsedTargetId}`;
+        if (normalizedType === 'SONG') {
+          const s = await prisma.song.findUnique({ where: { id: parsedTargetId }, select: { title: true } });
+          if (s) targetTitle = `Bài hát "${s.title}"`;
+        } else if (normalizedType === 'ALBUM') {
+          const a = await prisma.album.findUnique({ where: { id: parsedTargetId }, select: { title: true } });
+          if (a) targetTitle = `Album "${a.title}"`;
+        } else if (normalizedType === 'ARTIST') {
+          const u = await prisma.user.findUnique({ where: { id: parsedTargetId }, select: { displayName: true, username: true } });
+          if (u) targetTitle = `Nghệ sĩ "${u.displayName || u.username}"`;
+        }
+
+        // Tìm tất cả admin
+        const admins = await prisma.user.findMany({
+          where: {
+            OR: [
+              { role: 'admin' },
+              { isAdmin: true }
+            ]
+          },
+          select: { id: true }
+        });
+
+        // Tạo thông báo cho toàn bộ admin
+        if (admins.length > 0) {
+          const notificationsData = admins.map(admin => ({
+            userId: admin.id,
+            type: 'info',
+            message: `⚠ CẢNH BÁO BẢN QUYỀN: ${targetTitle} đã nhận tới ${pendingCount} báo cáo vi phạm PENDING. Vui lòng rà soát và xử lý.`
+          }));
+
+          await prisma.notification.createMany({
+            data: notificationsData
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi khi gửi cảnh báo vượt ngưỡng báo cáo:", err);
+    }
+
     res.status(201).json({ message: "Báo cáo của bạn đã được gửi thành công. Admin sẽ xem xét sớm.", report });
   } catch (error) {
     console.error("Lỗi khi tạo báo cáo:", error);
