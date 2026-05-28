@@ -36,6 +36,17 @@ class ImplicitALSModel:
               i."durationPlayed"
             FROM "Interaction" i
             LEFT JOIN "SongLike" l ON i."userId" = l."userId" AND i."songId" = l."songId"
+            
+            UNION ALL
+            
+            SELECT 
+              "userId", 
+              "songId", 
+              1.0 AS "completionRate", 
+              true AS "isLiked", 
+              false AS "isSkipped", 
+              0 AS "durationPlayed"
+            FROM "SongLike"
         """
         query_users = 'SELECT id FROM "User" WHERE "isActive" = true'
         query_songs = 'SELECT id FROM "Song" WHERE "isDeleted" = false AND status = \'approved\''
