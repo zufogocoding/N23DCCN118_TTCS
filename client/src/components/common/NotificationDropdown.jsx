@@ -87,6 +87,8 @@ export default function NotificationDropdown() {
     switch (type) {
       case 'artist_approved': return 'border-l-[#1db954]';
       case 'artist_rejected': return 'border-l-[#ff4d4f]';
+      case 'new_album': return 'border-l-[#8b5cf6]';
+      case 'new_song': return 'border-l-[#f59e0b]';
       default: return 'border-l-[#00e6e6]';
     }
   };

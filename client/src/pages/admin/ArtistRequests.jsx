@@ -56,8 +56,8 @@ export default function ArtistRequests() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Artist Requests</h1>
-        <p className="text-[#a0a0a0]">{requests.length} pending approval</p>
+        <h1 className="text-3xl font-bold text-white mb-2">Yêu cầu đăng ký Nghệ sĩ</h1>
+        <p className="text-[#a0a0a0]">{requests.length} yêu cầu đang chờ duyệt</p>
       </div>
 
       {requests.length === 0 ? (
@@ -120,13 +120,13 @@ export default function ArtistRequests() {
                     onClick={() => handleAction(req.id, 'approve')}
                     className="flex items-center justify-center gap-2 bg-[#00e6e6] hover:bg-[#00c8c8] text-black font-bold py-2 rounded-lg transition-colors"
                   >
-                    <Check size={16} /> Approve
+                    <Check size={16} /> Duyệt
                   </button>
                   <button 
                     onClick={() => handleAction(req.id, 'reject')}
                     className="flex items-center justify-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-white font-bold py-2 rounded-lg transition-colors"
                   >
-                    <X size={16} /> Reject
+                    <X size={16} /> Từ chối
                   </button>
                 </div>
               </div>

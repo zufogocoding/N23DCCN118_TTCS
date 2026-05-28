@@ -36,8 +36,6 @@ export default function UploadSong() {
   const [tempo, setTempo] = useState("");
   const [energy, setEnergy] = useState(0.5);
   const [danceability, setDanceability] = useState(0.5);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisStep, setAnalysisStep] = useState(0);
 
 
   // Fetch genres từ API
@@ -136,6 +134,9 @@ export default function UploadSong() {
         formData.append("albumId", selectedAlbumId);
       }
       formData.append("isOriginal", isOriginal);
+      if (description.trim()) {
+        formData.append("description", description.trim());
+      }
 
       // Append custom audio properties for artists V4
       if (tempo) formData.append("tempo", tempo);
@@ -173,18 +174,8 @@ export default function UploadSong() {
         xhr.send(formData);
       });
 
-      // Thay vì setUploadSuccess(true) ngay lập tức, chuyển sang trạng thái phân tích AI
-      setIsAnalyzing(true);
-      setAnalysisStep(1);
-      
-      // Chạy hiệu ứng mô phỏng các bước phân tích DSP của hệ thống AI
-      setTimeout(() => setAnalysisStep(2), 800);
-      setTimeout(() => setAnalysisStep(3), 1600);
-      setTimeout(() => setAnalysisStep(4), 2400);
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setUploadSuccess(true);
-      }, 3200);
+      // Xóa phần giả lập AI analysis
+      setUploadSuccess(true);
 
     } catch (err) {
       console.error(err);
@@ -193,52 +184,6 @@ export default function UploadSong() {
       setUploading(false);
     }
   };
-
-  // Analyzing / DSP progress state V4
-  if (isAnalyzing) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-6">
-        <div className="text-center max-w-md w-full p-8 rounded-3xl bg-[#121212] border border-[#222] shadow-2xl relative overflow-hidden backdrop-blur-md">
-          
-          {/* Glowing ambient background inside card */}
-          <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00e6e6]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Spinning Glowing Circular Loader */}
-          <div className="relative w-36 h-36 mx-auto mb-8 flex items-center justify-center">
-            {/* Inner spinning ring */}
-            <div className="absolute inset-0 rounded-full border-4 border-t-[#00e6e6] border-r-transparent border-b-[#10b981] border-l-transparent animate-spin duration-1000" />
-            {/* Outer spinning ring (reverse) */}
-            <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-[#10b981] border-b-transparent border-l-[#00e6e6] animate-spin duration-1500" style={{ animationDirection: 'reverse' }} />
-            {/* Center pulsing pulse wave icon */}
-            <div className="w-20 h-20 rounded-full bg-[#1c1c1c] border border-[#2a2a2a] flex items-center justify-center">
-              <Music size={32} className="text-[#00e6e6] animate-bounce" />
-            </div>
-          </div>
-
-          <h2 className="text-2xl font-bold mb-3 tracking-tight">AI Đang Phân Tích Bài Hát</h2>
-          
-          {/* Analysis Step Messaging */}
-          <div className="h-16 flex items-center justify-center px-4 mb-6">
-            <p className="text-sm font-medium text-[#a0a0a0] transition-all duration-300 animate-pulse text-center leading-relaxed">
-              {analysisStep === 1 && "⚡ Đang nạp tệp nhạc vào lõi giải mã âm phổ..."}
-              {analysisStep === 2 && "🥁 Đang trích xuất cấu trúc nhịp và ước lượng BPM..."}
-              {analysisStep === 3 && "🔥 Đang tính toán năng lượng (Energy) và độ sôi động (Danceability)..."}
-              {analysisStep === 4 && "✨ Hoàn thành tính toán! Đang lưu vector nhúng pgvector..."}
-            </p>
-          </div>
-
-          {/* Flat Progress Bar representing Backend analysis progress */}
-          <div className="h-1.5 bg-[#222] rounded-full overflow-hidden w-full max-w-xs mx-auto">
-            <div 
-              className="h-full bg-gradient-to-r from-[#00e6e6] to-[#10b981] rounded-full transition-all duration-300"
-              style={{ width: `${(analysisStep / 4) * 100}%` }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Success state
   if (uploadSuccess) {

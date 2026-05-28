@@ -320,6 +320,21 @@ const changePassword = async (req, res) => {
 const deleteAccount = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ error: "Vui lòng nhập mật khẩu để xác nhận xóa tài khoản" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "Người dùng không tồn tại" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Mật khẩu không chính xác" });
+    }
 
     // Prisma on cascade delete should handle related rows (songs, playlists, etc.)
     // if configured properly in schema.prisma.

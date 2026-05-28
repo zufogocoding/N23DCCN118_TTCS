@@ -351,14 +351,13 @@ export default function ReleaseManager() {
       });
       if (res.ok) { loadAlbum(); alert('Album đã được phát hành!'); }
       else { const e = await res.json().catch(() => ({})); alert(e.error || 'Lỗi'); }
-    } catch { } finally { setActionBusy(''); }
+    } catch (e) { console.error('Lỗi khi phát hành:', e); } finally { setActionBusy(''); }
   };
 
   // Schedule
   const handleSchedule = async () => {
     if (!scheduledAt) { alert('Chọn thời gian phát hành'); return; }
 
-    const pendingTracks = tracks.filter(t => t.status === 'pending');
     const approvedTracks = tracks.filter(t => t.status === 'approved');
 
     if (approvedTracks.length === 0) {

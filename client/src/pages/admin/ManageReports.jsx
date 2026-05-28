@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  ShieldAlert, RefreshCw, X, AlertTriangle, CheckCircle,
-  Eye, Filter, ExternalLink, MessageSquare, Ban, ThumbsDown
+  ShieldAlert, RefreshCw, X, AlertTriangle, CheckCircle, Clock,
+  Filter, ExternalLink, MessageSquare, Ban
 } from 'lucide-react';
 import { api, getMediaUrl } from '../../utils/api';
 
@@ -11,8 +11,6 @@ const STATUS_MAP = {
   RESOLVED: { label: 'Đã xử lý', cls: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400', icon: <CheckCircle size={10} /> },
   REJECTED: { label: 'Đã bác bỏ', cls: 'bg-red-500/15 border-red-500/40 text-red-400', icon: <Ban size={10} /> },
 };
-
-import { Clock } from 'lucide-react';
 
 function StatusBadge({ status }) {
   const s = STATUS_MAP[status] || STATUS_MAP.PENDING;
@@ -47,6 +45,7 @@ export default function ManageReports() {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('PENDING');
+  const [targetTypeFilter, setTargetTypeFilter] = useState('ALL');
 
   // UI state
   const [actionLoading, setActionLoading] = useState(false);
@@ -64,6 +63,8 @@ export default function ManageReports() {
         page, limit: 15,
         status: statusFilter
       });
+      if (targetTypeFilter !== 'ALL') params.append('targetType', targetTypeFilter);
+      
       const res = await api.get(`/api/admin/reports?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -77,7 +78,7 @@ export default function ManageReports() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, showToast]);
+  }, [statusFilter, targetTypeFilter, showToast]);
 
   useEffect(() => {
     fetchReports(1);
@@ -96,7 +97,7 @@ export default function ManageReports() {
       } else {
         showToast(data.error || 'Lỗi khi xử lý', 'error');
       }
-    } catch (e) {
+    } catch {
       showToast('Lỗi kết nối server', 'error');
     } finally {
       setActionLoading(false);
@@ -115,7 +116,7 @@ export default function ManageReports() {
       } else {
         showToast(data.error || 'Lỗi khi bác bỏ', 'error');
       }
-    } catch (e) {
+    } catch {
       showToast('Lỗi kết nối server', 'error');
     } finally {
       setActionLoading(false);
@@ -164,6 +165,26 @@ export default function ManageReports() {
                 onClick={() => setStatusFilter(v)}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap
                   ${statusFilter === v ? 'bg-[#00e6e6]/15 text-[#00e6e6] border border-[#00e6e6]/30 shadow-[0_0_10px_rgba(0,230,230,0.2)]' : 'text-[#666] hover:text-[#aaa]'}`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+
+          <div className="hidden lg:flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-1 overflow-x-auto hide-scrollbar">
+            {[
+              ['ALL', 'Mọi đối tượng'],
+              ['SONG', 'Bài hát'],
+              ['ALBUM', 'Album'],
+              ['PLAYLIST', 'Playlist'],
+              ['ARTIST', 'Nghệ sĩ'],
+              ['USER', 'Người dùng'],
+            ].map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setTargetTypeFilter(v)}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap
+                  ${targetTypeFilter === v ? 'bg-[#00e6e6]/15 text-[#00e6e6] border border-[#00e6e6]/30 shadow-[0_0_10px_rgba(0,230,230,0.2)]' : 'text-[#666] hover:text-[#aaa]'}`}
               >
                 {l}
               </button>
@@ -313,7 +334,6 @@ export default function ManageReports() {
                     {selectedReport.targetInfo.audioUrl ? (
                       <audio 
                         controls 
-                        autoPlay 
                         src={getMediaUrl(selectedReport.targetInfo.audioUrl)} 
                         className="w-full h-10 outline-none" 
                       />

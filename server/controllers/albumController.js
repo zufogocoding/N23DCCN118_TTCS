@@ -1,5 +1,6 @@
 const prisma = require('../db/index');
 const path = require('path');
+const { notifyFollowersAboutAlbumRelease } = require('../services/notificationService');
 
 const songListInclude = {
   artists: {
@@ -381,14 +382,20 @@ const albumController = {
         });
       }
 
-      await prisma.album.update({
-        where: { id: albumId },
-        data: {
-          status: 'released',
-          releasedDate: new Date(),
-          scheduledAt: null,
-        },
+      const releasedAt = new Date();
+      const notificationCount = await prisma.$transaction(async (tx) => {
+        await tx.album.update({
+          where: { id: albumId },
+          data: {
+            status: 'released',
+            releasedDate: releasedAt,
+            scheduledAt: null,
+          },
+        });
+
+        return notifyFollowersAboutAlbumRelease(tx, albumId);
       });
+      console.log(`[Notification] Created ${notificationCount} new_album notifications for album ${albumId}`);
 
       res.json({ message: 'Album đã được phát hành!', approvedCount: allSongs.length, pendingCount: 0 });
     } catch (e) {

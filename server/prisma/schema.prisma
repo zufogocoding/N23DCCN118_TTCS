@@ -62,6 +62,9 @@ model Artist {
 
   followerCount Int @default(0) // hien fl cho frontend
   status String @default("active") // trang thai artist active -banned - pending
+  pinnedSongId Int? // Bài hát được ghim
+  pinnedSong   Song? @relation("ArtistPinnedSong", fields: [pinnedSongId], references: [id], onDelete: SetNull)
+
   albums Album[]
   songs  ArtistSong[]
 }
@@ -129,6 +132,7 @@ model Song {
   charts              ChartSong[]
   recommendationCache RecommendationCache[]
   likes               SongLike[]
+  pinnedByArtists     Artist[] @relation("ArtistPinnedSong")
 
   // Tối ưu câu lệnh WHERE isDeleted = false khi quét toàn bộ bảng
   @@index([isDeleted])
@@ -283,7 +287,7 @@ model Notification {
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   message   String   @db.Text
-  type      String   @default("info") @db.VarChar(50) // info, artist_approved, artist_rejected
+  type      String   @default("info") @db.VarChar(50) // info, artist_approved, artist_rejected, new_album, new_song
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 

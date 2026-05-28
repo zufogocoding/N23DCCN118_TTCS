@@ -31,6 +31,8 @@ import AddToPlaylistMenu from "../common/AddToPlaylistMenu";
 import { api } from "../../utils/api";
 import { getCoverArt } from "../../utils/songHelpers";
 import useClickOutside from "../../hooks/useClickOutside";
+import { FastAverageColor } from 'fast-average-color';
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 function formatPlayerClock(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
@@ -132,9 +134,8 @@ export default function MainLayout() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlaylists();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!currentSong?.id) {
@@ -165,6 +166,30 @@ export default function MainLayout() {
       action();
     }
   };
+
+  const [ambientColor, setAmbientColor] = useState('transparent');
+  const [isNowPlayingExpanded, setIsNowPlayingExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!currentSong) {
+      setAmbientColor('transparent');
+      return;
+    }
+    const coverArt = getCoverArt(currentSong);
+    if (!coverArt) {
+      setAmbientColor('transparent');
+      return;
+    }
+    const fac = new FastAverageColor();
+    fac.getColorAsync(coverArt, { algorithm: 'dominant' })
+      .then(color => {
+        setAmbientColor(color.rgba);
+      })
+      .catch(e => {
+        console.log(e);
+        setAmbientColor('transparent');
+      });
+  }, [currentSong]);
 
   return (
     <div className="flex flex-col h-screen bg-background text-text font-sans overflow-hidden">
@@ -308,27 +333,97 @@ export default function MainLayout() {
 
       </div>
 
+      {/* NOW PLAYING FULLSCREEN OVERLAY */}
+      <div 
+        className={`fixed inset-0 z-40 bg-background transition-all duration-500 ease-in-out ${isNowPlayingExpanded ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}
+      >
+        {currentSong && (
+          <>
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-110"
+              style={{ backgroundImage: `url(${getCoverArt(currentSong)})` }}
+            />
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="relative h-full flex flex-col items-center justify-center p-8">
+              <button 
+                onClick={() => setIsNowPlayingExpanded(false)}
+                className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-all"
+              >
+                <ChevronDown size={32} />
+              </button>
+              
+              <img 
+                src={getCoverArt(currentSong)} 
+                alt="" 
+                className={`w-[40vh] h-[40vh] md:w-[50vh] md:h-[50vh] object-cover rounded-2xl shadow-2xl transition-transform duration-500 ${isPlaying ? 'scale-100' : 'scale-95'}`}
+                style={{ boxShadow: `0 25px 50px -12px ${ambientColor}` }}
+              />
+              
+              <h2 className="text-4xl md:text-5xl font-black text-white mt-12 text-center drop-shadow-lg">{currentSong.title}</h2>
+              <p className="text-xl md:text-2xl text-gray-300 mt-4 text-center">{currentSong.artist?.name || "Nghệ sĩ"}</p>
+              
+              {/* Audio Visualizer (Large) */}
+              <div className="flex gap-2 mt-12 h-16 items-end">
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_0.8s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.1s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_1.2s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.3s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_0.9s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.5s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_1.1s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.2s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_1.3s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.4s' }} />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER HOẠT ĐỘNG */}
-      <div className="min-h-[96px] shrink-0 bg-[#0a0a0a] border-t border-[#222] flex items-center justify-between gap-4 px-6 py-2 z-50">
+      <div 
+        className="min-h-[96px] shrink-0 bg-[#0a0a0a]/90 backdrop-blur-3xl border-t border-white/5 flex items-center justify-between gap-4 px-6 py-2 z-50 relative transition-all duration-1000 ease-in-out"
+      >
+        {/* Ambient Glow */}
+        <div 
+          className="absolute inset-0 opacity-10 pointer-events-none transition-all duration-1000 ease-in-out" 
+          style={{ background: `linear-gradient(to top, ${ambientColor}, transparent)` }} 
+        />
+        <div 
+          className="absolute top-0 left-0 right-0 h-[1px] opacity-40 transition-all duration-1000 ease-in-out pointer-events-none"
+          style={{ boxShadow: `0 -10px 40px 20px ${ambientColor}` }}
+        />
 
         {/* 1. Trái: Info bài hát */}
-        <div className="flex items-center gap-4 min-w-0 flex-[1.2] max-w-[30vw]">
+        <div className="flex items-center gap-4 min-w-0 flex-[1.2] max-w-[30vw] relative z-10">
           {currentSong ? (
             <>
               {getCoverArt(currentSong) ? (
-                <img
-                  src={getCoverArt(currentSong)}
-                  alt=""
-                  className="w-16 h-16 rounded-md object-cover shadow-[0_4px_12px_rgba(0,0,0,0.5)] shrink-0 bg-[#282828]"
-                />
+                <div 
+                  className="relative w-16 h-16 shrink-0 group cursor-pointer"
+                  onClick={() => setIsNowPlayingExpanded(!isNowPlayingExpanded)}
+                >
+                  <img
+                    src={getCoverArt(currentSong)}
+                    alt=""
+                    className="w-full h-full rounded-md object-cover shadow-lg bg-[#282828] group-hover:blur-[2px] transition-all"
+                  />
+                  <div className="absolute inset-0 bg-black/50 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                    <ChevronUp size={24} />
+                  </div>
+                </div>
               ) : (
-                <div className="w-16 h-16 rounded-md shrink-0 bg-[#282828] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+                <div className="w-16 h-16 rounded-md shrink-0 bg-[#282828] flex items-center justify-center shadow-lg">
                   <Music size={24} className="text-[#666]" strokeWidth={1.5} />
                 </div>
               )}
-              <div className="hidden sm:block min-w-0 flex-1">
+              <div className="hidden sm:flex flex-col min-w-0 flex-1 justify-center">
                 <h4 className="font-bold text-sm md:text-base text-white hover:underline cursor-pointer truncate leading-tight">{currentSong.title}</h4>
-                <p className="text-xs md:text-sm text-[#a0a0a0] hover:underline cursor-pointer truncate mt-0.5">{currentSong.artist?.name || "Nghệ sĩ"}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs md:text-sm text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Nghệ sĩ"}</p>
+                  {isPlaying && (
+                    <div className="flex items-end gap-[2px] h-[10px] opacity-80 shrink-0 mb-[1px]">
+                      <div className="w-[2px] rounded-full bg-primary animate-[audio-bar_0.8s_ease-in-out_infinite]" style={{ animationDelay: '0.1s' }} />
+                      <div className="w-[2px] rounded-full bg-primary animate-[audio-bar_1.2s_ease-in-out_infinite]" style={{ animationDelay: '0.3s' }} />
+                      <div className="w-[2px] rounded-full bg-primary animate-[audio-bar_0.9s_ease-in-out_infinite]" style={{ animationDelay: '0.5s' }} />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="hidden sm:flex items-center gap-2 shrink-0 ml-2">
                 <Heart
@@ -344,7 +439,7 @@ export default function MainLayout() {
                       .catch((err) => console.error(err));
                   }}
                   size={20}
-                  className={`cursor-pointer transition-colors ${isLiked ? "text-[#00e6e6] fill-current" : "text-[#a0a0a0] hover:text-white"}`}
+                  className={`cursor-pointer transition-all ${isLiked ? "text-primary fill-current animate-like-bounce drop-shadow-[0_0_8px_rgba(0,230,230,0.5)]" : "text-[#a0a0a0] hover:text-white hover:scale-110"}`}
                 />
 
                 {/* 3-dot Context Menu in Player Bar */}

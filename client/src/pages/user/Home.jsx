@@ -181,8 +181,8 @@ export default function Home() {
       />
 
       {/* HEADER BÊN TRONG CỘT GIỮA */}
-      <div className="sticky top-0 bg-background/90 backdrop-blur-md z-10 p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-transparent pointer-events-none">
+        <div className="flex items-center gap-4 pointer-events-auto">
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -207,7 +207,7 @@ export default function Home() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-              className="w-full py-2 pl-10 pr-4 rounded-full bg-surface text-text text-sm outline-none font-medium border border-border focus:border-primary"
+              className="w-full py-2.5 pl-11 pr-4 rounded-full bg-surface/40 backdrop-blur-xl text-text text-sm outline-none font-medium border border-white/5 focus:border-primary/50 focus:bg-surface/60 transition-all shadow-inner"
             />
             {isSearchFocused && filteredRecent.length > 0 && (
               <div className="absolute top-full left-0 w-full mt-2 bg-surface rounded-xl shadow-2xl py-2 z-50 border border-border">
@@ -239,7 +239,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 pointer-events-auto">
           <UploadButton />
         </div>
       </div>
@@ -266,7 +266,7 @@ export default function Home() {
                         <div
                           key={pl.id}
                           onClick={() => navigate(`/playlist/${pl.id}`)}
-                          className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group"
+                          className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group"
                         >
                           <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-border rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                             {pl.coverArtUrl ? (
@@ -292,7 +292,7 @@ export default function Home() {
                         <div
                           key={al.id}
                           onClick={() => navigate(`/album/${al.id}`)}
-                          className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group"
+                          className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group"
                         >
                           <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-border rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                             {al.coverArtUrl ? (
@@ -317,7 +317,7 @@ export default function Home() {
                       {filteredSongs.map(song => (
                         <div
                           key={song.id}
-                          className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group relative"
+                          className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group relative"
                         >
                           <div className="relative mb-4" onClick={() => handlePlaySong(song, filteredSongs)}>
                             <img src={getCoverArt(song)} className="w-full aspect-square object-cover rounded-md shadow-lg" alt={song.title} />
@@ -370,7 +370,7 @@ export default function Home() {
                   {/* Liked Songs Card */}
                   <div
                     onClick={() => navigate('/playlist/liked')}
-                    className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group shadow"
+                    className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group shadow-lg"
                   >
                     <div className="w-full aspect-square bg-gradient-to-br from-indigo-600 to-purple-800 rounded-md mb-4 shadow-lg flex items-center justify-center">
                       <Heart size={48} className="text-white fill-current" />
@@ -383,7 +383,7 @@ export default function Home() {
                     <div
                       key={pl.id}
                       onClick={() => navigate(`/playlist/${pl.id}`)}
-                      className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group shadow"
+                      className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group shadow-lg"
                     >
                       <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-border rounded-md mb-4 shadow-lg flex items-center justify-center overflow-hidden">
                         {pl.coverArtUrl ? (
@@ -411,11 +411,11 @@ export default function Home() {
                     Đề xuất thông minh
                   </span>
                 </div>
-                <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar">
+                <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
                   {recommendedSongs.map(song => (
                     <div
                       key={song.id}
-                      className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0 hover:scale-103 shadow-lg"
+                      className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0"
                     >
                       <div className="relative mb-4 overflow-hidden rounded-md" onClick={() => handlePlaySong(song, recommendedSongs)}>
                         <img
@@ -463,15 +463,15 @@ export default function Home() {
             {(dailyChart.length > 0 || weeklyChart.length > 0 || monthlyChart.length > 0) && (
               <div className="mb-10">
                 <h2 className="text-2xl font-bold text-text mb-4">Bảng xếp hạng nổi bật</h2>
-                <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar">
+                <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
                   
                   {/* Top 50 Ngày */}
                   <div 
-                    className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group relative w-[200px] flex-shrink-0 shadow" 
+                    className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0" 
                     onClick={() => navigate('/chart/DAILY')}
                   >
                     <div className="relative mb-4">
-                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#8A2387] via-[#E94057] to-[#F27121]">
+                      <div className="w-full aspect-square rounded-xl shadow-lg flex items-center justify-center bg-gradient-to-br from-primary/20 to-transparent border border-primary/20 backdrop-blur-xl">
                           <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Ngày</h3>
                       </div>
                       <button 
@@ -491,11 +491,11 @@ export default function Home() {
 
                   {/* Top 50 Tuần */}
                   <div 
-                    className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group relative w-[200px] flex-shrink-0 shadow" 
+                    className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0" 
                     onClick={() => navigate('/chart/WEEKLY')}
                   >
                     <div className="relative mb-4">
-                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#00C9FF] to-[#92FE9D]">
+                      <div className="w-full aspect-square rounded-xl shadow-lg flex items-center justify-center bg-gradient-to-br from-indigo-500/20 to-transparent border border-indigo-500/20 backdrop-blur-xl">
                           <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Tuần</h3>
                       </div>
                       <button 
@@ -515,11 +515,11 @@ export default function Home() {
 
                   {/* Top 50 Tháng */}
                   <div 
-                    className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer group relative w-[200px] flex-shrink-0 shadow" 
+                    className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0" 
                     onClick={() => navigate('/chart/MONTHLY')}
                   >
                     <div className="relative mb-4">
-                      <div className="w-full aspect-square rounded-md shadow-lg flex items-center justify-center bg-gradient-to-br from-[#11998e] to-[#38ef7d]">
+                      <div className="w-full aspect-square rounded-xl shadow-lg flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-transparent border border-emerald-500/20 backdrop-blur-xl">
                           <h3 className="text-white font-bold text-3xl text-center px-2">Top 50<br/>Tháng</h3>
                       </div>
                       <button 
@@ -551,8 +551,14 @@ export default function Home() {
               </div>
 
               {loading ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+                <div className="flex overflow-x-auto gap-5 pb-4 no-scrollbar">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl w-[200px] flex-shrink-0 animate-pulse">
+                      <div className="w-full aspect-square bg-white/5 rounded-md mb-4" />
+                      <div className="h-4 bg-white/5 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-white/5 rounded w-1/2" />
+                    </div>
+                  ))}
                 </div>
               ) : songs.length === 0 ? (
                 <div className="p-8 border border-dashed border-border rounded-xl text-center">
@@ -560,11 +566,11 @@ export default function Home() {
                   <p className="text-xs text-text-muted mt-2">Hãy upload bài hát qua trang Upload.</p>
                 </div>
               ) : (
-                <div className="flex overflow-x-auto gap-5 pb-4 custom-scrollbar">
+                <div className="flex overflow-x-auto gap-5 pb-4 no-scrollbar">
                   {songs.map(song => (
                     <div
                       key={song.id}
-                      className="bg-surface p-4 rounded-xl hover:bg-surface-hover transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0 hover:scale-103 shadow-lg"
+                      className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer group relative w-[200px] flex-shrink-0"
                     >
                       {/* Cover image + Play overlay */}
                       <div className="relative mb-4" onClick={() => handlePlaySong(song, songs)}>
@@ -614,9 +620,9 @@ export default function Home() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* CỘT 1: BÀI HÁT GẦN ĐÂY */}
                   {recentSongs.length > 0 && (
-                    <div className="bg-surface border border-border p-5 rounded-2xl shadow-lg">
+                    <div className="bg-surface/30 backdrop-blur-md border border-white/5 p-5 rounded-3xl shadow-2xl">
                       <h3 className="text-lg font-bold text-primary mb-4">Bài hát vừa phát</h3>
-                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto no-scrollbar">
                         {recentSongs.slice(0, 5).map((song) => (
                           <div
                             key={song.id}
@@ -637,9 +643,9 @@ export default function Home() {
 
                   {/* CỘT 2: PLAYLIST GẦN ĐÂY */}
                   {recentPlaylists.length > 0 && (
-                    <div className="bg-surface border border-border p-5 rounded-2xl shadow-lg">
+                    <div className="bg-surface/30 backdrop-blur-md border border-white/5 p-5 rounded-3xl shadow-2xl">
                       <h3 className="text-lg font-bold text-primary mb-4">Playlist đã xem</h3>
-                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto no-scrollbar">
                         {recentPlaylists.slice(0, 5).map((pl) => (
                           <div
                             key={pl.id}

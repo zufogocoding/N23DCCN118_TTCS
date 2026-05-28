@@ -1,5 +1,6 @@
 
 const prisma = require("../db/index");
+const { notifyFollowersAboutSingleRelease } = require("../services/notificationService");
 
 // ── GET /api/admin/songs ─────────────────────────────────────────────────────
 // Query params: page, limit, search, status, genreId, sortBy, sortOrder, dateFrom, dateTo
@@ -167,10 +168,29 @@ const getPendingSongs = async (req, res) => {
 const approveSong = async (req, res) => {
   try {
     const { id } = req.params;
-    const song = await prisma.song.update({
-      where: { id: Number(id) },
-      data: { status: "approved" },
+    const songId = Number(id);
+    const existing = await prisma.song.findFirst({
+      where: { id: songId, isDeleted: false },
+      select: { status: true },
     });
+
+    if (!existing) return res.status(404).json({ error: "KhÃ´ng tÃ¬m tháº¥y bÃ i hÃ¡t" });
+
+    let notificationCount = 0;
+    const song = await prisma.$transaction(async (tx) => {
+      const updated = await tx.song.update({
+        where: { id: songId },
+        data: { status: "approved" },
+      });
+
+      if (existing.status !== "approved") {
+        notificationCount = await notifyFollowersAboutSingleRelease(tx, songId);
+      }
+
+      return updated;
+    });
+    console.log(`[Notification] Created ${notificationCount} new_song notifications for song ${songId}`);
+
     res.json(song);
   } catch (error) {
     console.error(error);

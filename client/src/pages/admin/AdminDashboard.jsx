@@ -61,7 +61,7 @@ export default function AdminDashboard() {
         second: '2-digit',
         hour12: false
       }).format(date);
-    } catch (e) {
+    } catch {
       return isoString;
     }
   };
@@ -189,13 +189,13 @@ export default function AdminDashboard() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Under Review':
-        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-yellow-500/50 text-yellow-500 bg-yellow-500/10">Under Review</span>;
+        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-yellow-500/50 text-yellow-500 bg-yellow-500/10">Đang xét duyệt</span>;
       case 'Resolved':
-        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#00e6e6]/50 text-[#00e6e6] bg-[#00e6e6]/10">Resolved</span>;
+        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#00e6e6]/50 text-[#00e6e6] bg-[#00e6e6]/10">Đã xử lý</span>;
       case 'Dismissed':
-        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#555]/50 text-[#a0a0a0] bg-[#333]/50">Dismissed</span>;
+        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#555]/50 text-[#a0a0a0] bg-[#333]/50">Đã bác bỏ</span>;
       default:
-        return <span>{status}</span>;
+        return <span className="px-3 py-1 rounded-full text-xs font-bold border border-[#555]/50 text-[#a0a0a0] bg-[#333]/50">{status}</span>;
     }
   };
 
@@ -204,10 +204,10 @@ export default function AdminDashboard() {
 
       {/* 4 Thẻ Thống kê */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Users" value={stats.totalUsers} loading={loading} />
-        <StatCard title="Total Songs" value={stats.totalSongs} loading={loading} />
-        <StatCard title="Total Playlists" value={stats.totalPlaylists} loading={loading} />
-        <StatCard title="Pending Artist Requests" value={stats.pendingArtists} loading={loading} />
+        <StatCard title="Tổng người dùng" value={stats.totalUsers} loading={loading} />
+        <StatCard title="Tổng bài hát" value={stats.totalSongs} loading={loading} />
+        <StatCard title="Tổng playlist" value={stats.totalPlaylists} loading={loading} />
+        <StatCard title="Yêu cầu nghệ sĩ chờ duyệt" value={stats.pendingArtists} loading={loading} />
       </div>
 
       {/* Bảng điều khiển kích hoạt Huấn Luyện AI */}
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
 
       {/* Biểu đồ streaming theo ngày */}
       <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg">
-        <h3 className="text-lg font-bold text-white mb-6">Daily Streaming Traffic</h3>
+        <h3 className="text-lg font-bold text-white mb-6">Lưu lượng Stream theo ngày</h3>
 
         <div className="h-80 w-full">
           {chartLoading ? (
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
 
       {/* Bảng Recent Activities (Pending Songs + Artist Requests) */}
       <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg overflow-x-auto">
-        <h3 className="text-lg font-bold text-white mb-6">Recent Activities</h3>
+        <h3 className="text-lg font-bold text-white mb-6">Hoạt động gần đây</h3>
         {activitiesLoading ? (
           <div className="flex items-center justify-center py-12 text-[#a0a0a0]">
             <div className="flex items-center gap-3">
@@ -341,10 +341,10 @@ export default function AdminDashboard() {
             <thead className="text-xs uppercase bg-[#181818] text-[#a0a0a0] border-b border-[#333]">
               <tr>
                 <th className="px-4 py-3 font-semibold rounded-tl-lg">ID</th>
-                <th className="px-4 py-3 font-semibold">Type</th>
-                <th className="px-4 py-3 font-semibold">Item</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold rounded-tr-lg">Date</th>
+                <th className="px-4 py-3 font-semibold">Loại</th>
+                <th className="px-4 py-3 font-semibold">Nội dung</th>
+                <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                <th className="px-4 py-3 font-semibold rounded-tr-lg">Ngày</th>
               </tr>
             </thead>
             <tbody>

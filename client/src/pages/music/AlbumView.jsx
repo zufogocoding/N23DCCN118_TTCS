@@ -217,7 +217,7 @@ export default function AlbumView() {
           type="button"
           onClick={handlePlayAlbum}
           disabled={!tracks.length}
-          className="bg-[#1ed760] w-14 h-14 rounded-full flex items-center justify-center text-black hover:scale-105 disabled:opacity-40"
+          className="bg-[#00e6e6] w-14 h-14 rounded-full flex items-center justify-center text-black hover:scale-105 disabled:opacity-40"
         >
           <Play fill="black" size={28} />
         </button>

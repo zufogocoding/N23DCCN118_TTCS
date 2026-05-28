@@ -49,6 +49,9 @@ const artistController = {
               },
             },
           },
+          pinnedSong: {
+            include: songListInclude,
+          },
         },
       });
 
@@ -115,8 +118,10 @@ const artistController = {
           bannerUrl: artistOnly.bannerUrl,
           verifiedTick: artistOnly.verifiedTick,
           status: artistOnly.status,
+          pinnedSongId: artistOnly.pinnedSongId,
         },
         followerCount: artistOnly.followerCount,
+        pinnedSong: artistOnly.pinnedSong,
         isFollowing,
       };
 
@@ -325,6 +330,31 @@ const artistController = {
     } catch (error) {
       console.error('Lỗi updateArtistProfile:', error);
       res.status(500).json({ error: 'Lỗi server khi cập nhật profile' });
+    }
+  },
+
+  pinSong: async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (req.user.id !== id) {
+        return res.status(403).json({ error: 'Chỉ được thay đổi của chính bạn' });
+      }
+
+      const { songId } = req.body;
+      const artist = await prisma.artist.findUnique({ where: { userId: id } });
+      if (!artist) {
+        return res.status(404).json({ error: 'Không tìm thấy nghệ sĩ' });
+      }
+
+      await prisma.artist.update({
+        where: { userId: id },
+        data: { pinnedSongId: songId || null },
+      });
+
+      res.status(200).json({ message: 'Đã cập nhật bài hát ghim' });
+    } catch (error) {
+      console.error('Lỗi pinSong:', error);
+      res.status(500).json({ error: 'Lỗi server khi ghim bài hát' });
     }
   },
 };

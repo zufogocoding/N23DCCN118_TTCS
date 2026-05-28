@@ -262,7 +262,7 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
                     <span className="text-[10px] text-[#888]">{pl._count?.songs || 0} bài hát</span>
                   </div>
                   {addedTo.has(pl.id) && (
-                    <Check size={16} className="text-[#1ed760] shrink-0 ml-2" />
+                    <Check size={16} className="text-[#00e6e6] shrink-0 ml-2" />
                   )}
                 </button>
               ))}

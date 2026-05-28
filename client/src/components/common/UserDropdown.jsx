@@ -12,7 +12,6 @@ export default function UserDropdown() {
   const { logout } = useAuth();
 
 const [user, setUser] = useState({});
-  const isLoggedIn = !!user.username || !!user.email;
   
   const loadUser = () => {
     const userStr = localStorage.getItem('user');
@@ -82,17 +81,14 @@ const [user, setUser] = useState({});
           <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
         ) : (
           <span className="text-black font-bold text-sm">
-            {isLoggedIn ? getInitial() : <User size={18} className="text-black" />}
+            {getInitial()}
           </span>
         )}
       </button>
 
-      {/* Menu Dropdown - Tự động đổi nội dung dựa trên isLoggedIn */}
+      {/* Menu Dropdown */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 bg-[#282828] text-[#eaeaea] font-semibold text-sm rounded-md shadow-2xl py-1 z-50">
-
-          {isLoggedIn ? (
-            <>
               {/* Trạng thái 1: ĐÃ ĐĂNG NHẬP */}
               <div className="px-4 py-3 border-b border-[#3e3e3e] mb-1">
                 <div className="flex items-center gap-2">
@@ -164,29 +160,6 @@ const [user, setUser] = useState({});
                   Đăng xuất
                 </button>
               </div>
-            </>
-          ) : (
-            <>
-              {/* Trạng thái 2: CHƯA ĐĂNG NHẬP */}
-              <Link
-                to="/login"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors"
-              >
-                <LogIn size={18} className="mr-3" />
-                Đăng nhập
-              </Link>
-
-              <Link
-                to="/register"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center px-4 py-3 hover:bg-[#3e3e3e] transition-colors"
-              >
-                <UserPlus size={18} className="mr-3" />
-                Đăng ký tài khoản
-              </Link>
-            </>
-          )}
         </div>
       )}
     </div>
