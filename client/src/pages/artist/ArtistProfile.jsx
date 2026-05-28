@@ -12,13 +12,17 @@ import {
   Loader2,
   UserPlus,
   UserMinus,
+  MoreHorizontal,
+  BarChart3,
+  Pin,
+  Music,
 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
+import TrackEditModal from '../../components/TrackEditModal';
 import { api, getMediaUrl } from '../../utils/api';
 import { getCoverArt, formatDuration } from '../../utils/songHelpers';
 
-const getSocialIcon = () => <LinkIcon size={20} />;
 
 function displayArtistName(profile) {
   return profile?.artist?.artistName || profile?.displayName || profile?.username || 'Nghệ sĩ';
@@ -58,6 +62,17 @@ export default function ArtistProfile() {
   const [currentUser, setCurrentUser] = useState(
     JSON.parse(localStorage.getItem('user') || '{}')
   );
+
+  const [editingSong, setEditingSong] = useState(null);
+  const [activeMenuSongId, setActiveMenuSongId] = useState(null);
+  const [genres, setGenres] = useState([]);
+
+  useEffect(() => {
+    api.get('/api/genres')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setGenres(data))
+      .catch(err => console.error('Lỗi lấy genres:', err));
+  }, []);
 
   // BUG FIX: currentUser reactive — cập nhật khi localStorage thay đổi
   useEffect(() => {
@@ -175,7 +190,7 @@ export default function ArtistProfile() {
         ? await api.delete(`/api/artists/${id}/follow`)
         : await api.post(`/api/artists/${id}/follow`, {});
       if (res.ok) {
-        const data = await res.json().catch(() => ({}));
+        await res.json().catch(() => ({}));
         // BUG FIX: Chỉ cập nhật local state thay vì fetchArtistData()
         setProfile((prev) => prev ? {
           ...prev,
@@ -273,6 +288,36 @@ export default function ArtistProfile() {
     }
   };
 
+  const handlePinSong = async (songId) => {
+    try {
+      const res = await api.post(`/api/artists/${id}/pin`, { songId });
+      if (res.ok) {
+        fetchArtistData();
+      } else {
+        alert('Không thể ghim bài hát');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setActiveMenuSongId(null);
+  };
+
+  const handleDeleteSong = async (songId) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa bài hát này?')) return;
+    try {
+      const res = await api.delete(`/api/songs/${songId}`);
+      if (res.ok) {
+        fetchArtistData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'Xóa thất bại');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setActiveMenuSongId(null);
+  };
+
   const loadMoreDiscography = async () => {
     if (loadingMore) return;
     const nextPage = discography.page + 1;
@@ -313,6 +358,10 @@ export default function ArtistProfile() {
   const handleRemoveSocialLink = (index) => {
     const newLinks = editForm.socialLinks.filter((_, i) => i !== index);
     setEditForm({ ...editForm, socialLinks: newLinks });
+  };
+
+  const renderSocialIcon = (link) => {
+    return <LinkIcon size={20} />;
   };
 
   if (loading) {
@@ -359,7 +408,7 @@ export default function ArtistProfile() {
 
       <div className="relative h-80 md:h-96 flex items-end">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${banner})` }}>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#121212]/80 to-[#121212]" />
         </div>
 
         <div className="relative z-10 p-8 flex items-end gap-6 w-full flex-wrap">
@@ -437,7 +486,7 @@ export default function ArtistProfile() {
                     rel="noreferrer"
                     className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
                   >
-                    {getSocialIcon()}
+                    {renderSocialIcon(link)}
                   </a>
                 ))}
               </div>
@@ -446,38 +495,82 @@ export default function ArtistProfile() {
         </div>
       </div>
 
-      <div className="p-8 pb-4 flex flex-wrap items-center gap-4">
+      {/* Mini Analytics */}
+      <div className="px-8 mt-6 mb-2 flex items-center gap-6 text-sm">
+        <span className="text-gray-400">
+          <strong className="font-bold text-white">{topSongs.reduce((acc, curr) => acc + curr.playCount, 0).toLocaleString()}</strong> lượt nghe hàng tháng
+        </span>
+        <span className="text-gray-400">
+          <strong className="font-bold text-white">{followerCount.toLocaleString()}</strong> người theo dõi
+        </span>
+      </div>
+
+      <div className="px-8 py-6 flex flex-wrap items-center gap-4">
         <button
           type="button"
           onClick={handlePlayAll}
           disabled={topSongs.length === 0}
-          className="bg-[#1ed760] w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition shadow-lg text-black disabled:opacity-50"
+          className="bg-[#1ed760] w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition shadow-lg text-black disabled:opacity-50 shrink-0"
         >
           <Play fill="black" size={28} />
         </button>
+        
+        <div className="flex-1" />
+        
         {currentUser.id === parseInt(id, 10) && currentUser.isArtist && (
-          <>
+          <div className="flex items-center gap-3">
             <Link
               to="/release/new"
-              className="px-5 py-2 rounded-full border border-white/30 text-sm font-bold hover:bg-white/10"
+              className="px-4 py-2 rounded-full border border-white text-white text-sm font-bold hover:bg-white hover:text-black transition-colors"
             >
               New Release
             </Link>
             <Link
               to="/upload-song"
-              className="px-5 py-2 rounded-full bg-white/10 text-sm font-bold hover:bg-white/20"
+              className="px-4 py-2 rounded-full border border-white text-white text-sm font-bold hover:bg-white hover:text-black transition-colors"
             >
               Upload bài hát
             </Link>
-          </>
+          </div>
         )}
       </div>
+
+      {profile.pinnedSong && (
+        <div className="px-8 pb-6">
+          <h2 className="text-[#a0a0a0] text-sm font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
+            <Pin size={16} className="text-[#00e6e6]" />
+            Lựa chọn của nghệ sĩ
+          </h2>
+          <div className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group bg-white/5 w-fit" onClick={() => handlePlaySong(profile.pinnedSong, [profile.pinnedSong])}>
+            <div className="relative">
+              <img src={getCoverArt(profile.pinnedSong)} alt="" className="w-16 h-16 rounded object-cover shadow-lg" />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded">
+                 <Play size={24} fill="white" />
+              </div>
+            </div>
+            <div className="pr-8">
+              <p className="font-bold text-white text-lg">{profile.pinnedSong.title}</p>
+              <p className="text-sm text-[#a0a0a0]">Đang ghim</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Albums */}
       <div className="px-8 pb-10">
         <h2 className="text-2xl font-bold mb-4">Album</h2>
         {albums.length === 0 ? (
-          <p className="text-[#a0a0a0] text-sm">Chưa có album nào.</p>
+          currentUser.id === parseInt(id, 10) && currentUser.isArtist ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-gray-600 bg-transparent rounded-2xl">
+              <Plus size={32} className="text-gray-400 mb-3" />
+              <p className="text-gray-400 mb-4 text-center">Chưa có album nào.</p>
+              <Link to="/release/new" className="px-4 py-2 rounded-full border border-gray-400 text-gray-300 text-sm font-bold hover:bg-white hover:text-black transition-colors">
+                + Thêm Album
+              </Link>
+            </div>
+          ) : (
+            <p className="text-[#a0a0a0] text-sm">Chưa có album nào.</p>
+          )
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {albums.map((al) => {
@@ -506,59 +599,43 @@ export default function ArtistProfile() {
         {topSongs.length === 0 ? (
           <div className="p-8 text-center text-[#a0a0a0]">Nghệ sĩ này chưa có bài hát nào.</div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <tbody>
-              {topSongs.map((song, index) => (
-                <tr
-                  key={song.id}
-                  className="hover:bg-white/10 group transition-colors cursor-pointer rounded-lg"
-                >
-                  <td
-                    className="py-3 px-4 w-12 text-gray-400 group-hover:text-white rounded-l-lg"
-                    onClick={() => handlePlaySong(song, topSongs)}
+          <div className="flex flex-col gap-1">
+            {topSongs.map((song, index) => (
+              <div
+                key={song.id}
+                className="grid grid-cols-[40px_1fr_120px_100px_100px] items-center p-2 hover:bg-white/10 group transition-colors cursor-pointer rounded-lg text-sm"
+                onClick={() => handlePlaySong(song, topSongs)}
+              >
+                <div className="flex justify-center text-[#a0a0a0] group-hover:text-white">
+                  <span className="group-hover:hidden">{index + 1}</span>
+                  <Play size={16} fill="white" className="hidden group-hover:block" />
+                </div>
+                <div className="flex items-center gap-3 overflow-hidden pr-4">
+                  <img src={getCoverArt(song)} alt={song.title} className="w-10 h-10 rounded object-cover shadow-md shrink-0" />
+                  <span className="text-white font-medium truncate">{song.title}</span>
+                </div>
+                <div className="text-right text-[#a0a0a0] truncate px-2 hidden sm:block">
+                  {song.playCount.toLocaleString()} <span className="hidden lg:inline">lượt nghe</span>
+                </div>
+                <div className="text-right text-[#a0a0a0] px-2 hidden md:block">
+                  {formatDuration(song.durationMs)}
+                </div>
+                <div className="flex items-center justify-end gap-2 pr-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleLike(song.id);
+                    }}
+                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
                   >
-                    <span className="group-hover:hidden text-base">{index + 1}</span>
-                    <Play size={16} fill="white" className="hidden group-hover:block" />
-                  </td>
-                  <td className="py-3 px-2" onClick={() => handlePlaySong(song, topSongs)}>
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={getCoverArt(song)}
-                        alt={song.title}
-                        className="w-12 h-12 rounded object-cover shadow-md"
-                      />
-                      <span className="text-white font-medium text-base truncate max-w-[300px]">{song.title}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-2 text-right text-gray-400 text-sm hidden md:table-cell">
-                    {song.playCount.toLocaleString()} lượt nghe
-                  </td>
-                  <td className="py-3 px-4 text-right text-gray-400 text-sm hidden sm:table-cell">
-                    {formatDuration(song.durationMs)}
-                  </td>
-                  <td className="py-3 px-4 w-24 rounded-r-lg">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleLike(song.id);
-                        }}
-                        className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                      >
-                        <Heart
-                          size={18}
-                          className={`transition-colors ${likedSongIds.has(song.id) ? 'text-[#1ed760] fill-current' : 'text-gray-400 hover:text-white'
-                            }`}
-                        />
-                      </button>
-                      <AddToPlaylistMenu songId={song.id} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <Heart size={18} className={likedSongIds.has(song.id) ? 'text-[#1ed760] fill-current' : 'text-[#a0a0a0] hover:text-white'} />
+                  </button>
+                  <AddToPlaylistMenu songId={song.id} />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -569,31 +646,67 @@ export default function ArtistProfile() {
           <p className="text-[#a0a0a0]">Chưa có bài trong danh mục công khai.</p>
         ) : (
           <>
-            <table className="w-full text-left border-collapse">
-              <tbody>
-                {discography.songs.map((song) => (
-                  <tr key={song.id} className="hover:bg-white/10 group transition-colors">
-                    <td className="py-2 px-2 w-10 text-gray-500">
-                      <Play
-                        size={14}
-                        className="opacity-0 group-hover:opacity-100 cursor-pointer"
-                        onClick={() => handlePlaySong(song, discography.songs)}
-                      />
-                    </td>
-                    <td className="py-2 px-2 cursor-pointer" onClick={() => handlePlaySong(song, discography.songs)}>
-                      <div className="flex items-center gap-3">
-                        <img src={getCoverArt(song)} alt="" className="w-10 h-10 rounded object-cover" />
-                        <span className="font-medium truncate">{song.title}</span>
+            <div className="flex flex-col gap-1">
+              {discography.songs.map((song, index) => (
+                <div key={song.id} className="grid grid-cols-[40px_1fr_100px_100px] items-center p-2 hover:bg-white/10 group transition-colors cursor-pointer rounded-lg text-sm" onClick={() => handlePlaySong(song, discography.songs)}>
+                  <div className="flex justify-center text-[#a0a0a0] group-hover:text-white">
+                    <span className="group-hover:hidden">{index + 1}</span>
+                    <Play size={16} fill="white" className="hidden group-hover:block" />
+                  </div>
+                  <div className="flex items-center gap-3 overflow-hidden pr-4">
+                    <img src={getCoverArt(song)} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                    <span className="font-medium text-white truncate">{song.title}</span>
+                  </div>
+                  <div className="text-right text-[#a0a0a0] px-2">
+                    {formatDuration(song.durationMs)}
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pr-2">
+                    <AddToPlaylistMenu songId={song.id} />
+                    
+                    {currentUser.id === parseInt(id, 10) && currentUser.isArtist && (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuSongId(activeMenuSongId === song.id ? null : song.id);
+                          }}
+                          className="p-2 text-[#a0a0a0] hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                        >
+                          <MoreHorizontal size={18} />
+                        </button>
+                        {activeMenuSongId === song.id && (
+                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#282828] rounded-xl border border-white/10 shadow-2xl overflow-hidden z-50">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handlePinSong(song.id); }}
+                              className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition flex items-center gap-2"
+                            >
+                              <Pin size={16} /> Ghim bài
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setEditingSong(song); setActiveMenuSongId(null); }}
+                              className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition flex items-center gap-2"
+                            >
+                              <Edit2 size={16} /> Chỉnh sửa
+                            </button>
+                            <div className="h-px bg-white/10" />
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteSong(song.id); }}
+                              className="w-full text-left px-4 py-3 text-sm text-[#ff4d4d] hover:bg-white/10 transition flex items-center gap-2"
+                            >
+                              <Trash2 size={16} /> Xóa bài
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </td>
-                    <td className="py-2 px-2 text-right text-gray-400 text-sm">{formatDuration(song.durationMs)}</td>
-                    <td className="py-2 px-2 w-20">
-                      <AddToPlaylistMenu songId={song.id} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
             {canLoadMore && (
               <button
                 type="button"
@@ -775,6 +888,19 @@ export default function ArtistProfile() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Edit Track Modal */}
+      {editingSong && (
+        <TrackEditModal
+          song={editingSong}
+          genres={genres}
+          onClose={() => setEditingSong(null)}
+          onSuccess={() => {
+            setEditingSong(null);
+            fetchArtistData();
+          }}
+        />
       )}
     </div>
   );

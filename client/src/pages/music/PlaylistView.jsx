@@ -295,7 +295,7 @@ const PlaylistView = () => {
         <button
           onClick={handlePlayAll}
           disabled={songs.length === 0}
-          className="bg-[#1ed760] w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition shadow-lg text-black disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-[#00e6e6] w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition shadow-lg text-black disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play fill="black" size={28} />
         </button>

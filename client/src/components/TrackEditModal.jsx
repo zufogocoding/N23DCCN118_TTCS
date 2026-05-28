@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Image, Loader2 } from 'lucide-react';
 import { api, getMediaUrl } from '../utils/api';
 
-export default function TrackEditModal({ song, genres = [], onClose, onSaved }) {
+export default function TrackEditModal({ song, onClose, onSaved }) {
   const [title, setTitle] = useState(song?.title || '');
   const [artistName, setArtistName] = useState(song?.artistName || '');
   const [selectedGenreIds, setSelectedGenreIds] = useState(
@@ -15,7 +15,15 @@ export default function TrackEditModal({ song, genres = [], onClose, onSaved }) 
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [genres, setGenres] = useState([]);
   const coverRef = useRef(null);
+
+  useEffect(() => {
+    api.get('/api/genres')
+      .then(res => res.ok ? res.json() : [])
+      .then(setGenres)
+      .catch(console.error);
+  }, []);
 
   const toggleGenre = (id) => {
     setSelectedGenreIds(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);

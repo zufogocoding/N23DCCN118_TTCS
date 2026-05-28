@@ -12,7 +12,6 @@ export default function LibraryPage() {
   const [likedSongs, setLikedSongs] = useState([]);
   const [recentSongs, setRecentSongs] = useState([]);
   const [playlists, setPlaylists] = useState([]);
-  const [genres, setGenres] = useState([]);
   const [activeTab, setActiveTab] = useState("playlists"); // 'playlists', 'liked', 'recent', 'uploaded'
   const [user, setUser] = useState({});
   const [openMenu, setOpenMenu] = useState(null);
@@ -31,7 +30,6 @@ export default function LibraryPage() {
       getLikedSongs();
       getRecentSongs();
       getPlaylists(currentUser.id);
-      getGenres();
     }
   }, []);
 
@@ -50,7 +48,7 @@ export default function LibraryPage() {
         setSongs(data);
       }
     } catch (err) {
-      console.log("Lỗi khi lấy danh sách nhạc upload:", err);
+      console.error("Lỗi khi lấy danh sách nhạc upload:", err);
     }
   }
 
@@ -62,7 +60,7 @@ export default function LibraryPage() {
         setLikedSongs(data);
       }
     } catch (err) {
-      console.log("Lỗi khi lấy bài hát thích:", err);
+      console.error("Lỗi khi lấy bài hát thích:", err);
     }
   }
 
@@ -74,7 +72,7 @@ export default function LibraryPage() {
         setRecentSongs(data);
       }
     } catch (err) {
-      console.log("Lỗi khi lấy bài hát nghe gần đây:", err);
+      console.error("Lỗi khi lấy bài hát nghe gần đây:", err);
     }
   }
 
@@ -86,19 +84,7 @@ export default function LibraryPage() {
         setPlaylists(data);
       }
     } catch (err) {
-      console.log("Lỗi khi lấy playlist:", err);
-    }
-  }
-
-  async function getGenres() {
-    try {
-      const res = await api.get(`/api/genres`);
-      if (res.ok) {
-        const data = await res.json();
-        setGenres(data);
-      }
-    } catch (err) {
-      console.log("Lỗi khi lấy thể loại:", err);
+      console.error("Lỗi khi lấy playlist:", err);
     }
   }
 
@@ -132,7 +118,7 @@ export default function LibraryPage() {
         alert("Xóa bài hát thất bại!");
       }
     } catch (err) {
-      console.log("Lỗi khi xóa bài hát:", err);
+      console.error("Lỗi khi xóa bài hát:", err);
       alert("Xóa bài hát thất bại!");
     }
   };
@@ -174,10 +160,10 @@ export default function LibraryPage() {
           {type === 'uploaded' && (
             <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${
               song.status === 'approved' 
-                ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                ? 'bg-[#00e6e6]/10 text-[#00e6e6] border border-[#00e6e6]/50' 
                 : song.status === 'rejected' 
-                  ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
-                  : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                  ? 'bg-[#333]/50 text-[#a0a0a0] border border-[#555]/50' 
+                  : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/50'
             }`}>
               {song.status === 'approved' ? 'Đã duyệt' : song.status === 'rejected' ? 'Bị từ chối' : 'Chờ duyệt'}
             </span>
@@ -342,7 +328,6 @@ export default function LibraryPage() {
       {selectedSong && (
         <TrackEditModal
           song={selectedSong}
-          genres={genres}
           onClose={() => setSelectedSong(null)}
           onSaved={() => {
             getUploadedSongs(user.id);

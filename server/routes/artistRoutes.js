@@ -50,5 +50,6 @@ router.get('/api/artists/:id', optionalAuthMiddleware, artistController.getArtis
 router.put('/api/artists/:id/profile', authMiddleware, requireActiveArtist, uploadProfileImages, artistController.updateArtistProfile);
 router.post('/api/artists/:id/follow', authMiddleware, artistController.followArtist);
 router.delete('/api/artists/:id/follow', authMiddleware, artistController.unfollowArtist);
+router.post('/api/artists/:id/pin', authMiddleware, requireActiveArtist, artistController.pinSong);
 
 module.exports = router;
