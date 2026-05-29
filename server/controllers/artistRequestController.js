@@ -1,5 +1,19 @@
 const prisma = require('../db/index');
 const fs = require('fs');
+const path = require('path');
+
+// Helper to delete physical files safely
+const deleteFile = (relativePath) => {
+  if (!relativePath) return;
+  const absolutePath = path.resolve(process.cwd(), relativePath.startsWith('/') ? relativePath.substring(1) : relativePath);
+  if (fs.existsSync(absolutePath)) {
+    try {
+      fs.unlinkSync(absolutePath);
+    } catch (err) {
+      console.error(`[deleteFile] Không thể xóa file ${absolutePath}:`, err.message);
+    }
+  }
+};
 
 const artistRequestController = {
   // 1. User tạo yêu cầu làm nghệ sĩ
@@ -30,11 +44,13 @@ const artistRequestController = {
         return res.status(400).json({ error: "Vui lòng upload đủ ID Card và Demo Track" });
       }
 
-      const idCardUrl = `/uploads/artist_requests/${req.files['idCard'][0].filename}`;
-      const demoTrackUrl = `/uploads/artist_requests/${req.files['demoTrack'][0].filename}`;
+      const idCardUrl = `/private_uploads/id_cards/${req.files['idCard'][0].filename}`;
+      const demoTrackUrl = `/uploads/songs/${req.files['demoTrack'][0].filename}`;
 
       // Xóa request cũ nếu bị reject trước đó (trường hợp tạo mới hoàn toàn thay vì gọi API resubmit)
       if (existingRequest && existingRequest.status === 'REJECTED') {
+        deleteFile(existingRequest.idCardUrl);
+        deleteFile(existingRequest.demoTrackUrl);
         await prisma.artistRequest.delete({ where: { userId } });
       }
 
@@ -244,10 +260,12 @@ const artistRequestController = {
       // Nếu có upload file mới thì thay thế file cũ
       if (req.files) {
         if (req.files['idCard'] && req.files['idCard'][0]) {
-          idCardUrl = `/uploads/artist_requests/${req.files['idCard'][0].filename}`;
+          deleteFile(request.idCardUrl);
+          idCardUrl = `/private_uploads/id_cards/${req.files['idCard'][0].filename}`;
         }
         if (req.files['demoTrack'] && req.files['demoTrack'][0]) {
-          demoTrackUrl = `/uploads/artist_requests/${req.files['demoTrack'][0].filename}`;
+          deleteFile(request.demoTrackUrl);
+          demoTrackUrl = `/uploads/songs/${req.files['demoTrack'][0].filename}`;
         }
       }
 
@@ -266,6 +284,32 @@ const artistRequestController = {
     } catch (error) {
       console.error("Lỗi resubmitRequest:", error);
       res.status(500).json({ error: `Lỗi server khi gửi lại hồ sơ: ${error.message}` });
+    }
+  },
+
+  // 7. Admin truy cập hình ảnh ID Card bảo mật
+  getIdCardSecure: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const request = await prisma.artistRequest.findUnique({ where: { id: parseInt(id, 10) } });
+      if (!request) {
+        return res.status(404).json({ error: "Không tìm thấy hồ sơ nghệ sĩ." });
+      }
+
+      const idCardUrl = request.idCardUrl;
+      if (!idCardUrl) {
+        return res.status(404).json({ error: "Không tìm thấy file ID Card trong hồ sơ." });
+      }
+
+      const absolutePath = path.resolve(process.cwd(), idCardUrl.startsWith('/') ? idCardUrl.substring(1) : idCardUrl);
+      if (!fs.existsSync(absolutePath)) {
+        return res.status(404).json({ error: "File ID Card vật lý không tồn tại trên máy chủ." });
+      }
+
+      res.sendFile(absolutePath);
+    } catch (error) {
+      console.error("Lỗi getIdCardSecure:", error);
+      res.status(500).json({ error: "Lỗi hệ thống khi tải file ID Card." });
     }
   }
 };
