@@ -7,7 +7,7 @@ const dirs = [
   path.join(__dirname, '../uploads/avatars'),
   path.join(__dirname, '../uploads/covers'),
   path.join(__dirname, '../uploads/songs'),
-  path.join(__dirname, '../uploads/artist_requests')
+  path.join(__dirname, '../private_uploads/id_cards')
 ];
 
 dirs.forEach(dir => {
@@ -105,13 +105,21 @@ const uploadSongFields = multer({
 
 // 4. Artist Request upload configuration (multiple fields)
 const uploadArtistRequest = multer({
-  storage: createDiskStorage(
-    (req, file, cb) => cb(null, path.join(__dirname, '../uploads/artist_requests')),
-    (req, file, cb) => {
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      if (file.fieldname === 'idCard') {
+        cb(null, path.join(__dirname, '../private_uploads/id_cards'));
+      } else if (file.fieldname === 'demoTrack') {
+        cb(null, path.join(__dirname, '../uploads/songs'));
+      } else {
+        cb(new Error('Trường file không hợp lệ!'), false);
+      }
+    },
+    filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
-  ),
+  }),
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
