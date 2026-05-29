@@ -1,4 +1,19 @@
 const prisma = require('../db/index');
+const fs = require('fs');
+const path = require('path');
+
+// Helper to delete physical files safely
+const deleteFile = (relativePath) => {
+  if (!relativePath) return;
+  const absolutePath = path.resolve(process.cwd(), relativePath.startsWith('/') ? relativePath.substring(1) : relativePath);
+  if (fs.existsSync(absolutePath)) {
+    try {
+      fs.unlinkSync(absolutePath);
+    } catch (err) {
+      console.error(`[deleteFile] Không thể xóa file ${absolutePath}:`, err.message);
+    }
+  }
+};
 
 const playlistController = {
   // 1. Tạo Playlist mới
@@ -341,6 +356,11 @@ const playlistController = {
       // Xóa playlist (cascade sẽ tự xóa các PlaylistSong liên quan)
       await prisma.playlist.delete({ where: { id: playlistId } });
 
+      // Xóa file coverArtUrl cũ nếu có
+      if (playlist.coverArtUrl) {
+        deleteFile(playlist.coverArtUrl);
+      }
+
       res.status(200).json({ message: 'Đã xóa Playlist!' });
     } catch (error) {
       console.error("Lỗi deletePlaylist:", error);
@@ -376,7 +396,12 @@ const playlistController = {
       if (description !== undefined) updateData.description = description;
       if (isPublic !== undefined) updateData.isPublic = isPublic === 'true' || isPublic === true;
       if (isCollaborative !== undefined) updateData.isCollaborative = isCollaborative === 'true' || isCollaborative === true;
-      if (coverArtUrl !== undefined) updateData.coverArtUrl = coverArtUrl;
+      if (coverArtUrl !== undefined) {
+        if (playlist.coverArtUrl) {
+          deleteFile(playlist.coverArtUrl);
+        }
+        updateData.coverArtUrl = coverArtUrl;
+      }
 
       const updatedPlaylist = await prisma.playlist.update({
         where: { id: playlistId },
