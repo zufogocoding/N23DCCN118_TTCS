@@ -24,6 +24,9 @@ const requireAdmin = require('../middlewares/requireAdmin');
 // 2. Admin: Xem danh sách yêu cầu chờ duyệt
 router.get('/admin/pending', authMiddleware, requireAdmin, artistRequestController.getPendingRequests);
 
+// 2c. Admin: Truy cập ảnh ID Card bảo mật
+router.get('/admin/:id/id-card', authMiddleware, requireAdmin, artistRequestController.getIdCardSecure);
+
 // 3. Admin: Duyệt yêu cầu
 router.put('/admin/:id/approve', authMiddleware, requireAdmin, artistRequestController.approveRequest);
 

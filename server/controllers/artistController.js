@@ -464,12 +464,14 @@ const artistController = {
       });
 
       const topSongsData = await Promise.all(topSongs.map(async (song) => {
-        const songPlays = await prisma.interaction.count({ where: { songId: song.id } });
-        const songSkips = await prisma.interaction.count({ where: { songId: song.id, isSkipped: true } });
-        const songAvgCompletion = await prisma.interaction.aggregate({
-          where: { songId: song.id, isSkipped: false, completionRate: { not: null } },
-          _avg: { completionRate: true }
-        });
+        const [songPlays, songSkips, songAvgCompletion] = await Promise.all([
+          prisma.interaction.count({ where: { songId: song.id } }),
+          prisma.interaction.count({ where: { songId: song.id, isSkipped: true } }),
+          prisma.interaction.aggregate({
+            where: { songId: song.id, isSkipped: false, completionRate: { not: null } },
+            _avg: { completionRate: true }
+          })
+        ]);
 
         return {
           id: song.id,

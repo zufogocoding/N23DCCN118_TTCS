@@ -9,10 +9,7 @@ async function runCleanup() {
   console.log('[Maintenance Worker] Khởi động tiến trình quét dọn tập tin mồ côi...');
   
   const uploadsDir = path.resolve(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    console.log('[Maintenance Worker] Thư mục uploads không tồn tại.');
-    return;
-  }
+  const privateUploadsDir = path.resolve(process.cwd(), 'private_uploads');
 
   try {
     // ── 1. DỌN DẸP FILE NHẠC (uploads/songs) ──────────────────────────────────
@@ -35,7 +32,6 @@ async function runCleanup() {
 
       let deletedSongsCount = 0;
       files.forEach(file => {
-        // Hỗ trợ cả tương đối lẫn tuyệt đối khi so khớp
         const relativePath = `/uploads/songs/${file}`;
         if (!activeAudioUrls.has(relativePath)) {
           try {
@@ -85,33 +81,74 @@ async function runCleanup() {
       });
       console.log(`[Maintenance Worker] Dọn dẹp xong ảnh bìa: Đã xóa ${deletedCoversCount} file mồ côi.`);
     }
+
+    // ── 3. DỌN DẸP ẢNH ID CARD BẢO MẬT (private_uploads/id_cards) ──────────────
+    const idCardsDir = path.join(privateUploadsDir, 'id_cards');
+    if (fs.existsSync(idCardsDir)) {
+      const files = fs.readdirSync(idCardsDir);
+
+      const artistRequestsInDb = await prisma.artistRequest.findMany({
+        select: { idCardUrl: true }
+      });
+
+      const activeIdCardUrls = new Set(artistRequestsInDb.map(ar => ar.idCardUrl).filter(Boolean));
+
+      let deletedIdCardsCount = 0;
+      files.forEach(file => {
+        const relativePath = `/private_uploads/id_cards/${file}`;
+        if (!activeIdCardUrls.has(relativePath)) {
+          try {
+            fs.unlinkSync(path.join(idCardsDir, file));
+            deletedIdCardsCount++;
+          } catch (err) {
+            console.error(`[Maintenance Worker] Không thể xóa file ID Card ${file}:`, err.message);
+          }
+        }
+      });
+      console.log(`[Maintenance Worker] Dọn dẹp xong ID Card: Đã xóa ${deletedIdCardsCount} file mồ côi.`);
+    }
   } catch (error) {
     console.error('[Maintenance Worker] Gặp lỗi khi dọn dẹp:', error);
   }
 }
 
 /**
- * Khởi động Worker chạy tuần tự mỗi tiếng để kiểm tra điều kiện thời gian
+ * Lập lịch chạy dọn dẹp tiếp theo với tính toán độ trễ chính xác
+ */
+function scheduleNextCleanup() {
+  const now = new Date();
+  const nextSunday = new Date();
+  
+  // Lập lịch vào 2:00 sáng Chủ Nhật gần nhất
+  nextSunday.setDate(now.getDate() + (7 - now.getDay()) % 7);
+  nextSunday.setHours(2, 0, 0, 0);
+
+  // Nếu thời điểm đó đã qua trong tuần này, cộng thêm 7 ngày
+  if (nextSunday <= now) {
+    nextSunday.setDate(nextSunday.getDate() + 7);
+  }
+
+  const delayMs = nextSunday.getTime() - now.getTime();
+  console.log(`[Maintenance Worker] Lập lịch dọn dẹp tiếp theo vào: ${nextSunday.toLocaleString()} (sau ${Math.round(delayMs / 1000 / 60)} phút).`);
+
+  setTimeout(async () => {
+    try {
+      console.log('[Maintenance Worker] Bắt đầu dọn dẹp định kỳ theo thời gian đã lập...');
+      await runCleanup();
+    } catch (error) {
+      console.error('[Maintenance Worker] Lỗi dọn dẹp định kỳ:', error);
+    } finally {
+      scheduleNextCleanup();
+    }
+  }, delayMs);
+}
+
+/**
+ * Khởi động Worker chạy với thời gian định trước chính xác
  */
 function startMaintenanceWorker() {
-  console.log('⏳ Maintenance Worker đã bắt đầu chạy (lập lịch 2:00 sáng Chủ Nhật)...');
-
-  // Chạy lần đầu khi start server (chỉ chạy kiểm tra điều kiện)
-  setInterval(async () => {
-    try {
-      const now = new Date();
-      const day = now.getDay(); // 0 = Chủ Nhật
-      const hours = now.getHours();
-
-      // Chỉ kích hoạt dọn dẹp vào khoảng 2h sáng Chủ Nhật
-      if (day === 0 && hours === 2) {
-        console.log('[Maintenance Worker] Đã đến 2:00 sáng Chủ Nhật. Tiến hành dọn dẹp hệ thống...');
-        await runCleanup();
-      }
-    } catch (error) {
-      console.error('[Maintenance Worker] Lỗi kiểm tra điều kiện dọn dẹp:', error);
-    }
-  }, 60 * 60 * 1000); // Mỗi giờ một lần
+  console.log('⏳ Maintenance Worker đã khởi chạy (chế độ tính toán chính xác)...');
+  scheduleNextCleanup();
 }
 
 module.exports = {

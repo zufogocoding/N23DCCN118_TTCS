@@ -71,15 +71,13 @@ async function notifyFollowersAboutSingleRelease(db, songId) {
   const message = `${artistName} vừa phát hành bài hát mới "${song.title}".`;
 
   const followerIds = new Set();
-  for (const artistId of artistIds) {
-    const followers = await db.follow.findMany({
-      where: { followeeId: artistId },
-      select: { followerId: true },
-    });
-    followers.forEach(({ followerId }) => {
-      if (followerId !== artistId) followerIds.add(followerId);
-    });
-  }
+  const followers = await db.follow.findMany({
+    where: { followeeId: { in: artistIds } },
+    select: { followerId: true, followeeId: true },
+  });
+  followers.forEach(({ followerId, followeeId }) => {
+    if (followerId !== followeeId) followerIds.add(followerId);
+  });
 
   const notifications = [...followerIds].map((userId) => ({
     userId,
