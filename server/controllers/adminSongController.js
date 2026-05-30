@@ -154,7 +154,7 @@ const setAdminSongStatus = async (req, res) => {
 const getPendingSongs = async (req, res) => {
   try {
     const songs = await prisma.song.findMany({
-      where: { status: "pending" },
+      where: { status: "pending", isDeleted: false },
       orderBy: { createdAt: "desc" },
     });
     res.json(songs);
