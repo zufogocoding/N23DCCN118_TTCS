@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, GripVertical, Pencil, Trash2, Loader2, Image, Clock, Rocket, X, Music, CalendarClock, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
 import TrackEditModal from '../../components/TrackEditModal';
 import { api, getMediaUrl } from '../../utils/api';
+import LrcSyncEditor from '../../components/LrcSyncEditor';
 
 const ALBUM_TYPES = ['Single', 'EP', 'Album', 'Mixtape'];
 
@@ -51,6 +52,7 @@ export default function ReleaseManager() {
   const [songArtistName, setSongArtistName] = useState('');
   const [songGenreIds, setSongGenreIds] = useState([]);
   const [songDescription, setSongDescription] = useState('');
+  const [songLyrics, setSongLyrics] = useState('');
   const [songDurationMs, setSongDurationMs] = useState(0);
   const [songIsOriginal, setSongIsOriginal] = useState(true);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
@@ -184,6 +186,7 @@ export default function ReleaseManager() {
     setSongArtistName(currentUser.displayName || currentUser.username || '');
     setSongGenreIds([]);
     setSongDescription('');
+    setSongLyrics('');
     setSongDurationMs(0);
     setSongIsOriginal(true);
     setAudioUploadProgress(0);
@@ -256,6 +259,9 @@ export default function ReleaseManager() {
       formData.append('isOriginal', songIsOriginal);
       if (songDescription.trim()) {
         formData.append('description', songDescription.trim());
+      }
+      if (songLyrics.trim()) {
+        formData.append('lyrics', songLyrics.trim());
       }
 
       // XMLHttpRequest để lấy progress
@@ -882,6 +888,17 @@ export default function ReleaseManager() {
                   value={songDescription}
                   onChange={e => setSongDescription(e.target.value)}
                   className="w-full bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00e6e6]/50 placeholder-[#444] resize-none"
+                />
+              </div>
+
+              {/* Lyrics */}
+              <div>
+                <label className="block mb-1.5 text-sm font-semibold text-[#a0a0a0]">Lời bài hát (tùy chọn)</label>
+                <LrcSyncEditor
+                  audioFile={uploadAudioFile}
+                  value={songLyrics}
+                  onChange={setSongLyrics}
+                  rows={5}
                 />
               </div>
 

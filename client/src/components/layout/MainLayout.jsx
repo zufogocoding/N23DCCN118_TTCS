@@ -21,6 +21,7 @@ import {
   Music,
   MoreHorizontal,
   Flag,
+  ListMusic
 } from "lucide-react";
 
 import UserDropdown from "../common/UserDropdown";
@@ -28,6 +29,8 @@ import NotificationDropdown from "../common/NotificationDropdown.jsx";
 import CreatePlaylistModal from "../common/CreatePlaylistModal";
 import ReportModal from "../common/ReportModal";
 import AddToPlaylistMenu from "../common/AddToPlaylistMenu";
+import QueuePanel from "./QueuePanel";
+import LyricsPanel from "./LyricsPanel";
 import { api } from "../../utils/api";
 import { getCoverArt } from "../../utils/songHelpers";
 import useClickOutside from "../../hooks/useClickOutside";
@@ -45,6 +48,8 @@ export default function MainLayout() {
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isPlayerMenuOpen, setIsPlayerMenuOpen] = useState(false);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const playerMenuRef = useRef(null);
   useClickOutside(playerMenuRef, () => setIsPlayerMenuOpen(false));
 
@@ -209,7 +214,9 @@ export default function MainLayout() {
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        <QueuePanel isOpen={isQueueOpen} onClose={() => setIsQueueOpen(false)} />
+        <LyricsPanel isOpen={isLyricsOpen} onClose={() => setIsLyricsOpen(false)} />
 
         {/* LEFT SIDEBAR */}
         <div className="w-[240px] bg-background border-r border-border flex flex-col hidden md:flex">
@@ -376,8 +383,8 @@ export default function MainLayout() {
       </div>
 
       {/* KHU VỰC DƯỚI: THANH MUSIC PLAYER HOẠT ĐỘNG */}
-      <div 
-        className="min-h-[96px] shrink-0 bg-[#0a0a0a]/90 backdrop-blur-3xl border-t border-white/5 flex items-center justify-between gap-4 px-6 py-2 z-50 relative transition-all duration-1000 ease-in-out"
+      <div
+        className="h-[108px] shrink-0 bg-[#0a0a0a]/90 backdrop-blur-3xl border-t border-white/5 grid grid-cols-[minmax(0,1fr)_minmax(260px,1.6fr)] md:grid-cols-[minmax(220px,1.2fr)_minmax(320px,1.6fr)_minmax(220px,1.2fr)] items-center gap-4 px-6 py-3 z-50 relative transition-all duration-1000 ease-in-out"
       >
         {/* Ambient Glow */}
         <div 
@@ -390,7 +397,7 @@ export default function MainLayout() {
         />
 
         {/* 1. Trái: Info bài hát */}
-        <div className="flex items-center gap-4 min-w-0 flex-[1.2] max-w-[30vw] relative z-10">
+        <div className="flex items-center gap-4 min-w-0 relative z-10 h-full">
           {currentSong ? (
             <>
               {getCoverArt(currentSong) ? (
@@ -425,7 +432,7 @@ export default function MainLayout() {
                   )}
                 </div>
               </div>
-              <div className="hidden sm:flex items-center gap-2 shrink-0 ml-2">
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0 ml-2">
                 <Heart
                   onClick={() => {
                     if (!currentSong) return;
@@ -439,14 +446,14 @@ export default function MainLayout() {
                       .catch((err) => console.error(err));
                   }}
                   size={20}
-                  className={`cursor-pointer transition-all ${isLiked ? "text-primary fill-current animate-like-bounce drop-shadow-[0_0_8px_rgba(0,230,230,0.5)]" : "text-[#a0a0a0] hover:text-white hover:scale-110"}`}
+                  className={`cursor-pointer transition-all w-9 h-9 p-2 rounded-full ${isLiked ? "text-primary fill-current animate-like-bounce drop-shadow-[0_0_8px_rgba(0,230,230,0.5)]" : "text-[#a0a0a0] hover:text-white hover:scale-110"}`}
                 />
 
                 {/* 3-dot Context Menu in Player Bar */}
                 <div className="relative" ref={playerMenuRef}>
                   <button 
                     onClick={() => setIsPlayerMenuOpen(!isPlayerMenuOpen)}
-                    className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors"
+                    className="w-9 h-9 flex items-center justify-center rounded-full text-[#a0a0a0] hover:text-white transition-colors"
                   >
                     <MoreHorizontal size={20} />
                   </button>
@@ -488,12 +495,12 @@ export default function MainLayout() {
         </div>
 
         {/* 2. Giữa: điều khiển + thanh tua */}
-        <div className="flex flex-col items-stretch justify-center flex-[1.6] max-w-[600px] w-full min-w-0">
-          <div className="flex items-center justify-center gap-6 md:gap-8 mb-2">
+        <div className="flex flex-col items-stretch justify-center max-w-[600px] w-full min-w-0 mx-auto relative z-10">
+          <div className="flex items-center justify-center gap-5 md:gap-7 h-11 mb-2">
             <button
               type="button"
               onClick={toggleShuffle}
-              className={`p-1.5 rounded-full transition-colors ${isShuffle ? "text-[#1db954]" : "text-[#a0a0a0] hover:text-white"}`}
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${isShuffle ? "text-[#1db954]" : "text-[#a0a0a0] hover:text-white"}`}
               aria-label="Trộn bài"
             >
               <Shuffle size={18} strokeWidth={2} />
@@ -501,7 +508,7 @@ export default function MainLayout() {
             <button
               type="button"
               onClick={playPrev}
-              className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors hover:scale-105 active:scale-95"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-[#a0a0a0] hover:text-white transition-colors hover:scale-105 active:scale-95"
               aria-label="Bài trước"
             >
               <SkipBack size={24} fill="currentColor" />
@@ -511,7 +518,7 @@ export default function MainLayout() {
               onClick={() => {
                 togglePlay();
               }}
-              className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg hover:bg-gray-200"
+              className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg hover:bg-gray-200"
               aria-label={isPlaying ? "Tạm dừng" : "Phát"}
             >
               {isPlaying ? (
@@ -523,7 +530,7 @@ export default function MainLayout() {
             <button
               type="button"
               onClick={playNext}
-              className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors hover:scale-105 active:scale-95"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-[#a0a0a0] hover:text-white transition-colors hover:scale-105 active:scale-95"
               aria-label="Bài tiếp"
             >
               <SkipForward size={24} fill="currentColor" />
@@ -531,14 +538,14 @@ export default function MainLayout() {
             <button
               type="button"
               onClick={toggleRepeat}
-              className={`p-1.5 rounded-full transition-colors ${isRepeat ? "text-[#1db954]" : "text-[#a0a0a0] hover:text-white"}`}
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${isRepeat ? "text-[#1db954]" : "text-[#a0a0a0] hover:text-white"}`}
               aria-label="Lặp lại"
             >
               <Repeat size={18} strokeWidth={2} />
             </button>
           </div>
 
-          <div className="flex items-center gap-3 w-full group/progress">
+          <div className="flex items-center gap-3 w-full h-5 group/progress">
             <span className="text-[12px] font-medium text-[#a0a0a0] tabular-nums w-10 text-right shrink-0">
               {formatPlayerClock(currentTime)}
             </span>
@@ -585,11 +592,11 @@ export default function MainLayout() {
         </div>
 
         {/* 3. Phải: âm lượng, lyrics */}
-        <div className="hidden md:flex items-center justify-end gap-3 flex-[1.2] min-w-0 max-w-[30vw]">
+        <div className="hidden md:flex items-center justify-end gap-2 min-w-0 relative z-10 h-11">
           <button
             type="button"
             onClick={() => setVolume(volume > 0 ? 0 : 1)}
-            className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors shrink-0"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[#a0a0a0] hover:text-white transition-colors shrink-0"
             aria-label={volume === 0 ? "Bật tiếng" : "Tắt tiếng"}
           >
             {volume === 0 ? <VolumeX size={20} strokeWidth={1.75} /> : <Volume2 size={20} strokeWidth={1.75} />}
@@ -602,19 +609,35 @@ export default function MainLayout() {
             step={0.01}
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-[90px] h-1 bg-[#333] hover:h-1.5 rounded-full appearance-none cursor-pointer hover:accent-[#1db954] accent-white transition-all"
+            className="w-[96px] h-1 bg-[#333] hover:h-1.5 rounded-full appearance-none cursor-pointer hover:accent-[#1db954] accent-white transition-all"
             aria-label="Âm lượng"
           />
           
           <button
             type="button"
             disabled={!currentSong}
-            onClick={() => currentSong && navigate(`/song/${currentSong.id}`)}
-            className="p-1.5 rounded-full text-[#a0a0a0] hover:text-white transition-colors shrink-0 disabled:opacity-35 disabled:pointer-events-none ml-2"
+            onClick={() => {
+              setIsLyricsOpen(!isLyricsOpen);
+              if (!isLyricsOpen) setIsQueueOpen(false);
+            }}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shrink-0 disabled:opacity-35 disabled:pointer-events-none ml-2 ${isLyricsOpen ? 'text-[#1db954]' : 'text-[#a0a0a0] hover:text-white'}`}
             title="Lời bài hát"
             aria-label="Xem lời bài hát"
           >
             <Mic2 size={20} strokeWidth={1.75} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsQueueOpen(!isQueueOpen);
+              if (!isQueueOpen) setIsLyricsOpen(false);
+            }}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shrink-0 ${isQueueOpen ? 'text-[#1db954]' : 'text-[#a0a0a0] hover:text-white'}`}
+            title="Danh sách phát"
+            aria-label="Danh sách phát"
+          >
+            <ListMusic size={20} strokeWidth={1.75} />
           </button>
         </div>
       </div>

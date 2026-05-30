@@ -563,14 +563,21 @@ const PlaylistView = () => {
                     <span className="group-hover:hidden">{index + 1}</span>
                     <Play size={14} fill="white" className="hidden group-hover:block" />
                   </td>
-                  <td className="py-3" onClick={() => handlePlaySong(song)}>
+                  <td className="py-3">
                     <div className="flex items-center gap-3">
                       <img
                         src={getCoverArt(song)}
                         alt={song.title}
                         className="w-10 h-10 rounded object-cover"
+                        onClick={() => handlePlaySong(song)}
                       />
-                      <span className="text-white font-medium truncate max-w-[200px]">{song.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/song/${song.id}`)}
+                        className="text-white font-medium truncate max-w-[200px] hover:underline hover:text-[#00e6e6] text-left"
+                      >
+                        {song.title}
+                      </button>
                     </div>
                   </td>
                   <td className="py-3 text-gray-400 text-sm group-hover:text-white hidden md:table-cell">

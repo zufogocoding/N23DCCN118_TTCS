@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Image, Music, Upload, CheckCircle, Loader2, ArrowLeft, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../utils/api";
+import LrcSyncEditor from "../../components/LrcSyncEditor";
 
 export default function UploadSong() {
   const navigate = useNavigate();
@@ -594,12 +595,11 @@ export default function UploadSong() {
             <label className="block mb-2 text-sm font-semibold text-[#a0a0a0]">
               Lời bài hát (Tùy chọn)
             </label>
-            <textarea
-              rows="6"
-              placeholder="Nhập lời bài hát của bạn tại đây..."
+            <LrcSyncEditor
+              audioFile={audioFile}
               value={lyrics}
-              onChange={(e) => setLyrics(e.target.value)}
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-4 py-3.5 text-sm outline-none focus:border-[#00e6e6]/50 transition-colors resize-y placeholder-[#444] custom-scrollbar"
+              onChange={setLyrics}
+              rows={6}
             />
           </div>
 
