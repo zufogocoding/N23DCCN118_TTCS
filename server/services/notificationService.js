@@ -1,4 +1,4 @@
-async function createNotificationsForArtistFollowers(db, artistId, message, type) {
+async function createNotificationsForArtistFollowers(db, artistId, message, type, metadata = {}) {
   const followers = await db.follow.findMany({
     where: { followeeId: artistId },
     select: { followerId: true },
@@ -10,6 +10,7 @@ async function createNotificationsForArtistFollowers(db, artistId, message, type
       userId: followerId,
       message,
       type,
+      ...metadata,
     }));
 
   if (notifications.length === 0) return 0;
@@ -38,7 +39,11 @@ async function notifyFollowersAboutAlbumRelease(db, albumId) {
   const artistName = album.artist.user?.displayName || album.artist.user?.username || 'Nghệ sĩ bạn theo dõi';
   const message = `${artistName} vừa phát hành album "${album.title}".`;
 
-  return createNotificationsForArtistFollowers(db, album.artistId, message, 'new_album');
+  return createNotificationsForArtistFollowers(db, album.artistId, message, 'new_album', {
+    targetType: 'ALBUM',
+    targetId: album.id,
+    actionUrl: `/album/${album.id}`,
+  });
 }
 
 async function notifyFollowersAboutSingleRelease(db, songId) {
@@ -83,6 +88,9 @@ async function notifyFollowersAboutSingleRelease(db, songId) {
     userId,
     message,
     type: 'new_song',
+    targetType: 'SONG',
+    targetId: song.id,
+    actionUrl: `/song/${song.id}`,
   }));
 
   if (notifications.length === 0) return 0;
@@ -95,6 +103,7 @@ async function notifyFollowersAboutSingleRelease(db, songId) {
 }
 
 module.exports = {
+  createNotificationsForArtistFollowers,
   notifyFollowersAboutAlbumRelease,
   notifyFollowersAboutSingleRelease,
 };

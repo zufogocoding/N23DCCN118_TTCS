@@ -76,7 +76,41 @@ const createReport = async (req, res) => {
       },
     });
 
-    // Tự động kiểm tra ngưỡng báo cáo để cảnh báo admin
+    // Thông báo cho người báo cáo
+    await prisma.notification.create({
+      data: {
+        userId: reporterId,
+        type: 'report_received',
+        message: 'Báo cáo của bạn đã được ghi nhận. Admin sẽ xem xét trong thời gian sớm nhất.',
+        targetType: 'REPORT',
+        targetId: report.id,
+        actionUrl: '/profile',
+      },
+    });
+
+    // Thông báo cho tất cả admin về report mới
+    try {
+      const admins = await prisma.user.findMany({
+        where: { OR: [{ role: 'admin' }, { isAdmin: true }] },
+        select: { id: true }
+      });
+      
+      if (admins.length > 0) {
+        const adminNotifs = admins.map(admin => ({
+          userId: admin.id,
+          type: 'report_received',
+          targetType: 'REPORT',
+          targetId: report.id,
+          actionUrl: '/admin/reports',
+          message: `Có báo cáo mới về ${normalizedType} #${parsedTargetId}. Vui lòng kiểm tra.`
+        }));
+        await prisma.notification.createMany({ data: adminNotifs });
+      }
+    } catch (err) {
+      console.error("Lỗi khi thông báo report cho admin:", err);
+    }
+
+    // Tự động kiểm tra ngưỡng báo cáo để cảnh báo khẩn cấp cho admin
     try {
       const pendingCount = await prisma.report.count({
         where: {
@@ -114,7 +148,10 @@ const createReport = async (req, res) => {
         if (admins.length > 0) {
           const notificationsData = admins.map(admin => ({
             userId: admin.id,
-            type: 'info',
+            type: 'report_threshold',
+            targetType: 'REPORT',
+            targetId: report.id,
+            actionUrl: '/admin/reports',
             message: `⚠ CẢNH BÁO BẢN QUYỀN: ${targetTitle} đã nhận tới ${pendingCount} báo cáo vi phạm PENDING. Vui lòng rà soát và xử lý.`
           }));
 

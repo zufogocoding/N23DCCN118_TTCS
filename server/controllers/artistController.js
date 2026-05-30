@@ -170,20 +170,101 @@ const artistController = {
         return res.status(200).json({ message: 'Đã theo dõi nghệ sĩ này', following: true });
       }
 
-      await prisma.$transaction([
-        prisma.follow.create({
+      await prisma.$transaction(async (tx) => {
+        await tx.follow.create({
           data: { followerId, followeeId },
-        }),
-        prisma.artist.update({
+        });
+        await tx.artist.update({
           where: { userId: followeeId },
           data: { followerCount: { increment: 1 } },
-        }),
-      ]);
+        });
+        const follower = await tx.user.findUnique({
+          where: { id: followerId },
+          select: { username: true, displayName: true },
+        });
+        const followerArtist = await tx.artist.findUnique({
+          where: { userId: followerId },
+          select: { userId: true },
+        });
+        const followerName = follower?.displayName || follower?.username || 'Một người dùng';
+        await tx.notification.create({
+          data: {
+            userId: followeeId,
+            type: 'new_follower',
+            message: `${followerName} vừa theo dõi bạn.`,
+            targetType: 'USER',
+            targetId: followerId,
+            actionUrl: followerArtist ? `/artist/${followerId}` : null,
+          },
+        });
+      });
 
       res.status(201).json({ message: 'Đã theo dõi', following: true });
     } catch (error) {
       console.error('Lỗi followArtist:', error);
       res.status(500).json({ error: 'Lỗi server khi theo dõi' });
+    }
+  },
+
+  getFollowers: async (req, res) => {
+    try {
+      const artistId = parseInt(req.params.id, 10);
+      if (Number.isNaN(artistId)) {
+        return res.status(400).json({ error: 'ID khÃ´ng há»£p lá»‡' });
+      }
+      if (false && req.user.id !== artistId && req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({ error: 'Báº¡n khÃ´ng cÃ³ quyá»n xem danh sÃ¡ch follower nÃ y' });
+      }
+
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 12));
+      const skip = (page - 1) * limit;
+
+      const [rows, total] = await Promise.all([
+        prisma.follow.findMany({
+          where: { followeeId: artistId },
+          orderBy: { followerId: 'desc' },
+          skip,
+          take: limit,
+          include: {
+            follower: {
+              select: {
+                id: true,
+                username: true,
+                displayName: true,
+                avatarUrl: true,
+                role: true,
+                artist: { select: { userId: true, avatarUrl: true, verifiedTick: true } },
+              },
+            },
+          },
+        }),
+        prisma.follow.count({ where: { followeeId: artistId } }),
+      ]);
+
+      const followers = rows.map((row) => ({
+        followedAt: null,
+        id: row.follower.id,
+        username: row.follower.username,
+        displayName: row.follower.displayName,
+        avatarUrl: row.follower.artist?.avatarUrl || row.follower.avatarUrl,
+        role: row.follower.role,
+        isArtist: Boolean(row.follower.artist),
+        verifiedTick: row.follower.artist?.verifiedTick || false,
+      }));
+
+      res.json({
+        followers,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error('Lá»—i getFollowers:', error);
+      res.status(500).json({ error: 'Lá»—i server khi láº¥y danh sÃ¡ch follower' });
     }
   },
 

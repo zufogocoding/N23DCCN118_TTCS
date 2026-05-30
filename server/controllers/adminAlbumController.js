@@ -219,9 +219,24 @@ const adminAlbumController = {
 
       const { reason } = req.body;
 
-      const updated = await prisma.album.update({
-        where: { id: albumId },
-        data: { status: 'banned' },
+      const updated = await prisma.$transaction(async (tx) => {
+        const nextAlbum = await tx.album.update({
+          where: { id: albumId },
+          data: { status: 'banned' },
+        });
+
+        await tx.notification.create({
+          data: {
+            userId: album.artistId,
+            type: 'album_takedown',
+            message: `Album "${album.title}" của bạn đã bị gỡ khỏi hệ thống.${reason ? ` Lý do: ${reason}` : ''}`,
+            targetType: 'ALBUM',
+            targetId: albumId,
+            actionUrl: `/release/${albumId}`,
+          },
+        });
+
+        return nextAlbum;
       });
 
       console.log(`[ADMIN TAKEDOWN] Album #${albumId} "${album.title}" — Admin #${req.user.id}${reason ? ` — Lý do: ${reason}` : ''}`);
@@ -251,9 +266,24 @@ const adminAlbumController = {
         return res.status(400).json({ error: 'Chỉ có thể khôi phục album đang bị gỡ bỏ' });
       }
 
-      const updated = await prisma.album.update({
-        where: { id: albumId },
-        data: { status: 'released' },
+      const updated = await prisma.$transaction(async (tx) => {
+        const nextAlbum = await tx.album.update({
+          where: { id: albumId },
+          data: { status: 'released' },
+        });
+
+        await tx.notification.create({
+          data: {
+            userId: album.artistId,
+            type: 'album_restored',
+            message: `Album "${album.title}" của bạn đã được khôi phục.`,
+            targetType: 'ALBUM',
+            targetId: albumId,
+            actionUrl: `/album/${albumId}`,
+          },
+        });
+
+        return nextAlbum;
       });
 
       console.log(`[ADMIN RESTORE] Album #${albumId} "${album.title}" — Admin #${req.user.id}`);

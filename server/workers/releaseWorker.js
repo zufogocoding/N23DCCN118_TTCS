@@ -42,6 +42,16 @@ function startReleaseWorker() {
                 scheduledAt: null,
               },
             });
+            await prisma.notification.create({
+              data: {
+                userId: album.artistId,
+                type: 'album_scheduled_failed',
+                message: `Album "${album.title}" chưa thể phát hành theo lịch vì tài khoản nghệ sĩ không hoạt động.`,
+                targetType: 'ALBUM',
+                targetId: album.id,
+                actionUrl: `/release/${album.id}`,
+              },
+            });
             continue;
           }
 
@@ -58,6 +68,16 @@ function startReleaseWorker() {
                 scheduledAt: null,
               },
             });
+            await prisma.notification.create({
+              data: {
+                userId: album.artistId,
+                type: 'album_scheduled_failed',
+                message: `Album "${album.title}" chưa thể phát hành theo lịch vì còn bài chưa được duyệt hoặc album đang trống.`,
+                targetType: 'ALBUM',
+                targetId: album.id,
+                actionUrl: `/release/${album.id}`,
+              },
+            });
             continue;
           }
 
@@ -68,6 +88,16 @@ function startReleaseWorker() {
                 status: 'released',
                 releasedDate: now,
                 scheduledAt: null,
+              },
+            });
+            await tx.notification.create({
+              data: {
+                userId: album.artistId,
+                type: 'album_released',
+                message: `Album "${album.title}" của bạn đã được phát hành tự động theo lịch.`,
+                targetType: 'ALBUM',
+                targetId: album.id,
+                actionUrl: `/album/${album.id}`,
               },
             });
             return notifyFollowersAboutAlbumRelease(tx, album.id);

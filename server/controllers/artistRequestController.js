@@ -135,7 +135,10 @@ const artistRequestController = {
           data: {
             userId: request.userId,
             message: `🎵 Chúc mừng! Yêu cầu trở thành nghệ sĩ của bạn đã được chấp thuận. Nghệ danh: ${request.artistName}`,
-            type: 'artist_approved'
+            type: 'artist_approved',
+            targetType: 'ARTIST',
+            targetId: request.userId,
+            actionUrl: `/artist/${request.userId}`,
           }
         });
 
@@ -176,7 +179,10 @@ const artistRequestController = {
           data: {
             userId: request.userId,
             message: `Yêu cầu trở thành nghệ sĩ của bạn đã bị từ chối.${reasonText} Bạn có thể chỉnh sửa và gửi lại yêu cầu mới.`,
-            type: 'artist_rejected'
+            type: 'artist_rejected',
+            targetType: 'ARTIST_REQUEST',
+            targetId: request.id,
+            actionUrl: '/register-artist',
           }
         });
       });

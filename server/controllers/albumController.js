@@ -393,6 +393,17 @@ const albumController = {
           },
         });
 
+        await tx.notification.create({
+          data: {
+            userId: album.artistId,
+            type: 'album_released',
+            message: `Album "${album.title}" của bạn đã được phát hành thành công.`,
+            targetType: 'ALBUM',
+            targetId: albumId,
+            actionUrl: `/album/${albumId}`,
+          },
+        });
+
         return notifyFollowersAboutAlbumRelease(tx, albumId);
       });
       console.log(`[Notification] Created ${notificationCount} new_album notifications for album ${albumId}`);
@@ -444,12 +455,24 @@ const albumController = {
         return res.status(400).json({ error: 'Thời gian phải ở tương lai' });
       }
 
-      await prisma.album.update({
-        where: { id: albumId },
-        data: {
-          status: 'scheduled',
-          scheduledAt: scheduleDate,
-        },
+      await prisma.$transaction(async (tx) => {
+        await tx.album.update({
+          where: { id: albumId },
+          data: {
+            status: 'scheduled',
+            scheduledAt: scheduleDate,
+          },
+        });
+        await tx.notification.create({
+          data: {
+            userId: album.artistId,
+            type: 'album_scheduled',
+            message: `Album "${album.title}" đã được lên lịch phát hành.`,
+            targetType: 'ALBUM',
+            targetId: albumId,
+            actionUrl: `/release/${albumId}`,
+          },
+        });
       });
 
       res.json({ message: 'Đã lên lịch phát hành!', scheduledAt: scheduleDate, approvedCount: allSongs.length, pendingCount: 0 });

@@ -292,10 +292,14 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   message   String   @db.Text
   type      String   @default("info") @db.VarChar(50) // info, artist_approved, artist_rejected, new_album, new_song
+  targetType String?  @db.VarChar(50)
+  targetId   Int?
+  actionUrl  String?  @db.VarChar(500)
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
 }
 
 model Report {
