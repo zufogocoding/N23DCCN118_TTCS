@@ -94,6 +94,8 @@ function App() {
             {/* Các trang Public */}
             <Route index element={<Home />} />
             <Route path="search" element={<Search />} />
+            {/* analytics must come BEFORE artist/:id to avoid shadowing */}
+            <Route path="artist/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
             <Route path="artist/:id" element={<ArtistProfile />} />
             <Route path="chart/:type" element={<ChartDetail />} />
 
@@ -140,13 +142,13 @@ function App() {
             />
             <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
             <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
-            <Route path="artist/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
 
             {/* Song detail, Playlist, Album view */}
             <Route path="song/:id" element={<SongDetail />} />
             <Route path="playlist/:playlistId" element={<PlaylistView />} />
             <Route path="album/:albumId" element={<AlbumView />} />
           </Route>
+
 
           {/* NHÓM ADMIN */}
           <Route
