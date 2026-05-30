@@ -80,15 +80,10 @@ const SongDetail = () => {
     if (currentSong?.id === song.id) {
       togglePlay();
     } else {
-      const playerSong = {
-        id: song.id,
-        title: song.title,
-        artist: { name: getArtistName(song) },
-        coverImage: getCoverArt(song),
-      };
-      playSong(playerSong, [playerSong]);
+      playSong(song, [song]);
     }
   };
+
 
   const handleToggleLike = async () => {
     if (!user || !user.id || !song) return;
@@ -242,6 +237,7 @@ const SongDetail = () => {
             }`}
           />
         </button>
+
 
         {/* Context Menu (3 chấm) */}
         <div className="relative" ref={contextMenuRef}>

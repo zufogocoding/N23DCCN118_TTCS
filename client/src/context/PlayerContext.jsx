@@ -137,7 +137,6 @@ export const PlayerProvider = ({ children }) => {
     setCurrentTime(time);
   };
 
-  // Format thời gian hiển thị (VD: 02:34)
   const formatTime = (time) => {
     if (isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -145,13 +144,59 @@ export const PlayerProvider = ({ children }) => {
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
+  const addToQueueNext = (song) => {
+    setQueue(prev => {
+      const newQueue = [...prev];
+      // Chèn vào ngay sau currentIndex
+      const insertIdx = currentIndex >= 0 ? currentIndex + 1 : 0;
+      newQueue.splice(insertIdx, 0, song);
+      return newQueue;
+    });
+    // Nếu chưa có bài nào đang phát, phát luôn
+    if (!currentSong) {
+      playSong(song, [song]);
+    }
+  };
+
+  const addToQueueEnd = (song) => {
+    setQueue(prev => [...prev, song]);
+    if (!currentSong) {
+      playSong(song, [song]);
+    }
+  };
+
+  const removeFromQueue = (index) => {
+    setQueue(prev => {
+      const newQueue = [...prev];
+      newQueue.splice(index, 1);
+      return newQueue;
+    });
+    // Cập nhật lại currentIndex nếu xóa bài trước đó
+    if (index < currentIndex) {
+      setCurrentIndex(prev => prev - 1);
+    } else if (index === currentIndex) {
+      // Nếu xóa bài đang phát, qua bài tiếp theo (nếu còn)
+      if (queue.length > 1) {
+        playNext(true);
+      } else {
+        // Hết queue
+        audioRef.current.pause();
+        setCurrentSong(null);
+        setIsPlaying(false);
+        setCurrentIndex(-1);
+      }
+    }
+  };
+
   return (
     <PlayerContext.Provider value={{
       currentSong, isPlaying, volume, currentTime, duration, isShuffle, isRepeat,
+      queue, currentIndex,
       setVolume, togglePlay, playSong, 
       playNext: () => playNext(true), 
       playPrev: () => playPrev(true), 
       handleSeek, formatTime,
+      addToQueueNext, addToQueueEnd, removeFromQueue,
       toggleShuffle: () => {
         const next = !isShuffle;
         setIsShuffle(next);

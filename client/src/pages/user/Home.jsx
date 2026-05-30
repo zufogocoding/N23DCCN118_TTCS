@@ -155,19 +155,7 @@ export default function Home() {
   }, []);
 
   const handlePlaySong = (song, queueList) => {
-    const playerSong = {
-      id: song.id,
-      title: song.title,
-      artist: { name: getArtistName(song) },
-      coverImage: getCoverArt(song),
-    };
-    const playerQueue = (queueList || songs).map(s => ({
-      id: s.id,
-      title: s.title,
-      artist: { name: getArtistName(s) },
-      coverImage: getCoverArt(s),
-    }));
-    playSong(playerSong, playerQueue);
+    playSong(song, queueList || songs);
   };
 
   // Lọc local cho trang chủ
