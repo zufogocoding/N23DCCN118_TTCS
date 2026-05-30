@@ -143,6 +143,7 @@ vite.config.ts.timestamp-*
 postgres_data/
 
 uploads/
+private_uploads/
 
 /generated/prisma
 
