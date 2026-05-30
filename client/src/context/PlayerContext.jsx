@@ -166,26 +166,48 @@ export const PlayerProvider = ({ children }) => {
   };
 
   const removeFromQueue = (index) => {
-    setQueue(prev => {
-      const newQueue = [...prev];
+    setQueue(prevQueue => {
+      const newQueue = [...prevQueue];
       newQueue.splice(index, 1);
-      return newQueue;
-    });
-    // Cập nhật lại currentIndex nếu xóa bài trước đó
-    if (index < currentIndex) {
-      setCurrentIndex(prev => prev - 1);
-    } else if (index === currentIndex) {
-      // Nếu xóa bài đang phát, qua bài tiếp theo (nếu còn)
-      if (queue.length > 1) {
-        playNext(true);
-      } else {
+
+      if (newQueue.length === 0) {
         // Hết queue
         audioRef.current.pause();
         setCurrentSong(null);
         setIsPlaying(false);
         setCurrentIndex(-1);
+      } else if (index === currentIndex) {
+        // Nếu xóa bài đang phát, qua bài tiếp theo (nếu còn)
+        let nextIndex = index;
+        if (nextIndex >= newQueue.length) {
+          nextIndex = 0; // Trở lại bài đầu
+        }
+
+        const nextSong = newQueue[nextIndex];
+        setCurrentSong(nextSong);
+        setCurrentIndex(nextIndex);
+
+        const streamUrl = `/api/songs/${nextSong.id}/stream`;
+        audioRef.current.src = streamUrl;
+        audioRef.current.play().catch(() => {
+          console.warn('Không thể phát bài hát này');
+        });
+        setIsPlaying(true);
+
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          api.post('/api/interactions/listen', {
+            songId: nextSong.id,
+            durationPlayed: 0,
+            isSkipped: false
+          }).catch(err => console.error('Track listen error:', err));
+        }
+      } else if (index < currentIndex) {
+        setCurrentIndex(prevIndex => prevIndex - 1);
       }
-    }
+
+      return newQueue;
+    });
   };
 
   return (
