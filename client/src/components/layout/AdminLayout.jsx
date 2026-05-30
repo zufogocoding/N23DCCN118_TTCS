@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell,
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../utils/api';
 import useClickOutside from '../../hooks/useClickOutside';
+import NotificationDropdown from '../common/NotificationDropdown';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -132,62 +133,7 @@ export default function AdminLayout() {
               })}
             </span>
 
-            {/* Bell Notification Button */}
-            <div className="relative" ref={dropdownRef}>
-              <button 
-                onClick={() => {
-                  if (pendingCount > 0) {
-                    navigate('/admin/pending-songs');
-                  } else {
-                    setShowNotifDropdown(!showNotifDropdown);
-                  }
-                }}
-                className="relative p-2 rounded-full hover:bg-[#222] text-[#00e6e6] transition-colors"
-              >
-                <Bell size={20} />
-                {pendingCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 animate-pulse">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Dropdown */}
-              {showNotifDropdown && (
-                <div className="absolute right-0 top-12 w-72 bg-[#1a1a1a] border border-[#333] rounded-xl shadow-2xl z-50 overflow-hidden">
-                  <div className="p-4 border-b border-[#333]">
-                    <h3 className="font-bold text-white text-sm">Thông báo</h3>
-                  </div>
-                  <div className="p-4">
-                    {pendingCount > 0 ? (
-                      <button
-                        onClick={() => {
-                          navigate('/admin/pending-songs');
-                          setShowNotifDropdown(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg bg-[#00e6e6]/10 border border-[#00e6e6]/20 hover:bg-[#00e6e6]/20 transition-colors text-left"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-[#00e6e6]/20 flex items-center justify-center flex-shrink-0">
-                          <Music size={18} className="text-[#00e6e6]" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            {pendingCount} bài hát chờ duyệt
-                          </p>
-                          <p className="text-xs text-[#a0a0a0] mt-0.5">
-                            Click để review ngay
-                          </p>
-                        </div>
-                      </button>
-                    ) : (
-                      <p className="text-sm text-[#666] text-center py-4">
-                        Không có thông báo mới
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationDropdown />
           </div>
         </header>
 

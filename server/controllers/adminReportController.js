@@ -88,6 +88,17 @@ const resolveReport = async (req, res) => {
         data: { status: 'RESOLVED' }
       });
 
+      await tx.notification.create({
+        data: {
+          userId: report.reporterId,
+          type: 'report_resolved',
+          message: 'Báo cáo của bạn đã được admin xử lý. Cảm ơn bạn đã giúp cộng đồng an toàn hơn.',
+          targetType: 'REPORT',
+          targetId: report.id,
+          actionUrl: '/profile',
+        },
+      });
+
       if (report.targetType === 'SONG') {
         // Chỉ đổi status, KHÔNG đặt isDeleted=true
         try {
@@ -114,7 +125,10 @@ const resolveReport = async (req, res) => {
             await tx.notification.create({
               data: {
                 userId: updatedSong.uploadedById,
-                type: 'info',
+                type: 'song_hidden',
+                targetType: 'SONG',
+                targetId: updatedSong.id,
+                actionUrl: `/song/${updatedSong.id}`,
                 message: `CẢNH BÁO: Bài hát "${updatedSong.title}" của bạn đã bị ẩn do vi phạm quy định (Lý do: ${report.reason}). Vui lòng kiểm tra email để biết hướng dẫn kháng cáo bản quyền.`
               }
             });
@@ -148,7 +162,10 @@ const resolveReport = async (req, res) => {
             await tx.notification.create({
               data: {
                 userId: updatedAlbum.artistId,
-                type: 'info',
+                type: 'album_takedown',
+                targetType: 'ALBUM',
+                targetId: updatedAlbum.id,
+                actionUrl: `/release/${updatedAlbum.id}`,
                 message: `CẢNH BÁO: Album "${updatedAlbum.title}" của bạn đã bị gỡ bỏ do vi phạm quy định (Lý do: ${report.reason}). Vui lòng kiểm tra email để biết hướng dẫn kháng cáo bản quyền.`
               }
             });
@@ -171,7 +188,10 @@ const resolveReport = async (req, res) => {
           await tx.notification.create({
             data: {
               userId: report.targetId,
-              type: 'info',
+              type: 'account_banned',
+              targetType: 'ARTIST',
+              targetId: report.targetId,
+              actionUrl: `/artist/${report.targetId}`,
               message: `Tài khoản nghệ sĩ của bạn đã bị khóa do vi phạm quy định nghiêm trọng (Lý do: ${report.reason}).`
             }
           });
@@ -214,6 +234,17 @@ const warnReport = async (req, res) => {
         data: { status: 'WARNED' }
       });
 
+      await tx.notification.create({
+        data: {
+          userId: report.reporterId,
+          type: 'report_resolved',
+          message: 'Báo cáo của bạn đã được admin xem xét và chủ nội dung đã nhận cảnh cáo.',
+          targetType: 'REPORT',
+          targetId: report.id,
+          actionUrl: '/profile',
+        },
+      });
+
       // Gửi cảnh cáo cho owner nhưng KHÔNG gỡ nội dung
       let ownerId = null;
       let targetTitle = '';
@@ -239,7 +270,10 @@ const warnReport = async (req, res) => {
         await tx.notification.create({
           data: {
             userId: ownerId,
-            type: 'info',
+            type: 'report_warning',
+            targetType: report.targetType,
+            targetId: report.targetId,
+            actionUrl: report.targetType === 'SONG' ? `/song/${report.targetId}` : report.targetType === 'ALBUM' ? `/release/${report.targetId}` : `/artist/${report.targetId}`,
             message: `Cảnh cáo: Nội dung "${targetTitle}" của bạn đã bị báo cáo vì "${report.reason}". Vui lòng kiểm tra và chỉnh sửa nếu cần. Nội dung vi phạm nhiều lần có thể bị gỡ bỏ.`
           }
         });
@@ -262,9 +296,22 @@ const rejectReport = async (req, res) => {
     if (!report) return res.status(404).json({ error: "Không tìm thấy báo cáo." });
     if (report.status !== 'PENDING') return res.status(400).json({ error: "Báo cáo này đã được xử lý." });
 
-    await prisma.report.update({
-      where: { id: parseInt(id) },
-      data: { status: 'REJECTED' }
+    await prisma.$transaction(async (tx) => {
+      await tx.report.update({
+        where: { id: parseInt(id) },
+        data: { status: 'REJECTED' }
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: report.reporterId,
+          type: 'report_rejected',
+          message: 'Báo cáo của bạn đã được admin xem xét nhưng chưa đủ căn cứ để xử lý.',
+          targetType: 'REPORT',
+          targetId: report.id,
+          actionUrl: '/profile',
+        },
+      });
     });
 
     res.json({ message: "Đã bác bỏ báo cáo." });

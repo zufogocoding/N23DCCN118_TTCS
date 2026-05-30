@@ -12,6 +12,7 @@ import {
   Loader2,
   UserPlus,
   UserMinus,
+  Users,
   MoreHorizontal,
   BarChart3,
   Pin,
@@ -41,6 +42,11 @@ export default function ArtistProfile() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [likedSongIds, setLikedSongIds] = useState(new Set());
   const [followBusy, setFollowBusy] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [followersPagination, setFollowersPagination] = useState({ total: 0, page: 1, limit: 12, totalPages: 0 });
+  const [followersLoading, setFollowersLoading] = useState(false);
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [followersError, setFollowersError] = useState('');
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
@@ -118,6 +124,34 @@ export default function ArtistProfile() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchArtistData();
   }, [fetchArtistData]);
+
+  const fetchFollowers = useCallback(async (page = 1) => {
+    if (!currentUser.id || Number(currentUser.id) !== parseInt(id, 10)) return;
+    setFollowersLoading(true);
+    setFollowersError('');
+    try {
+      const res = await api.get(`/api/artists/${id}/followers?page=${page}&limit=12`);
+      if (res.ok) {
+        const data = await res.json();
+        setFollowers((prev) => page === 1 ? (data.followers || []) : [...prev, ...(data.followers || [])]);
+        setFollowersPagination(data.pagination || { total: 0, page, limit: 12, totalPages: 0 });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setFollowersError(data.error || `Không lấy được danh sách follower. Mã lỗi: ${res.status}`);
+      }
+    } catch (err) {
+      console.error('Loi lay followers:', err);
+      setFollowersError('Không lấy được danh sách follower.');
+    } finally {
+      setFollowersLoading(false);
+    }
+  }, [currentUser.id, id]);
+
+  const handleOpenFollowers = () => {
+    if (Number(currentUser.id) !== parseInt(id, 10)) return;
+    setIsFollowersModalOpen(true);
+    fetchFollowers(1);
+  };
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -444,9 +478,14 @@ export default function ArtistProfile() {
               )}
             </div>
 
-            <p className="text-white/60 text-sm mb-3">
+            <button
+              type="button"
+              onClick={handleOpenFollowers}
+              disabled={Number(currentUser.id) !== parseInt(id, 10)}
+              className="text-white/60 text-sm mb-3 hover:text-white disabled:hover:text-white/60 disabled:cursor-default"
+            >
               {followerCount.toLocaleString()} người theo dõi
-            </p>
+            </button>
 
             {currentUser.id !== parseInt(id, 10) && (
               <button
@@ -726,6 +765,64 @@ export default function ArtistProfile() {
           </>
         )}
       </div>
+
+      {isFollowersModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#121212] border border-[#333] rounded-2xl w-full max-w-lg p-6 max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Users size={20} className="text-[#00e6e6]" />
+                Người theo dõi bạn
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsFollowersModalOpen(false)}
+                className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-2 pr-1">
+              {followers.map((follower) => {
+                const followerName = follower.displayName || follower.username || 'Người dùng';
+                const followerAvatar = follower.avatarUrl
+                  ? getMediaUrl(follower.avatarUrl)
+                  : `https://ui-avatars.com/api/?name=${encodeURIComponent(followerName)}&background=random`;
+                const content = (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors min-w-0">
+                    <img src={followerAvatar} alt={followerName} className="w-11 h-11 rounded-full object-cover shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{followerName}</p>
+                      <p className="text-xs text-[#a0a0a0] truncate">{follower.isArtist ? 'Nghệ sĩ' : 'Người nghe'}</p>
+                    </div>
+                  </div>
+                );
+                return follower.isArtist ? (
+                  <Link key={follower.id} to={`/artist/${follower.id}`} onClick={() => setIsFollowersModalOpen(false)}>{content}</Link>
+                ) : (
+                  <div key={follower.id}>{content}</div>
+                );
+              })}
+
+              {!followersLoading && followers.length === 0 && (
+                <p className="text-sm text-[#a0a0a0] py-6 text-center">{followersError || 'Chưa có ai theo dõi bạn.'}</p>
+              )}
+            </div>
+
+            {followersPagination.page < followersPagination.totalPages && (
+              <button
+                type="button"
+                disabled={followersLoading}
+                onClick={() => fetchFollowers(followersPagination.page + 1)}
+                className="mt-4 px-4 py-2 rounded-full border border-white/30 text-sm font-bold text-white hover:border-white disabled:opacity-50"
+              >
+                {followersLoading ? 'Đang tải...' : 'Xem thêm follower'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Create album modal */}
       {isCreateAlbumOpen && (

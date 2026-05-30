@@ -171,7 +171,7 @@ const approveSong = async (req, res) => {
     const songId = Number(id);
     const existing = await prisma.song.findFirst({
       where: { id: songId, isDeleted: false },
-      select: { status: true },
+      select: { status: true, title: true, uploadedById: true },
     });
 
     if (!existing) return res.status(404).json({ error: "KhÃ´ng tÃ¬m tháº¥y bÃ i hÃ¡t" });
@@ -184,6 +184,18 @@ const approveSong = async (req, res) => {
       });
 
       if (existing.status !== "approved") {
+        if (existing.uploadedById) {
+          await tx.notification.create({
+            data: {
+              userId: existing.uploadedById,
+              type: "song_approved",
+              message: `Bài hát "${existing.title}" của bạn đã được duyệt và có thể nghe công khai.`,
+              targetType: "SONG",
+              targetId: songId,
+              actionUrl: `/song/${songId}`,
+            },
+          });
+        }
         notificationCount = await notifyFollowersAboutSingleRelease(tx, songId);
       }
 
@@ -202,10 +214,36 @@ const approveSong = async (req, res) => {
 const rejectSong = async (req, res) => {
   try {
     const { id } = req.params;
-    const song = await prisma.song.update({
-      where: { id: Number(id) },
-      data: { status: "rejected" },
+    const songId = Number(id);
+    const existing = await prisma.song.findFirst({
+      where: { id: songId, isDeleted: false },
+      select: { title: true, uploadedById: true },
     });
+
+    if (!existing) return res.status(404).json({ error: "KhÃ´ng tÃ¬m tháº¥y bÃ i hÃ¡t" });
+
+    const song = await prisma.$transaction(async (tx) => {
+      const updated = await tx.song.update({
+        where: { id: songId },
+        data: { status: "rejected" },
+      });
+
+      if (existing.uploadedById) {
+        await tx.notification.create({
+          data: {
+            userId: existing.uploadedById,
+            type: "song_rejected",
+            message: `Bài hát "${existing.title}" của bạn đã bị từ chối. Vui lòng kiểm tra lại nội dung trước khi gửi lại.`,
+            targetType: "SONG",
+            targetId: songId,
+            actionUrl: "/upload-song",
+          },
+        });
+      }
+
+      return updated;
+    });
+
     res.json(song);
   } catch (error) {
     console.error(error);
