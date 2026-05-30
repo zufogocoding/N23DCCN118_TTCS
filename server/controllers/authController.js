@@ -262,6 +262,10 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ error: "Mã OTP đã hết hạn" });
     }
 
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "Mật khẩu phải có ít nhất 6 ký tự" });
+    }
+
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
@@ -289,6 +293,10 @@ const changePassword = async (req, res) => {
 
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ error: "Vui lòng cung cấp mật khẩu cũ và mật khẩu mới" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Mật khẩu mới phải có ít nhất 6 ký tự" });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -331,7 +339,7 @@ const deleteAccount = async (req, res) => {
       return res.status(404).json({ error: "Người dùng không tồn tại" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Mật khẩu không chính xác" });
     }
@@ -381,7 +389,6 @@ module.exports = {
   login,
   requestForgotPasswordOtp,
   resetPassword,
-  changePassword,
   changePassword,
   deleteAccount,
   getMe
