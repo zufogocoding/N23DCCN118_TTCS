@@ -1,4 +1,19 @@
 const prisma = require('../db/index');
+const fs = require('fs');
+const path = require('path');
+
+// Helper to delete physical files safely
+const deleteFile = (relativePath) => {
+  if (!relativePath) return;
+  const absolutePath = path.resolve(process.cwd(), relativePath.startsWith('/') ? relativePath.substring(1) : relativePath);
+  if (fs.existsSync(absolutePath)) {
+    try {
+      fs.unlinkSync(absolutePath);
+    } catch (err) {
+      console.error(`[deleteFile] Không thể xóa file ${absolutePath}:`, err.message);
+    }
+  }
+};
 
 const getAllPlaylists = async (req, res) => {
   try {
@@ -31,21 +46,31 @@ const getAllPlaylists = async (req, res) => {
 const deletePlaylist = async (req, res) => {
   try {
     const { id } = req.params;
+    const playlistId = parseInt(id);
+
+    const playlist = await prisma.playlist.findUnique({
+      where: { id: playlistId }
+    });
+
+    if (!playlist) {
+      return res.status(404).json({ error: "Playlist không tồn tại" });
+    }
 
     // Prisma Cascade delete đã được thiết lập ở database (PlaylistSong)
     await prisma.playlist.delete({
       where: {
-        id: parseInt(id),
+        id: playlistId,
       }
     });
+
+    // Clean up coverArt from storage
+    if (playlist.coverArtUrl) {
+      deleteFile(playlist.coverArtUrl);
+    }
 
     res.json({ message: "Đã xóa danh sách phát thành công" });
   } catch (error) {
     console.error("Lỗi khi xóa playlist:", error);
-    // Xử lý lỗi nếu playlist không tồn tại
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: "Playlist không tồn tại" });
-    }
     res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
   }
 };
