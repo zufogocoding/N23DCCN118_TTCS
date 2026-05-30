@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
@@ -33,7 +34,26 @@ const albumRoutes = require('./routes/albumRoutes.js');
 
 const app = express()
 
-app.use(cors()); // Cho phép Frontend gọi API 
+// Restrict CORS to configured frontend origin only
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map(s => s.trim());
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  credentials: true,
+}));
+
+// Rate limiting: strict limits on auth endpoints to prevent brute-force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // max 10 attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Quá nhiều yêu cầu, vui lòng thử lại sau 15 phút.' },
+  skip: () => process.env.NODE_ENV === 'test',
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
