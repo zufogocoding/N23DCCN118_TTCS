@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "npx prisma generate && nodemon server.js",
+    "dev": "npx prisma generate && nodemon --ignore uploads/ --ignore private_uploads/ server.js",
     "db-manage": "node manage-db.js",
     "test": "jest --runInBand --detectOpenHandles --forceExit"
   },

@@ -37,10 +37,12 @@ const uploadAvatar = multer({
     }
   ),
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    if (file.mimetype.startsWith('image/') && allowedImageExts.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Chỉ cho phép tải lên file ảnh!'), false);
+      cb(new Error('Chỉ cho phép tải lên file ảnh (jpg, jpeg, png, webp, gif)!'), false);
     }
   },
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
@@ -56,10 +58,12 @@ const uploadPlaylistCover = multer({
     }
   ),
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    if (file.mimetype.startsWith('image/') && allowedImageExts.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Chỉ cho phép tải lên file ảnh!'), false);
+      cb(new Error('Chỉ cho phép tải lên file ảnh (jpg, jpeg, png, webp, gif)!'), false);
     }
   },
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
@@ -82,13 +86,13 @@ const uploadSongFields = multer({
     const allowedAudioExts = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.mp4'];
 
     if (file.fieldname === 'audioFile') {
-      if (file.mimetype.startsWith('audio/') || allowedAudioExts.includes(ext)) {
+      if (file.mimetype.startsWith('audio/') && allowedAudioExts.includes(ext)) {
         cb(null, true);
       } else {
         cb(new Error('Định dạng file nhạc không hợp lệ! Chỉ cho phép mp3, wav, flac, ogg, m4a, aac'), false);
       }
     } else if (file.fieldname === 'coverImage') {
-      if (file.mimetype.startsWith('image/') || allowedImageExts.includes(ext)) {
+      if (file.mimetype.startsWith('image/') && allowedImageExts.includes(ext)) {
         cb(null, true);
       } else {
         cb(new Error('Định dạng ảnh bìa không hợp lệ! Chỉ cho phép jpg, jpeg, png, webp, gif'), false);
@@ -126,13 +130,13 @@ const uploadArtistRequest = multer({
     const allowedAudioExts = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.mp4'];
 
     if (file.fieldname === 'idCard') {
-      if (file.mimetype.startsWith('image/') || allowedImageExts.includes(ext)) {
+      if (file.mimetype.startsWith('image/') && allowedImageExts.includes(ext)) {
         cb(null, true);
       } else {
         cb(new Error('ID Card phải là file ảnh (jpg, jpeg, png, webp, gif)!'), false);
       }
     } else if (file.fieldname === 'demoTrack') {
-      if (file.mimetype.startsWith('audio/') || allowedAudioExts.includes(ext)) {
+      if (file.mimetype.startsWith('audio/') && allowedAudioExts.includes(ext)) {
         cb(null, true);
       } else {
         cb(new Error('Demo Track phải là file âm thanh (mp3, wav, flac, ogg, m4a, aac)!'), false);
