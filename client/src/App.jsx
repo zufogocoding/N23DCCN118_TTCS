@@ -39,7 +39,8 @@ const AdminUsers = lazy(() => import('./pages/admin/adminUser'));
 const ManageSongs = lazy(() => import('./pages/admin/ManageSongs'));
 const ManageReports = lazy(() => import('./pages/admin/ManageReports'));
 const ManageCharts = lazy(() => import('./pages/admin/ManageCharts'));
-
+const AdminSystemPlaylists = lazy(() => import('./pages/admin/AdminSystemPlaylists'));
+const AdminSystemPlaylistDetail = lazy(() => import('./pages/admin/AdminSystemPlaylistDetail'));
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-screen bg-[#121212] text-white">
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1db954]"></div>
@@ -170,6 +171,8 @@ function App() {
             <Route path="genres" element={<ManageGenres />} />
             <Route path="charts" element={<ManageCharts />} />
             <Route path="reports" element={<ManageReports />} />
+            <Route path="system-playlists" element={<AdminSystemPlaylists />} />
+            <Route path="system-playlists/:id" element={<AdminSystemPlaylistDetail />} />
           </Route>
 
         </Routes>

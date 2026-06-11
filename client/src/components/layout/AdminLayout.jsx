@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell, ArrowLeft, Clock, BarChart } from 'lucide-react';
+import { LayoutDashboard, Users, Mic2, Music, Disc, ListMusic, Tags, Flag, Bell, ArrowLeft, Clock, BarChart, Settings } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../utils/api';
 import useClickOutside from '../../hooks/useClickOutside';
@@ -50,6 +50,7 @@ export default function AdminLayout() {
     if (path.includes('artists')) return 'Artist Requests';
     if (path.includes('songs')) return 'Song Management';
     if (path.includes('albums')) return 'Album Management';
+    if (path.includes('system-playlists')) return 'System Playlists';
     if (path.includes('playlists')) return 'Playlist Management';
     if (path.includes('genres')) return 'Genre Management';
     if (path.includes('reports')) return 'Reports';
@@ -69,6 +70,7 @@ export default function AdminLayout() {
     },
     { name: 'Albums', path: '/admin/albums', icon: <Disc size={20} /> },
     { name: 'Playlists', path: '/admin/playlists', icon: <ListMusic size={20} /> },
+    { name: 'System Playlists', path: '/admin/system-playlists', icon: <Settings size={20} /> },
     { name: 'Genres', path: '/admin/genres', icon: <Tags size={20} /> },
     { name: 'Charts', path: '/admin/charts', icon: <BarChart size={20} /> },
     { name: 'Reports', path: '/admin/reports', icon: <Flag size={20} /> },

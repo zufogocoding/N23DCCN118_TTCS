@@ -39,7 +39,7 @@ const getAllPlaylists = async (req, res) => {
     res.json(playlists);
   } catch (error) {
     console.error("Lỗi khi lấy danh sách playlist:", error);
-    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+    res.status(500).json({ error: error.message || "Lỗi máy chủ nội bộ", details: error });
   }
 };
 

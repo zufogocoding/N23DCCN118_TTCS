@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
+    "@tabler/icons-react": "^3.44.0",
     "@tailwindcss/postcss": "^4.2.4",
     "axios": "^1.16.1",
     "fast-average-color": "^9.5.2",

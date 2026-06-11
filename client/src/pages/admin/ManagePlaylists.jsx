@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Trash2, Loader2, Globe, Lock, Play, Music, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getMediaUrl } from '../../utils/api';
+import { api, getMediaUrl } from '../../utils/api';
 
 export default function ManagePlaylists() {
   const [playlists, setPlaylists] = useState([]);
@@ -22,13 +22,16 @@ export default function ManagePlaylists() {
   async function fetchPlaylists() {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/playlists');
-      if (!res.ok) throw new Error('Không thể tải danh sách playlist');
-      const data = await res.json();
+      const res = await api.get('/api/admin/playlists');
+      if (!res.ok && res.status !== 200) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Không thể tải danh sách playlist');
+      }
+      const data = res.ok ? await res.json() : res.data;
       setPlaylists(data);
     } catch (err) {
       console.error(err);
-      setError('Lỗi khi tải dữ liệu. Vui lòng thử lại.');
+      setError(err.message || 'Lỗi khi tải dữ liệu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -43,12 +46,10 @@ export default function ManagePlaylists() {
     
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/playlists/${deleteModal.id}`, {
-        method: 'DELETE',
-      });
+      const res = await api.delete(`/api/admin/playlists/${deleteModal.id}`);
       
-      if (!res.ok) {
-         const data = await res.json();
+      if (!res.ok && res.status !== 200) {
+         const data = await res.json().catch(() => ({}));
          throw new Error(data.error || 'Lỗi khi xóa playlist');
       }
 
