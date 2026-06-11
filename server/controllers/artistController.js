@@ -210,10 +210,10 @@ const artistController = {
     try {
       const artistId = parseInt(req.params.id, 10);
       if (Number.isNaN(artistId)) {
-        return res.status(400).json({ error: 'ID khÃ´ng há»£p lá»‡' });
+        return res.status(400).json({ error: 'ID không hợp lệ' });
       }
-      if (false && req.user.id !== artistId && req.user.role !== 'admin' && !req.user.isAdmin) {
-        return res.status(403).json({ error: 'Báº¡n khÃ´ng cÃ³ quyá»n xem danh sÃ¡ch follower nÃ y' });
+      if (req.user.id !== artistId && req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({ error: 'Bạn không có quyền xem danh sách người theo dõi này' });
       }
 
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);

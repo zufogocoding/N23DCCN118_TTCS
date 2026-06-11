@@ -7,6 +7,7 @@ import PlaylistView from './pages/music/PlaylistView';
 import AuthLayout from './components/layout/AuthLayout';
 import MainLayout from './components/layout/MainLayout';
 import AdminLayout from './components/layout/AdminLayout';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -77,109 +78,111 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Suspense fallback={<LoadingSpinner />}>
-          <Routes>
-
-          {/* NHÓM XÁC THỰC (Không cần đăng nhập) */}
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-          </Route>
-
-          {/* NHÓM APP CHÍNH */}
-          <Route path="/" element={<MainLayout />}>
-
-            {/* Các trang Public */}
-            <Route index element={<Home />} />
-            <Route path="search" element={<Search />} />
-            {/* analytics must come BEFORE artist/:id to avoid shadowing */}
-            <Route path="artist/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
-            <Route path="artist/:id" element={<ArtistProfile />} />
-            <Route path="chart/:type" element={<ChartDetail />} />
-
-            {/* Các trang Protected */}
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+  
+            {/* NHÓM XÁC THỰC (Không cần đăng nhập) */}
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+            </Route>
+  
+            {/* NHÓM APP CHÍNH */}
+            <Route path="/" element={<MainLayout />}>
+  
+              {/* Các trang Public */}
+              <Route index element={<Home />} />
+              <Route path="search" element={<Search />} />
+              {/* analytics must come BEFORE artist/:id to avoid shadowing */}
+              <Route path="artist/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
+              <Route path="artist/:id" element={<ArtistProfile />} />
+              <Route path="chart/:type" element={<ChartDetail />} />
+  
+              {/* Các trang Protected */}
+              <Route
+                path="/library"
+                element={
+                  <ProtectedRoute>
+                    <LibraryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="register-artist"
+                element={
+                  <ProtectedRoute>
+                    <BecomeArtist />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="upload-song"
+                element={
+                  <ProtectedRoute>
+                    <UploadSong />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
+              <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
+  
+              {/* Song detail, Playlist, Album view */}
+              <Route path="song/:id" element={<SongDetail />} />
+              <Route path="playlist/:playlistId" element={<PlaylistView />} />
+              <Route path="album/:albumId" element={<AlbumView />} />
+            </Route>
+  
+  
+            {/* NHÓM ADMIN */}
             <Route
-              path="/library"
+              path="/admin"
               element={
-                <ProtectedRoute>
-                  <LibraryPage />
-                </ProtectedRoute>
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
               }
-            />
-            <Route
-              path="profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="register-artist"
-              element={
-                <ProtectedRoute>
-                  <BecomeArtist />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="upload-song"
-              element={
-                <ProtectedRoute>
-                  <UploadSong />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="release/new" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
-            <Route path="release/:albumId" element={<ProtectedRoute><ReleaseManager /></ProtectedRoute>} />
-
-            {/* Song detail, Playlist, Album view */}
-            <Route path="song/:id" element={<SongDetail />} />
-            <Route path="playlist/:playlistId" element={<PlaylistView />} />
-            <Route path="album/:albumId" element={<AlbumView />} />
-          </Route>
-
-
-          {/* NHÓM ADMIN */}
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="artists" element={<ArtistRequests />} />
-            <Route path="songs" element={<ManageSongs />} />
-            <Route path="pending-songs" element={<PendingSongs />} />
-            <Route path="albums" element={<AdminAlbums />} />
-            <Route path="playlists" element={<ManagePlaylists />} />
-            <Route path="genres" element={<ManageGenres />} />
-            <Route path="charts" element={<ManageCharts />} />
-            <Route path="reports" element={<ManageReports />} />
-            <Route path="system-playlists" element={<AdminSystemPlaylists />} />
-            <Route path="system-playlists/:id" element={<AdminSystemPlaylistDetail />} />
-          </Route>
-
-        </Routes>
-      </Suspense>
-
-      </BrowserRouter>
-    </AuthProvider>
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="artists" element={<ArtistRequests />} />
+              <Route path="songs" element={<ManageSongs />} />
+              <Route path="pending-songs" element={<PendingSongs />} />
+              <Route path="albums" element={<AdminAlbums />} />
+              <Route path="playlists" element={<ManagePlaylists />} />
+              <Route path="genres" element={<ManageGenres />} />
+              <Route path="charts" element={<ManageCharts />} />
+              <Route path="reports" element={<ManageReports />} />
+              <Route path="system-playlists" element={<AdminSystemPlaylists />} />
+              <Route path="system-playlists/:id" element={<AdminSystemPlaylistDetail />} />
+            </Route>
+  
+          </Routes>
+        </Suspense>
+  
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

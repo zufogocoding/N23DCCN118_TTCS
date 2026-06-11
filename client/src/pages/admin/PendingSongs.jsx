@@ -140,7 +140,7 @@ export default function PendingSongs() {
   // Approve song
   const handleApprove = async (id) => {
     try {
-      await api.patch(`/api/admin/song/${id}/approve`);
+      await api.patch(`/api/admin/songs/${id}/approve`);
       setSongs(songs.filter((song) => song.id !== id));
       setApprovedCount(prev => prev + 1);
       if (playingSongId === id) {
@@ -157,7 +157,7 @@ export default function PendingSongs() {
   // Reject song
   const handleReject = async (id) => {
     try {
-      await api.patch(`/api/admin/song/${id}/reject`);
+      await api.patch(`/api/admin/songs/${id}/reject`);
       setSongs(songs.filter((song) => song.id !== id));
       setRejectedCount(prev => prev + 1);
       if (playingSongId === id) {

@@ -89,9 +89,11 @@ const genreController = {
         return res.status(404).json({ error: 'Không tìm thấy thể loại' });
       }
 
-      // Xóa tất cả SongGenre liên quan trước, rồi xóa genre
-      await prisma.songGenre.deleteMany({ where: { genreId: id } });
-      await prisma.genre.delete({ where: { id } });
+      // Xóa tất cả SongGenre liên quan trước, rồi xóa genre trong một transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.songGenre.deleteMany({ where: { genreId: id } });
+        await tx.genre.delete({ where: { id } });
+      });
 
       res.status(200).json({ message: `Đã xóa thể loại "${existing.genreTag}"` });
     } catch (error) {
