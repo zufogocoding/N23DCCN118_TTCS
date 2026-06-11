@@ -79,3 +79,5 @@ export function getMediaUrl(path) {
   // we can just use the relative path (or prepend a slash if missing).
   return path.startsWith('/') ? path : `/${path}`;
 }
+
+export default api;

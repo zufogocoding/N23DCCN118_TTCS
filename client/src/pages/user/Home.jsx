@@ -38,6 +38,20 @@ export default function Home() {
   const chartsRef = useRef(null);
   const songsRef = useRef(null);
 
+  const [systemPlaylists, setSystemPlaylists] = useState({ featured: [], context: [], genre: [] });
+  const sysFeaturedRef = useRef(null);
+  const sysContextRef = useRef(null);
+  const sysGenreRef = useRef(null);
+
+  const getContextTitle = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return "Chào buổi sáng đầy năng lượng";
+    if (hour >= 11 && hour < 14) return "Nhạc trưa thư giãn";
+    if (hour >= 14 && hour < 17) return "Nhạc chill buổi chiều";
+    if (hour >= 17 && hour < 22) return "Giai điệu buổi tối";
+    return "Nhạc ngủ ngon";
+  };
+
   const scrollContainer = (ref, direction) => {
     if (ref.current) {
       const scrollAmount = direction === 'left' ? -640 : 640;
@@ -65,7 +79,7 @@ export default function Home() {
     async function fetchData() {
       try {
 
-        const [songsRes, playlistsRes, albumsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes] = await Promise.all([
+        const [songsRes, playlistsRes, albumsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes, systemRes] = await Promise.all([
           api.get('/api/songs'),
           user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
           api.get('/api/albums'),
@@ -73,7 +87,8 @@ export default function Home() {
           api.get('/api/charts/WEEKLY'),
           api.get('/api/charts/MONTHLY'),
           user.id ? api.get('/api/recommendations') : Promise.resolve(null),
-          user.id ? api.get('/api/interactions/recent') : Promise.resolve(null)
+          user.id ? api.get('/api/interactions/recent') : Promise.resolve(null),
+          api.get('/api/system-playlists/home')
         ]);
 
         let fetchedSongs = [];
@@ -130,6 +145,19 @@ export default function Home() {
         // Always read recent playlists from localStorage
         setRecentPlaylists(JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]'));
 
+        if (systemRes && systemRes.ok) {
+          const sysData = await systemRes.json();
+          if (sysData.success && sysData.data) {
+             const grouped = { featured: [], context: [], genre: [] };
+             sysData.data.forEach(p => {
+               if (p.category === 'Nổi bật') grouped.featured.push(p);
+               else if (p.category === 'Theo ngữ cảnh') grouped.context.push(p);
+               else if (p.category === 'Theo thể loại') grouped.genre.push(p);
+               else grouped.featured.push(p);
+             });
+             setSystemPlaylists(grouped);
+          }
+        }
 
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu:', err);
@@ -359,6 +387,121 @@ export default function Home() {
               </h1>
               {user.username && <h2 className="text-xl font-bold text-text">{user.artistName || user.displayName || user.username}</h2>}
             </div>
+
+            {/* System Playlists - Nổi bật */}
+            {systemPlaylists.featured.length > 0 && (
+              <div className="mb-10 animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-hover tracking-tight">
+                    Danh sách phát nổi bật
+                  </h2>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => scrollContainer(sysFeaturedRef, 'left')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button onClick={() => scrollContainer(sysFeaturedRef, 'right')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div ref={sysFeaturedRef} className="flex overflow-x-auto gap-5 pb-4 no-scrollbar scroll-smooth">
+                  {systemPlaylists.featured.map(pl => (
+                    <div key={pl.id} onClick={() => navigate(`/playlist/${pl.id}`)}
+                      className="relative bg-surface/30 backdrop-blur-md border border-white/5 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 cursor-pointer overflow-hidden group w-[220px] h-[220px] flex-shrink-0 flex items-end">
+                      <div className="absolute inset-0">
+                        {pl.coverArtUrl ? (
+                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/40 to-black" />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
+                      </div>
+                      <div className="relative z-10 w-full p-4">
+                        <h3 className="font-bold text-white text-lg truncate mb-0.5">{pl.title}</h3>
+                        {pl.description && <p className="text-xs text-gray-300 line-clamp-2">{pl.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* System Playlists - Theo ngữ cảnh */}
+            {systemPlaylists.context.length > 0 && (
+              <div className="mb-10 animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-text">{getContextTitle()}</h2>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => scrollContainer(sysContextRef, 'left')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button onClick={() => scrollContainer(sysContextRef, 'right')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div ref={sysContextRef} className="flex overflow-x-auto gap-5 pb-4 no-scrollbar scroll-smooth">
+                  {systemPlaylists.context.map(pl => (
+                    <div key={pl.id} onClick={() => navigate(`/playlist/${pl.id}`)}
+                      className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl transition-all duration-300 cursor-pointer group shadow-lg w-[200px] flex-shrink-0">
+                      <div className="w-full aspect-square rounded-md mb-4 shadow-lg overflow-hidden relative">
+                        {pl.coverArtUrl ? (
+                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-800 flex items-center justify-center text-4xl">🎵</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-xl transform translate-y-2 group-hover:translate-y-0 transition-all">
+                            <Play size={24} fill="white" color="white" className="ml-1" />
+                          </button>
+                        </div>
+                      </div>
+                      <h3 className="font-bold truncate text-text">{pl.title}</h3>
+                      <p className="text-xs text-text-muted mt-1 truncate">{pl.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* System Playlists - Theo thể loại */}
+            {systemPlaylists.genre.length > 0 && (
+              <div className="mb-10 animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-text">Khám phá theo Thể Loại</h2>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => scrollContainer(sysGenreRef, 'left')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button onClick={() => scrollContainer(sysGenreRef, 'right')}
+                      className="w-8 h-8 rounded-full bg-surface-hover border border-white/5 flex items-center justify-center text-text hover:bg-border hover:text-white active:scale-95 transition-all">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div ref={sysGenreRef} className="flex overflow-x-auto gap-5 pb-4 no-scrollbar scroll-smooth">
+                  {systemPlaylists.genre.map(pl => (
+                    <div key={pl.id} onClick={() => navigate(`/playlist/${pl.id}`)}
+                      className="bg-surface/30 backdrop-blur-md border border-white/5 p-4 rounded-2xl hover:bg-surface/50 hover:-translate-y-1.5 hover:shadow-2xl transition-all duration-300 cursor-pointer group shadow-lg w-[200px] flex-shrink-0">
+                      <div className="w-full aspect-square rounded-md mb-4 shadow-lg overflow-hidden">
+                        {pl.coverArtUrl ? (
+                          <img src={getMediaUrl(pl.coverArtUrl)} alt="cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-pink-600 to-rose-800 flex items-center justify-center text-4xl">🎵</div>
+                        )}
+                      </div>
+                      <h3 className="font-bold truncate text-text">{pl.title}</h3>
+                      {pl.description && <p className="text-xs text-text-muted mt-1 truncate">{pl.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Section: My Library - User Playlists từ DB */}
             {user.id && (

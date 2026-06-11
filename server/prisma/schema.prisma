@@ -78,6 +78,13 @@ model Playlist {
   playlistUrl String   @unique @db.VarChar(255)
   isPublic    Boolean  @default(true)
   isCollaborative Boolean  @default(false)
+
+  // System Playlist fields
+  isSystem    Boolean  @default(false)
+  isOnHomepage Boolean  @default(false)
+  displayOrder Int      @default(0)
+  category    String?  @db.VarChar(100)
+
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -213,6 +220,7 @@ model Interaction {
 model PlaylistSong {
   playlistId Int
   songId     Int
+  sortOrder  Int      @default(0)
   addAt      DateTime @default(now())
 
   playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)

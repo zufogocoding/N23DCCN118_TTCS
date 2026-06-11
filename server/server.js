@@ -23,6 +23,8 @@ const chartRoutes = require('./routes/chartRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
 const recommendationRoutes = require('./routes/recommendationRoutes.js');
 
+const systemPlaylistRoutes = require('./routes/systemPlaylistRoutes.js');
+const adminSystemPlaylistRoutes = require('./routes/adminSystemPlaylistRoutes.js');
 
 const userRoutes = require('./routes/userRoutes.js');
 const artistRequestRoutes = require('./routes/artistRequestRoutes.js');
@@ -96,6 +98,9 @@ app.use(adminReportRoutes);
 app.use(adminChartRoutes);
 app.use(chartRoutes);
 app.use(reportRoutes);
+
+app.use(systemPlaylistRoutes);
+app.use(adminSystemPlaylistRoutes);
 
 
 app.use('/api/users', userRoutes);
