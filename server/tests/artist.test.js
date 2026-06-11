@@ -213,7 +213,7 @@ describe('=== SoundClown Artist & Request API Integration Tests ===', () => {
   it('6. GET /api/artists/:id/followers - Xem danh sách follower của nghệ sĩ', async () => {
     const res = await request(app)
       .get(`/api/artists/${applicant.id}/followers`)
-      .set('Authorization', `Bearer ${listenerToken}`);
+      .set('Authorization', `Bearer ${applicantToken}`);
 
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body.followers)).toBe(true);
