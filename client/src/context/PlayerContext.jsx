@@ -6,26 +6,150 @@ const PlayerContext = createContext();
 
 export const usePlayer = () => useContext(PlayerContext);
 
+const safeGet = (key, fallback) => {
+  try {
+    const val = localStorage.getItem(key);
+    return val !== null ? val : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const safeSet = (key, val) => {
+  try {
+    localStorage.setItem(key, val);
+  } catch (e) {
+    console.warn('Failed to write to localStorage:', e);
+  }
+};
+
+const safeRemove = (key) => {
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    console.warn('Failed to remove from localStorage:', e);
+  }
+};
+
 export const PlayerProvider = ({ children }) => {
   const audioRef = useRef(new Audio());
+  const lastSaveTimeRef = useRef(0);
 
-  const [currentSong, setCurrentSong] = useState(null);
+  const [currentSong, setCurrentSong] = useState(() => {
+    const saved = safeGet('player_current_song', null);
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isPlaying, setIsPlaying] = useState(false);
-  const [queue, setQueue] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(-1);
+  const [queue, setQueue] = useState(() => {
+    const saved = safeGet('player_queue', null);
+    try {
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const saved = safeGet('player_current_index', '-1');
+    return parseInt(saved, 10);
+  });
 
-  const [volume, setVolume] = useState(1); // 0.0 to 1.0
-  const [currentTime, setCurrentTime] = useState(0);
+  const [volume, setVolume] = useState(() => {
+    const saved = safeGet('player_volume', '1');
+    return parseFloat(saved);
+  }); // 0.0 to 1.0
+  const [currentTime, setCurrentTime] = useState(() => {
+    const saved = safeGet('player_current_time', '0');
+    return parseFloat(saved);
+  });
   const [duration, setDuration] = useState(0);
 
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(() => {
+    return safeGet('player_is_shuffle', 'false') === 'true';
+  });
+  const [isRepeat, setIsRepeat] = useState(() => {
+    return safeGet('player_is_repeat', 'false') === 'true';
+  });
+
+  // Restore currentSong and currentTime on initial mount
+  useEffect(() => {
+    if (currentSong) {
+      audioRef.current.src = `/api/songs/${currentSong.id}/stream`;
+      
+      const handleLoadedMetadata = () => {
+        try {
+          const savedTime = safeGet('player_current_time', '0');
+          const parsedTime = parseFloat(savedTime);
+          if (!isNaN(parsedTime) && parsedTime > 0) {
+            audioRef.current.currentTime = parsedTime;
+            setCurrentTime(parsedTime);
+          }
+        } catch (e) {
+          console.error('Failed to restore playback time:', e);
+        }
+      };
+      audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save changes to localStorage
+  useEffect(() => {
+    if (currentSong) {
+      safeSet('player_current_song', JSON.stringify(currentSong));
+    } else {
+      safeRemove('player_current_song');
+      safeRemove('player_current_time');
+    }
+  }, [currentSong]);
+
+  useEffect(() => {
+    safeSet('player_queue', JSON.stringify(queue));
+  }, [queue]);
+
+  useEffect(() => {
+    safeSet('player_current_index', currentIndex.toString());
+  }, [currentIndex]);
+
+  useEffect(() => {
+    safeSet('player_volume', volume.toString());
+  }, [volume]);
+
+  useEffect(() => {
+    safeSet('player_is_shuffle', isShuffle.toString());
+  }, [isShuffle]);
+
+  useEffect(() => {
+    safeSet('player_is_repeat', isRepeat.toString());
+  }, [isRepeat]);
+
+  // Sync current time on unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (audioRef.current) {
+        safeSet('player_current_time', audioRef.current.currentTime.toString());
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
 
     const setAudioData = () => setDuration(audio.duration);
-    const setAudioTime = () => setCurrentTime(audio.currentTime);
+    const setAudioTime = () => {
+      const time = audio.currentTime;
+      setCurrentTime(time);
+      const now = Date.now();
+      if (now - lastSaveTimeRef.current > 2000) {
+        safeSet('player_current_time', time.toString());
+        lastSaveTimeRef.current = now;
+      }
+    };
     const handleEnded = () => playNext();
 
     audio.addEventListener('loadeddata', setAudioData);
