@@ -10,10 +10,10 @@ const createReport = async (req, res) => {
       return res.status(400).json({ error: "Thiếu thông tin bắt buộc (targetType, targetId, reason)." });
     }
 
-    const validTargetTypes = ['SONG', 'ALBUM', 'ARTIST'];
+    const validTargetTypes = ['SONG', 'ALBUM', 'ARTIST', 'PLAYLIST'];
     const normalizedType = targetType.toUpperCase();
     if (!validTargetTypes.includes(normalizedType)) {
-      return res.status(400).json({ error: "Loại đối tượng không hợp lệ. Chỉ chấp nhận: SONG, ALBUM, ARTIST." });
+      return res.status(400).json({ error: "Loại đối tượng không hợp lệ. Chỉ chấp nhận: SONG, ALBUM, ARTIST, PLAYLIST." });
     }
 
     const parsedTargetId = parseInt(targetId);
@@ -48,6 +48,15 @@ const createReport = async (req, res) => {
       if (!artist) return res.status(404).json({ error: "Nghệ sĩ không tồn tại." });
       if (artist.userId === reporterId) {
         return res.status(400).json({ error: "Bạn không thể báo cáo chính mình." });
+      }
+    } else if (normalizedType === 'PLAYLIST') {
+      const playlist = await prisma.playlist.findFirst({
+        where: { id: parsedTargetId },
+        select: { id: true, userId: true }
+      });
+      if (!playlist) return res.status(404).json({ error: "Playlist không tồn tại." });
+      if (playlist.userId === reporterId) {
+        return res.status(400).json({ error: "Bạn không thể báo cáo playlist của chính mình." });
       }
     }
 
@@ -131,6 +140,9 @@ const createReport = async (req, res) => {
         } else if (normalizedType === 'ARTIST') {
           const u = await prisma.user.findUnique({ where: { id: parsedTargetId }, select: { displayName: true, username: true } });
           if (u) targetTitle = `Nghệ sĩ "${u.displayName || u.username}"`;
+        } else if (normalizedType === 'PLAYLIST') {
+          const p = await prisma.playlist.findUnique({ where: { id: parsedTargetId }, select: { title: true } });
+          if (p) targetTitle = `Playlist "${p.title}"`;
         }
 
         // Tìm tất cả admin

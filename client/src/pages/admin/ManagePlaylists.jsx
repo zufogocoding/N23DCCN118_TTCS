@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Trash2, Loader2, Globe, Lock, Play, Music, AlertTriangle } from 'lucide-react';
+import { Search, Trash2, Loader2, Globe, Lock, Play, Music, AlertTriangle, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, getMediaUrl } from '../../utils/api';
 
@@ -14,6 +14,11 @@ export default function ManagePlaylists() {
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, title: '' });
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Hide modal state
+  const [hideModal, setHideModal] = useState({ isOpen: false, id: null, title: '' });
+  const [isHiding, setIsHiding] = useState(false);
+  const [hideReason, setHideReason] = useState('');
 
   useEffect(() => {
     fetchPlaylists();
@@ -41,6 +46,11 @@ export default function ManagePlaylists() {
     setDeleteModal({ isOpen: true, id, title });
   };
 
+  const handleHideClick = (id, title) => {
+    setHideReason('');
+    setHideModal({ isOpen: true, id, title });
+  };
+
   const confirmDelete = async () => {
     if (!deleteModal.id) return;
     
@@ -64,6 +74,34 @@ export default function ManagePlaylists() {
       setDeleteModal({ isOpen: false, id: null, title: '' });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const confirmHide = async () => {
+    if (!hideModal.id) return;
+    
+    setIsHiding(true);
+    try {
+      const res = await api.put(`/api/admin/playlists/${hideModal.id}/hide`, {
+        reason: hideReason
+      });
+      
+      if (!res.ok && res.status !== 200) {
+         const data = await res.json().catch(() => ({}));
+         throw new Error(data.error || 'Lỗi khi ẩn playlist');
+      }
+
+      setSuccess(`Đã ẩn playlist "${hideModal.title}"`);
+      fetchPlaylists();
+      setHideModal({ isOpen: false, id: null, title: '' });
+      
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+      setHideModal({ isOpen: false, id: null, title: '' });
+    } finally {
+      setIsHiding(false);
     }
   };
 
@@ -157,9 +195,13 @@ export default function ManagePlaylists() {
                             <Music size={16} className="text-[#a0a0a0]" />
                           )}
                         </div>
-                        <span className="font-bold line-clamp-1 max-w-[200px]" title={playlist.title}>
+                        <Link 
+                          to={`/playlist/${playlist.id}`}
+                          className="font-bold line-clamp-1 max-w-[200px] hover:text-[#00e6e6] transition-colors" 
+                          title={playlist.title}
+                        >
                           {playlist.title}
-                        </span>
+                        </Link>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -188,12 +230,20 @@ export default function ManagePlaylists() {
                       <div className="flex items-center justify-end gap-3">
                         <Link
                           to={`/playlist/${playlist.id}`}
-                          target="_blank"
                           className="p-2 text-[#a0a0a0] hover:text-[#00e6e6] hover:bg-[#00e6e6]/10 rounded-lg transition-colors"
                           title="Xem chi tiết"
                         >
                           <Play size={18} />
                         </Link>
+                        {playlist.isPublic && (
+                          <button
+                            onClick={() => handleHideClick(playlist.id, playlist.title)}
+                            className="p-2 text-[#a0a0a0] hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors"
+                            title="Ẩn playlist (Chuyển thành riêng tư)"
+                          >
+                            <EyeOff size={18} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteClick(playlist.id, playlist.title)}
                           className="p-2 text-[#a0a0a0] hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
@@ -240,6 +290,53 @@ export default function ManagePlaylists() {
                   className="flex items-center justify-center min-w-[120px] px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
                   {isDeleting ? <Loader2 size={18} className="animate-spin" /> : 'Xóa vĩnh viễn'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hide Confirmation Modal */}
+      {hideModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#121212] border border-[#333] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center mb-4 text-orange-500">
+                <EyeOff size={24} />
+              </div>
+              <h2 className="text-xl font-bold mb-2">Ẩn Playlist này?</h2>
+              <p className="text-sm text-[#a0a0a0] mb-4">
+                Playlist <span className="font-bold text-white">"{hideModal.title}"</span> sẽ bị chuyển về trạng thái Riêng tư và người dùng khác không thể truy cập.
+              </p>
+              
+              <div className="mb-6">
+                <label className="block text-xs font-medium text-[#a0a0a0] mb-1">Lý do ẩn (sẽ gửi thông báo cho người tạo):</label>
+                <textarea
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg p-2 text-sm text-white focus:outline-none focus:border-[#00e6e6]/50 transition-colors"
+                  rows="3"
+                  placeholder="Nhập lý do ẩn playlist..."
+                  value={hideReason}
+                  onChange={(e) => setHideReason(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isHiding}
+                  onClick={() => setHideModal({ isOpen: false, id: null, title: '' })}
+                  className="px-5 py-2.5 rounded-xl border border-[#333] text-white text-sm font-bold hover:bg-[#282828] transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmHide}
+                  disabled={isHiding}
+                  className="flex items-center justify-center min-w-[120px] px-5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-50"
+                >
+                  {isHiding ? <Loader2 size={18} className="animate-spin" /> : 'Xác nhận Ẩn'}
                 </button>
               </div>
             </div>

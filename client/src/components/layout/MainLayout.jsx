@@ -21,7 +21,8 @@ import {
   Music,
   MoreHorizontal,
   Flag,
-  ListMusic
+  ListMusic,
+  Info
 } from "lucide-react";
 
 import UserDropdown from "../common/UserDropdown";
@@ -420,7 +421,16 @@ export default function MainLayout() {
                 </div>
               )}
               <div className="hidden sm:flex flex-col min-w-0 flex-1 justify-center">
-                <h4 className="font-bold text-sm md:text-base text-white hover:underline cursor-pointer truncate leading-tight">{currentSong.title}</h4>
+                <h4 
+                  onClick={() => {
+                    if (currentSong?.id) {
+                      navigate(`/song/${currentSong.id}`);
+                    }
+                  }}
+                  className="font-bold text-sm md:text-base text-white hover:underline cursor-pointer truncate leading-tight"
+                >
+                  {currentSong.title}
+                </h4>
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-xs md:text-sm text-[#a0a0a0] hover:underline cursor-pointer truncate">{currentSong.artist?.name || "Nghệ sĩ"}</p>
                   {isPlaying && (
@@ -468,6 +478,19 @@ export default function MainLayout() {
                         }}
                         asMenuItem={true}
                       />
+                      
+                      <button 
+                        onClick={() => {
+                          setIsPlayerMenuOpen(false);
+                          if (currentSong?.id) {
+                            navigate(`/song/${currentSong.id}`);
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+                      >
+                        <Info size={18} />
+                        <span>Chi tiết bài hát</span>
+                      </button>
                       
                       <button 
                         onClick={() => {

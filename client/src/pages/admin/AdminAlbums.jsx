@@ -79,25 +79,68 @@ function CoverImage({ url, title }) {
 
 // ── Confirm Dialog ────────────────────────────────────────────────────────────
 
-function ConfirmDialog({ open, title, message, variant = 'danger', onConfirm, onCancel, loading }) {
+const TAKEDOWN_REASONS = [
+  'Vi phạm bản quyền',
+  'Nội dung không phù hợp',
+  'Vi phạm chính sách cộng đồng',
+  'Chất lượng âm thanh kém',
+];
+
+function ConfirmDialog({ open, title, message, variant = 'danger', requireReason = false, onConfirm, onCancel, loading }) {
+  const [reason, setReason] = useState('');
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (open) setReason('');
+  }, [open]);
+
   if (!open) return null;
   const isBan = variant === 'danger';
+
+  const handleConfirm = () => {
+    onConfirm(requireReason ? reason : undefined);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={!loading ? onCancel : undefined} />
-      <div className="relative bg-[#161616] border border-[#333] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+      <div className={`relative bg-[#161616] border border-[#333] rounded-2xl p-6 w-full ${requireReason ? 'max-w-md' : 'max-w-sm'} shadow-2xl`}>
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${isBan ? 'bg-red-500/15' : 'bg-emerald-500/15'}`}>
           {isBan ? <ShieldAlert size={22} className="text-red-400" /> : <ShieldCheck size={22} className="text-emerald-400" />}
         </div>
         <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
         <p className="text-[#a0a0a0] text-sm mb-6">{message}</p>
+
+        {requireReason && (
+          <div className="mb-6 space-y-3">
+            <p className="text-sm font-medium text-white">Lý do gỡ bỏ <span className="text-red-400">*</span></p>
+            <div className="flex flex-wrap gap-2">
+              {TAKEDOWN_REASONS.map(r => (
+                <button
+                  key={r}
+                  onClick={() => setReason(r)}
+                  className={`px-3 py-1.5 rounded-lg text-xs transition-colors border ${reason === r ? 'bg-red-500/20 border-red-500/50 text-red-400' : 'bg-[#222] border-[#333] text-[#aaa] hover:bg-[#2a2a2a] hover:text-white'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Nhập lý do chi tiết..."
+              className="w-full bg-[#111] border border-[#333] rounded-xl p-3 text-sm text-white placeholder-[#555] focus:outline-none focus:border-red-500/50 min-h-[80px] resize-none"
+            />
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button onClick={onCancel} disabled={loading} className="flex-1 px-4 py-2 rounded-lg border border-[#444] text-[#aaa] hover:bg-[#222] transition-colors text-sm font-medium disabled:opacity-50">
             Huỷ
           </button>
           <button
-            onClick={onConfirm}
-            disabled={loading}
+            onClick={handleConfirm}
+            disabled={loading || (requireReason && !reason.trim())}
             className={`flex-1 px-4 py-2 rounded-lg text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 ${isBan ? 'bg-red-600 hover:bg-red-500' : 'bg-emerald-600 hover:bg-emerald-500'} disabled:opacity-60`}
           >
             {loading && <RefreshCw size={14} className="animate-spin" />}
@@ -435,6 +478,10 @@ export default function AdminAlbums() {
       if (res.ok) {
         const data = await res.json();
         setDetailAlbum({ ...data.album, tracks: data.tracks, stats: data.stats });
+      } else if (res.status === 404) {
+        showToast('Album không tồn tại hoặc đã bị xóa', 'error');
+        setDetailAlbum(null);
+        fetchAlbums(pagination.page);
       }
     } catch { /* ignore */ } finally {
       setDetailLoading(false);
@@ -452,6 +499,17 @@ export default function AdminAlbums() {
     });
   };
 
+  // Hide (status → hidden)
+  const handleHide = (album) => {
+    setConfirm({
+      type: 'hide',
+      album,
+      title: 'Ẩn Album?',
+      message: `Album "${album.title}" sẽ bị ẩn. Người dùng sẽ không thấy album này nữa.`,
+      variant: 'warning',
+    });
+  };
+
   // Restore (status → released)
   const handleRestore = (album) => {
     setConfirm({
@@ -463,16 +521,17 @@ export default function AdminAlbums() {
     });
   };
 
-  const executeAction = async () => {
+  const executeAction = async (reason) => {
     if (!confirm) return;
     const { type, album } = confirm;
     setActionLoading(true);
     try {
-      const endpoint = type === 'takedown'
-        ? `/api/admin/albums/${album.id}/takedown`
-        : `/api/admin/albums/${album.id}/restore`;
+      let endpoint = `/api/admin/albums/${album.id}/restore`;
+      if (type === 'takedown') endpoint = `/api/admin/albums/${album.id}/takedown`;
+      else if (type === 'hide') endpoint = `/api/admin/albums/${album.id}/hide`;
 
-      const res = await api.patch(endpoint);
+      const body = reason ? { reason } : undefined;
+      const res = await api.patch(endpoint, body);
       const data = await res.json();
       if (res.ok) {
         showToast(data.message || 'Thao tác thành công');
@@ -737,7 +796,8 @@ export default function AdminAlbums() {
                     <RowActionMenu
                       album={album}
                       onView={openDetail}
-                      onTakedown={handleTakedown}
+                      onHide={handleHide}
+                      onBan={handleTakedown}
                       onRestore={handleRestore}
                       index={index}
                       total={albums.length}
@@ -809,6 +869,7 @@ export default function AdminAlbums() {
           title={confirm.title}
           message={confirm.message}
           variant={confirm.variant}
+          requireReason={confirm.type === 'takedown'}
           loading={actionLoading}
           onConfirm={executeAction}
           onCancel={() => !actionLoading && setConfirm(null)}

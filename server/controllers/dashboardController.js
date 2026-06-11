@@ -3,20 +3,22 @@ const prisma = require('../db/index'); // Link tới file khởi tạo prisma
 const dashboardController = {
   getStats: async (req, res) => {
     try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
       // Chạy 4 truy vấn song song cùng lúc bằng Promise.all để tăng tốc độ API
-      const [totalUsers, totalSongs, totalPlaylists, pendingArtists] = await Promise.all([
+      const [totalUsers, newArtists, pendingSongs, pendingReports] = await Promise.all([
         prisma.user.count(),
-        prisma.song.count({ where: { isDeleted: false } }),
-        prisma.playlist.count(),
-        prisma.artistRequest.count({ where: { status: 'PENDING' } }) // Đếm yêu cầu đăng ký chưa được duyệt
+        prisma.artist.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        prisma.song.count({ where: { status: 'pending', isDeleted: false } }),
+        prisma.report.count({ where: { status: 'PENDING' } })
       ]);
 
       // Trả dữ liệu về cho Front-end
       res.status(200).json({
         totalUsers,
-        totalSongs,
-        totalPlaylists,
-        pendingArtists
+        newArtists,
+        pendingSongs,
+        pendingReports
       });
     } catch (error) {
       console.log("🚨 LỖI DASHBOARD STATS:", error);
@@ -79,7 +81,17 @@ const dashboardController = {
   // Lấy số lượt nghe theo ngày trong 7 ngày gần nhất từ bảng Interaction (Tối ưu N+1 query)
   getStreamingStats: async (req, res) => {
     try {
-      const days = parseInt(req.query.days) || 7;
+      const { period } = req.query; // '7days', '30days', 'this_month'
+      let days = 7;
+      let isThisMonth = false;
+
+      if (period === '30days') {
+        days = 30;
+      } else if (period === 'this_month') {
+        isThisMonth = true;
+      } else {
+        days = parseInt(req.query.days) || 7;
+      }
       
       // Tính toán mốc thời gian nửa đêm hôm nay theo múi giờ Việt Nam (UTC+7)
       const vnOffset = 7 * 60 * 60 * 1000;
@@ -87,8 +99,17 @@ const dashboardController = {
       vnTime.setUTCHours(0, 0, 0, 0);
       const todayMidnight = new Date(vnTime.getTime() - vnOffset);
       
-      // Ngày bắt đầu (startDate) tính lùi lại (days - 1) ngày từ nửa đêm hôm nay
-      const startDate = new Date(todayMidnight.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+      let startDate;
+      if (isThisMonth) {
+        const vnDate = new Date(Date.now() + vnOffset);
+        vnDate.setUTCHours(0, 0, 0, 0);
+        vnDate.setUTCDate(1); // Mùng 1 của tháng hiện tại
+        startDate = new Date(vnDate.getTime() - vnOffset);
+        
+        days = Math.floor((todayMidnight.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+      } else {
+        startDate = new Date(todayMidnight.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+      }
 
       // Fetch all interactions in the time range with a single query selecting only timeStamp
       const interactions = await prisma.interaction.findMany({

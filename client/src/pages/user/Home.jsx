@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Search, Heart, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Heart, Play, Info } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/common/CreatePlaylistModal';
@@ -367,7 +367,16 @@ export default function Home() {
                                 {getArtistName(song)}
                               </p>
                             </div>
-                            <AddToPlaylistMenu songId={song.id} onCreatePlaylist={() => setIsPlaylistModalOpen(true)} />
+                            <div className="flex items-center gap-1">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); navigate(`/song/${song.id}`); }}
+                                className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
+                                title="Chi tiết bài hát"
+                              >
+                                <Info size={20} />
+                              </button>
+                              <AddToPlaylistMenu songId={song.id} onCreatePlaylist={() => setIsPlaylistModalOpen(true)} />
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -609,10 +618,19 @@ export default function Home() {
                             </span>
                           )}
                         </div>
-                        <AddToPlaylistMenu
-                          songId={song.id}
-                          onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
-                        />
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/song/${song.id}`); }}
+                            className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
+                            title="Chi tiết bài hát"
+                          >
+                            <Info size={20} />
+                          </button>
+                          <AddToPlaylistMenu
+                            songId={song.id}
+                            onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -797,10 +815,19 @@ export default function Home() {
                             {getArtistName(song)}
                           </p>
                         </div>
-                        <AddToPlaylistMenu
-                          songId={song.id}
-                          onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
-                        />
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/song/${song.id}`); }}
+                            className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
+                            title="Chi tiết bài hát"
+                          >
+                            <Info size={20} />
+                          </button>
+                          <AddToPlaylistMenu
+                            songId={song.id}
+                            onCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}

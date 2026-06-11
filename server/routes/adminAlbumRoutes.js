@@ -10,6 +10,9 @@ router.get('/api/admin/albums', authMiddleware, requireAdmin, adminAlbumControll
 // Chi tiết album kèm tracks
 router.get('/api/admin/albums/:albumId', authMiddleware, requireAdmin, adminAlbumController.getAlbumDetail);
 
+// Ẩn album (status → hidden)
+router.patch('/api/admin/albums/:albumId/hide', authMiddleware, requireAdmin, adminAlbumController.hideAlbum);
+
 // Gỡ album (soft delete: status → banned)
 router.patch('/api/admin/albums/:albumId/takedown', authMiddleware, requireAdmin, adminAlbumController.takedownAlbum);
 

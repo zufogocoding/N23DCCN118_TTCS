@@ -118,6 +118,36 @@ function TargetDetail({ report }) {
     );
   }
 
+  if (targetType === 'PLAYLIST') {
+    return (
+      <>
+        {targetInfo.coverArtUrl ? (
+          <img
+            src={getMediaUrl(targetInfo.coverArtUrl)}
+            alt="cover"
+            className="w-40 h-40 rounded-xl object-cover shadow-2xl ring-4 ring-[#222]"
+          />
+        ) : (
+          <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-[#00e6e6]/20 to-[#333] flex items-center justify-center shadow-2xl ring-4 ring-[#222]">
+            <span className="text-6xl">🎵</span>
+          </div>
+        )}
+        <h3 className="text-lg font-bold text-white text-center mt-4 px-2">{targetInfo.title}</h3>
+        <p className="text-xs text-[#888] mt-1 font-mono uppercase">PLAYLIST</p>
+        <div className="mt-4 w-full space-y-2">
+          <div className="flex items-center justify-between text-xs bg-[#222] rounded-lg px-3 py-2">
+            <span className="text-[#888]">Playlist ID</span>
+            <span className="text-white font-mono">#{targetInfo.id}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs bg-[#222] rounded-lg px-3 py-2">
+            <span className="text-[#888]">Creator ID</span>
+            <span className="text-white font-mono">#{targetInfo.userId}</span>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return null;
 }
 
@@ -174,7 +204,7 @@ export default function ManageReports() {
     if (!window.confirm(confirmMsg)) return;
     setActionLoading(true);
     try {
-      const res = await api.put(`/api/admin/reports/${id}/${action}`);
+      const res = await api.put(`/api/admin/reports/${id}/${action}`, {});
       const data = await res.json();
       if (res.ok) {
         showToast(data.message);
@@ -279,6 +309,7 @@ export default function ManageReports() {
               ['SONG', 'Bài hát'],
               ['ALBUM', 'Album'],
               ['ARTIST', 'Nghệ sĩ'],
+              ['PLAYLIST', 'Playlist'],
             ].map(([v, l]) => (
               <button
                 key={v}

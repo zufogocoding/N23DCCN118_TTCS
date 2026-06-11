@@ -6,6 +6,7 @@ import { usePlayer } from '../../context/PlayerContext';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/common/CreatePlaylistModal';
 import EditPlaylistModal from '../../components/common/EditPlaylistModal';
+import ReportModal from '../../components/common/ReportModal';
 import { api, getMediaUrl } from '../../utils/api';
 import { getArtistName, getCoverArt, formatDuration } from '../../utils/songHelpers';
 
@@ -26,6 +27,7 @@ const PlaylistView = () => {
   // Collaboration Panel states
   const [collabUsername, setCollabUsername] = useState('');
   const [collabLoading, setCollabLoading] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const fetchPlaylistData = async () => {
     setLoading(true);
@@ -333,6 +335,16 @@ const PlaylistView = () => {
         />
       )}
 
+      {/* Report Modal */}
+      {!isLikedPage && !isPlaylistOwner && playlist && (
+        <ReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetType="PLAYLIST"
+          targetId={playlist.id}
+        />
+      )}
+
       {/* BUTTON BACK + HOME */}
       <div className="absolute top-6 left-6 flex items-center gap-4 z-50">
         <button
@@ -427,6 +439,21 @@ const PlaylistView = () => {
                   onClick={handleClonePlaylist}
                 >
                   Tạo bản sao
+                </button>
+              )}
+
+              {/* Nút báo cáo playlist */}
+              {!isLikedPage && !isPlaylistOwner && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-white/10"
+                  onClick={() => {
+                    setPlaylistToolbarMenuOpen(false);
+                    setIsReportModalOpen(true);
+                  }}
+                >
+                  Báo cáo playlist
                 </button>
               )}
 

@@ -75,7 +75,53 @@ const deletePlaylist = async (req, res) => {
   }
 };
 
+const hidePlaylist = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const playlistId = parseInt(id);
+
+    const playlist = await prisma.playlist.findUnique({
+      where: { id: playlistId }
+    });
+
+    if (!playlist) {
+      return res.status(404).json({ error: "Playlist không tồn tại" });
+    }
+
+    if (!playlist.isPublic) {
+      return res.status(400).json({ error: "Playlist đã ở trạng thái riêng tư" });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.playlist.update({
+        where: { id: playlistId },
+        data: { isPublic: false }
+      });
+
+      if (playlist.userId) {
+        await tx.notification.create({
+          data: {
+            userId: playlist.userId,
+            type: 'playlist_hidden',
+            targetType: 'PLAYLIST',
+            targetId: playlist.id,
+            actionUrl: `/playlist/${playlist.id}`,
+            message: `CẢNH BÁO: Playlist "${playlist.title}" của bạn đã bị Admin ẩn (chuyển về trạng thái Riêng Tư) do vi phạm quy định. ${reason ? `Lý do: ${reason}` : ''}`
+          }
+        });
+      }
+    });
+
+    res.json({ message: "Đã ẩn Playlist và gửi thông báo cho người tạo" });
+  } catch (error) {
+    console.error("Lỗi khi ẩn playlist:", error);
+    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+  }
+};
+
 module.exports = {
   getAllPlaylists,
   deletePlaylist,
+  hidePlaylist,
 };

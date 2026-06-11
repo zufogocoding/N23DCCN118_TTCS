@@ -49,6 +49,11 @@ const getReports = async (req, res) => {
               }
             }
           });
+        } else if (report.targetType === 'PLAYLIST') {
+          targetInfo = await prisma.playlist.findUnique({
+            where: { id: report.targetId },
+            select: { id: true, title: true, coverArtUrl: true, userId: true }
+          });
         }
       } catch (e) {
         console.warn(`Target không tìm thấy cho report #${report.id}:`, e.message);
@@ -198,6 +203,42 @@ const resolveReport = async (req, res) => {
         } catch (e) {
           console.warn(`Không thể cập nhật Artist #${report.targetId}:`, e.message);
         }
+      } else if (report.targetType === 'PLAYLIST') {
+        try {
+          const updatedPlaylist = await tx.playlist.update({
+            where: { id: report.targetId },
+            data: { isPublic: false }
+          });
+
+          if (updatedPlaylist.userId) {
+            const userToEmail = await tx.user.findUnique({
+              where: { id: updatedPlaylist.userId }
+            });
+            if (userToEmail) {
+              emailToSend = {
+                email: userToEmail.email,
+                artistName: userToEmail.displayName || userToEmail.username,
+                title: updatedPlaylist.title,
+                type: 'PLAYLIST',
+                reason: report.reason,
+                proofUrl: report.proofUrl
+              };
+            }
+
+            await tx.notification.create({
+              data: {
+                userId: updatedPlaylist.userId,
+                type: 'playlist_hidden',
+                targetType: 'PLAYLIST',
+                targetId: updatedPlaylist.id,
+                actionUrl: `/playlist/${updatedPlaylist.id}`,
+                message: `CẢNH BÁO: Playlist "${updatedPlaylist.title}" của bạn đã bị chuyển về trạng thái Riêng Tư do vi phạm quy định (Lý do: ${report.reason}).`
+              }
+            });
+          }
+        } catch (e) {
+          console.warn(`Không thể cập nhật Playlist #${report.targetId}:`, e.message);
+        }
       }
     });
 
@@ -264,6 +305,12 @@ const warnReport = async (req, res) => {
       } else if (report.targetType === 'ARTIST') {
         ownerId = report.targetId;
         targetTitle = 'tài khoản nghệ sĩ';
+      } else if (report.targetType === 'PLAYLIST') {
+        const playlist = await tx.playlist.findUnique({
+          where: { id: report.targetId },
+          select: { userId: true, title: true }
+        });
+        if (playlist) { ownerId = playlist.userId; targetTitle = playlist.title; }
       }
 
       if (ownerId) {

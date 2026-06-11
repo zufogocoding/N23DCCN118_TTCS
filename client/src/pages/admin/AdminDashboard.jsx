@@ -19,10 +19,11 @@ const StatCard = ({ title, value, loading }) => (
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalUsers: 0,
-    totalSongs: 0,
-    totalPlaylists: 0,
-    pendingArtists: 0
+    newArtists: 0,
+    pendingSongs: 0,
+    pendingReports: 0
   });
+  const [chartPeriod, setChartPeriod] = useState('7days');
   const [chartData, setChartData] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,10 +135,11 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch dữ liệu streaming theo ngày (7 ngày gần nhất)
-  const fetchStreamingStats = async () => {
+  // Fetch dữ liệu streaming theo ngày (theo khoảng thời gian chọn)
+  const fetchStreamingStats = async (period = '7days') => {
+    setChartLoading(true);
     try {
-      const res = await api.get('/api/dashboard/streaming-stats?days=7');
+      const res = await api.get(`/api/dashboard/streaming-stats?period=${period}`);
       if (res.ok) {
         const data = await res.json();
         setChartData(data);
@@ -166,7 +168,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchStats();
-    fetchStreamingStats();
+    fetchStreamingStats(chartPeriod);
     fetchRecentActivities();
     fetchMLStatus(); // Kiểm tra trạng thái lúc tải trang
   }, []);
@@ -182,9 +184,15 @@ export default function AdminDashboard() {
     // Khi train vừa xong (success/failed), refresh lại toàn bộ stats
     if (mlStatus === 'success' || mlStatus === 'failed') {
       fetchStats();
-      fetchStreamingStats();
+      fetchStreamingStats(chartPeriod);
     }
   }, [mlStatus]);
+
+  const handlePeriodChange = (e) => {
+    const newPeriod = e.target.value;
+    setChartPeriod(newPeriod);
+    fetchStreamingStats(newPeriod);
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -204,10 +212,10 @@ export default function AdminDashboard() {
 
       {/* 4 Thẻ Thống kê */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Tổng người dùng" value={stats.totalUsers} loading={loading} />
-        <StatCard title="Tổng bài hát" value={stats.totalSongs} loading={loading} />
-        <StatCard title="Tổng playlist" value={stats.totalPlaylists} loading={loading} />
-        <StatCard title="Yêu cầu nghệ sĩ chờ duyệt" value={stats.pendingArtists} loading={loading} />
+        <StatCard title="Tổng số người dùng" value={stats.totalUsers} loading={loading} />
+        <StatCard title="Số nghệ sĩ mới (30 ngày)" value={stats.newArtists} loading={loading} />
+        <StatCard title="Bài hát chờ duyệt" value={stats.pendingSongs} loading={loading} />
+        <StatCard title="Số báo cáo chưa xử lý" value={stats.pendingReports} loading={loading} />
       </div>
 
       {/* Bảng điều khiển kích hoạt Huấn Luyện AI */}
@@ -283,7 +291,18 @@ export default function AdminDashboard() {
 
       {/* Biểu đồ streaming theo ngày */}
       <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg">
-        <h3 className="text-lg font-bold text-white mb-6">Lưu lượng Stream theo ngày</h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-white">Lưu lượng Stream theo ngày</h3>
+          <select 
+            value={chartPeriod}
+            onChange={handlePeriodChange}
+            className="bg-[#1a1a1a] border border-[#333] text-[#a0a0a0] text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#00e6e6]/50 transition-colors"
+          >
+            <option value="7days">7 ngày gần nhất</option>
+            <option value="30days">30 ngày gần nhất</option>
+            <option value="this_month">Tháng này</option>
+          </select>
+        </div>
 
         <div className="h-80 w-full">
           {chartLoading ? (

@@ -202,6 +202,38 @@ const adminAlbumController = {
   },
 
   /**
+   * PATCH /api/admin/albums/:albumId/hide
+   * Ẩn album (status → hidden)
+   */
+  hideAlbum: async (req, res) => {
+    try {
+      const albumId = parseInt(req.params.albumId, 10);
+      if (Number.isNaN(albumId)) return res.status(400).json({ error: 'ID không hợp lệ' });
+
+      const album = await prisma.album.findUnique({ where: { id: albumId } });
+      if (!album) return res.status(404).json({ error: 'Không tìm thấy album' });
+      if (album.status === 'hidden') {
+        return res.status(400).json({ error: 'Album đã bị ẩn rồi' });
+      }
+
+      const updated = await prisma.album.update({
+        where: { id: albumId },
+        data: { status: 'hidden' },
+      });
+
+      console.log(`[ADMIN HIDE] Album #${albumId} "${album.title}" — Admin #${req.user.id}`);
+
+      res.json({
+        message: `Album "${album.title}" đã được ẩn`,
+        album: updated,
+      });
+    } catch (e) {
+      console.error('adminHideAlbum:', e);
+      res.status(500).json({ error: 'Lỗi server' });
+    }
+  },
+
+  /**
    * PATCH /api/admin/albums/:albumId/takedown
    * Gỡ album (soft delete): đổi status → "banned"
    * Không xóa dữ liệu, chỉ ẩn khỏi tất cả public queries
@@ -224,6 +256,16 @@ const adminAlbumController = {
           where: { id: albumId },
           data: { status: 'banned' },
         });
+
+        // Cập nhật trạng thái tất cả các bài hát trong album thành banned
+        const albumSongs = await tx.albumSong.findMany({ where: { albumId } });
+        const songIds = albumSongs.map(as => as.songId);
+        if (songIds.length > 0) {
+          await tx.song.updateMany({
+            where: { id: { in: songIds }, isDeleted: false },
+            data: { status: 'banned' },
+          });
+        }
 
         await tx.notification.create({
           data: {
@@ -271,6 +313,16 @@ const adminAlbumController = {
           where: { id: albumId },
           data: { status: 'released' },
         });
+
+        // Khôi phục các bài hát trong album về approved
+        const albumSongs = await tx.albumSong.findMany({ where: { albumId } });
+        const songIds = albumSongs.map(as => as.songId);
+        if (songIds.length > 0) {
+          await tx.song.updateMany({
+            where: { id: { in: songIds }, status: 'banned', isDeleted: false },
+            data: { status: 'approved' },
+          });
+        }
 
         await tx.notification.create({
           data: {

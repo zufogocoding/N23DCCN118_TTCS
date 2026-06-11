@@ -39,7 +39,7 @@ const albumController = {
     try {
       const artistId = parseInt(req.params.artistId, 10);
       if (Number.isNaN(artistId)) {
-        return res.status(400).json({ error: 'ID không hợp lệ' });
+        return res.status(400).json({ error: 'DEBUG_ALBUM: ID không hợp lệ' });
       }
 
       const artist = await prisma.artist.findFirst({
