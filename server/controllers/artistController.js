@@ -113,9 +113,9 @@ const artistController = {
         ...user,
         artist: {
           userId: artistOnly.userId,
-          artistBio: artistOnly.artistBio,
-          avatarUrl: artistOnly.avatarUrl,
-          bannerUrl: artistOnly.bannerUrl,
+          artistBio: user.bio,
+          avatarUrl: user.avatarUrl,
+          bannerUrl: user.coverImageUrl,
           verifiedTick: artistOnly.verifiedTick,
           status: artistOnly.status,
           pinnedSongId: artistOnly.pinnedSongId,
@@ -234,7 +234,7 @@ const artistController = {
                 displayName: true,
                 avatarUrl: true,
                 role: true,
-                artist: { select: { userId: true, avatarUrl: true, verifiedTick: true } },
+                artist: { select: { userId: true, verifiedTick: true } },
               },
             },
           },
@@ -247,7 +247,7 @@ const artistController = {
         id: row.follower.id,
         username: row.follower.username,
         displayName: row.follower.displayName,
-        avatarUrl: row.follower.artist?.avatarUrl || row.follower.avatarUrl,
+        avatarUrl: row.follower.avatarUrl,
         role: row.follower.role,
         isArtist: Boolean(row.follower.artist),
         verifiedTick: row.follower.artist?.verifiedTick || false,
@@ -352,7 +352,12 @@ const artistController = {
       const bannerFile = req.files?.bannerFile?.[0];
 
       const updateData = {};
-      if (bio !== undefined) updateData.bio = bio;
+      if (bio !== undefined) {
+        updateData.bio = bio;
+      } else if (artistBio !== undefined) {
+        updateData.bio = artistBio;
+      }
+
       if (parsedSocialLinks !== undefined) updateData.socialLinks = parsedSocialLinks;
 
       // Avatar: prefer uploaded file, fallback to text URL from body
@@ -367,21 +372,8 @@ const artistController = {
         updateData.coverImageUrl = `/${path.relative(process.cwd(), bannerFile.path).replace(/\\/g, '/')}`;
       } else if (req.body.coverImageUrl !== undefined) {
         updateData.coverImageUrl = req.body.coverImageUrl;
-      }
-
-      const artistUpdate = {};
-      if (artistBio !== undefined) artistUpdate.artistBio = artistBio;
-
-      // Banner for artist model
-      if (bannerFile) {
-        artistUpdate.bannerUrl = `/${path.relative(process.cwd(), bannerFile.path).replace(/\\/g, '/')}`;
       } else if (req.body.bannerUrl !== undefined) {
-        artistUpdate.bannerUrl = req.body.bannerUrl;
-      }
-
-      // Also set artist avatar if file uploaded
-      if (avatarFile) {
-        artistUpdate.avatarUrl = `/${path.relative(process.cwd(), avatarFile.path).replace(/\\/g, '/')}`;
+        updateData.coverImageUrl = req.body.bannerUrl;
       }
 
       const updatedUser = await prisma.user.update({
@@ -396,13 +388,6 @@ const artistController = {
           socialLinks: true,
         },
       });
-
-      if (Object.keys(artistUpdate).length > 0) {
-        await prisma.artist.updateMany({
-          where: { userId: id },
-          data: artistUpdate,
-        });
-      }
 
       res.status(200).json({
         message: 'Cập nhật profile thành công',

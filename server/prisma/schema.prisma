@@ -51,14 +51,12 @@ model User {
   notifications       Notification[]
   reports             Report[]
   likes               SongLike[]
+  uploadedSongs       Song[]                @relation("UserUploadedSongs")
 }
 
 model Artist {
   userId       Int     @id
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  artistBio    String? @db.Text
-  avatarUrl    String? @db.VarChar(500)
-  bannerUrl    String? @db.VarChar(500)
   verifiedTick Boolean @default(false)
 
   followerCount Int @default(0) // hien fl cho frontend
@@ -113,7 +111,8 @@ model Song {
   id          Int      @id @default(autoincrement())
   title       String   @db.VarChar(255)
   artistName  String?  @db.VarChar(255) // Tên nghệ sĩ do người upload nhập (metadata, không tạo Artist record)
-  uploadedById Int?    // ID user đã upload bài hát
+  uploadedById Int?    
+  uploadedBy   User?    @relation("UserUploadedSongs", fields: [uploadedById], references: [id], onDelete: SetNull)
   energy      Float? // Đổi sang Float để Node.js/Python tính toán không cần parse
   tempo       Float? // Đổi sang Float
   danceability Float? 

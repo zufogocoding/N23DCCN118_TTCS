@@ -119,7 +119,6 @@ const adminUserController = {
               verifiedTick: true,
               status: true,
               followerCount: true,
-              artistBio: true,
             }
           },
           artistRequest: {

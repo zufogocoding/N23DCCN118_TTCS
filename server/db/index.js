@@ -23,4 +23,6 @@ pool.connect((err) => {
   }
 });
 
+prisma.$pool = pool;
+
 module.exports = prisma;
