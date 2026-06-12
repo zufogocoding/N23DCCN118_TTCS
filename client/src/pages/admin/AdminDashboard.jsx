@@ -1,24 +1,50 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Users, Music, AlertCircle, UserCheck } from 'lucide-react';
 import { api } from '../../utils/api';
 
-const StatCard = ({ title, value, loading }) => (
-  <div className="bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg flex flex-col justify-between">
-    <h3 className="text-sm font-semibold text-[#a0a0a0] mb-2">{title}</h3>
-    <p className="text-4xl font-bold text-white mb-2">
-      {loading ? (
-        <span className="inline-block w-24 h-9 bg-[#333] animate-pulse rounded" />
-      ) : (
-        typeof value === 'number' ? value.toLocaleString() : value
+const StatCard = ({ title, value, loading, icon: Icon, gradientClass, onClick, subElements }) => (
+  <div 
+    onClick={onClick}
+    className={`bg-[#121212] p-6 rounded-xl border border-[#333] shadow-lg flex flex-col justify-between transition-all duration-300 ${
+      onClick 
+        ? 'cursor-pointer hover:-translate-y-1 hover:border-[#444] hover:shadow-2xl hover:shadow-white/5 active:scale-[0.98]' 
+        : ''
+    }`}
+  >
+    <div className="flex items-start justify-between">
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-[#a0a0a0]">{title}</h3>
+        <p className="text-4xl font-extrabold text-white tracking-tight">
+          {loading ? (
+            <span className="inline-block w-24 h-9 bg-[#222] animate-pulse rounded" />
+          ) : (
+            typeof value === 'number' ? value.toLocaleString() : value
+          )}
+        </p>
+      </div>
+      {Icon && (
+        <div className={`p-3 rounded-lg bg-gradient-to-br ${gradientClass || 'from-[#333] to-[#222]'} text-white shadow-md shadow-black/30`}>
+          <Icon size={20} />
+        </div>
       )}
-    </p>
+    </div>
+    
+    {!loading && subElements && (
+      <div className="mt-4 pt-3 border-t border-[#222] flex flex-wrap gap-2">
+        {subElements}
+      </div>
+    )}
   </div>
 );
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,
+    userBreakdown: null,
     newArtists: 0,
     pendingSongs: 0,
     pendingReports: 0
@@ -212,10 +238,80 @@ export default function AdminDashboard() {
 
       {/* 4 Thẻ Thống kê */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Tổng số người dùng" value={stats.totalUsers} loading={loading} />
-        <StatCard title="Số nghệ sĩ mới (30 ngày)" value={stats.newArtists} loading={loading} />
-        <StatCard title="Bài hát chờ duyệt" value={stats.pendingSongs} loading={loading} />
-        <StatCard title="Số báo cáo chưa xử lý" value={stats.pendingReports} loading={loading} />
+        <StatCard 
+          title="Tổng số người dùng" 
+          value={stats.totalUsers} 
+          loading={loading} 
+          icon={Users}
+          gradientClass="from-blue-600 to-indigo-600"
+          onClick={() => navigate('/admin/users')}
+          subElements={
+            stats.userBreakdown && (
+              <>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+                  Hoạt động: {stats.userBreakdown.active}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  Nghệ sĩ: {stats.userBreakdown.artist}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                  User: {stats.userBreakdown.user}
+                </span>
+              </>
+            )
+          }
+        />
+        <StatCard 
+          title="Số nghệ sĩ mới (30 ngày)" 
+          value={stats.newArtists} 
+          loading={loading} 
+          icon={UserCheck}
+          gradientClass="from-emerald-500 to-green-600"
+          onClick={() => navigate('/admin/artists')}
+          subElements={
+            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+              Xem các yêu cầu duyệt nghệ sĩ &rarr;
+            </span>
+          }
+        />
+        <StatCard 
+          title="Bài hát chờ duyệt" 
+          value={stats.pendingSongs} 
+          loading={loading} 
+          icon={Music}
+          gradientClass="from-amber-500 to-orange-600"
+          onClick={() => navigate('/admin/pending-songs')}
+          subElements={
+            stats.pendingSongs > 0 ? (
+              <span className="text-[10px] text-amber-400 font-bold animate-pulse">
+                ● Cần phê duyệt ngay
+              </span>
+            ) : (
+              <span className="text-[10px] text-[#a0a0a0] font-medium">
+                Đã duyệt sạch
+              </span>
+            )
+          }
+        />
+        <StatCard 
+          title="Số báo cáo chưa xử lý" 
+          value={stats.pendingReports} 
+          loading={loading} 
+          icon={AlertCircle}
+          gradientClass="from-rose-500 to-red-600"
+          onClick={() => navigate('/admin/reports')}
+          subElements={
+            stats.pendingReports > 0 ? (
+              <span className="text-[10px] text-red-400 font-bold animate-pulse">
+                ● Cần xử lý gấp
+              </span>
+            ) : (
+              <span className="text-[10px] text-[#a0a0a0] font-medium">
+                An toàn
+              </span>
+            )
+          }
+        />
       </div>
 
       {/* Bảng điều khiển kích hoạt Huấn Luyện AI */}

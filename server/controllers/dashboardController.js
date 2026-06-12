@@ -5,10 +5,29 @@ const dashboardController = {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      // Chạy 4 truy vấn song song cùng lúc bằng Promise.all để tăng tốc độ API
-      const [totalUsers, newArtists, pendingSongs, pendingReports] = await Promise.all([
+      // Chạy các truy vấn song song bằng Promise.all để tăng tốc độ API
+      const [
+        totalUsers,
+        activeUsers,
+        adminCount,
+        artistCount,
+        regularUserCount,
+        newArtists,
+        pendingSongs,
+        pendingReports
+      ] = await Promise.all([
         prisma.user.count(),
-        prisma.artist.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        prisma.user.count({ where: { isActive: true } }),
+        prisma.user.count({ where: { role: 'admin' } }),
+        prisma.user.count({ where: { role: 'artist' } }),
+        prisma.user.count({ where: { role: 'user' } }),
+        prisma.artist.count({
+          where: {
+            user: {
+              createdAt: { gte: thirtyDaysAgo }
+            }
+          }
+        }),
         prisma.song.count({ where: { status: 'pending', isDeleted: false } }),
         prisma.report.count({ where: { status: 'PENDING' } })
       ]);
@@ -16,6 +35,13 @@ const dashboardController = {
       // Trả dữ liệu về cho Front-end
       res.status(200).json({
         totalUsers,
+        userBreakdown: {
+          active: activeUsers,
+          inactive: totalUsers - activeUsers,
+          admin: adminCount,
+          artist: artistCount,
+          user: regularUserCount
+        },
         newArtists,
         pendingSongs,
         pendingReports

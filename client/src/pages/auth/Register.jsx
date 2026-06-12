@@ -16,6 +16,7 @@ const registerSchema = z.object({
 });
 
 import { api } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Register() {
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -33,6 +34,7 @@ export default function Register() {
   const [otp, setOtp] = useState('');
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   // Xử lý gửi form đăng ký (bước 1)
   const onSubmit = async (data) => {
@@ -81,8 +83,7 @@ export default function Register() {
       if (res.ok) {
         // BUG FIX: Backend giờ trả về token + user, tự động đăng nhập
         if (resData.token) {
-          localStorage.setItem('token', resData.token);
-          localStorage.setItem('user', JSON.stringify(resData.user));
+          login(resData.user || resData, resData.token);
           navigate('/');
         } else {
           navigate('/login');

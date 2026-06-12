@@ -24,6 +24,37 @@ export default function ReleaseManager() {
   const navigate = useNavigate();
   const isNew = !albumId;
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isArtistUser = !!currentUser.isArtist;
+
+  if (!isArtistUser) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-6">
+        <div className="text-center max-w-md bg-[#121212] border border-[#222] rounded-2xl p-8 shadow-2xl">
+          <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle size={40} className="text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-bold mb-3">Quyền nghệ sĩ yêu cầu</h1>
+          <p className="text-[#a0a0a0] mb-8 leading-relaxed">
+            Chỉ những tài khoản đã đăng ký và được duyệt làm Nghệ sĩ mới có thể quản lý album hoặc bản phát hành.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => navigate("/register-artist")}
+              className="px-6 py-3 rounded-full bg-[#00e6e6] text-black font-bold hover:bg-[#00d0d0] transition-colors"
+            >
+              Đăng ký Nghệ sĩ
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="px-6 py-3 rounded-full bg-[#222] text-white font-semibold hover:bg-[#333] transition-colors"
+            >
+              Về trang chủ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const [album, setAlbum] = useState(null);
   const [tracks, setTracks] = useState([]);
@@ -272,7 +303,16 @@ export default function ReleaseManager() {
         });
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-          else reject(new Error('Upload thất bại'));
+          else {
+            let errorMsg = 'Upload thất bại';
+            try {
+              const resJson = JSON.parse(xhr.responseText);
+              if (resJson && resJson.error) {
+                errorMsg = resJson.error;
+              }
+            } catch (_) {}
+            reject(new Error(errorMsg));
+          }
         });
         xhr.addEventListener('error', () => reject(new Error('Lỗi kết nối')));
         xhr.open('POST', '/api/songs/upload');

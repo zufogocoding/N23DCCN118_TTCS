@@ -1,18 +1,20 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useEffect } from "react";
-import { Image, Music, Upload, CheckCircle, Loader2, ArrowLeft, X } from "lucide-react";
+import { Image, Music, Upload, CheckCircle, Loader2, ArrowLeft, X, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../utils/api";
 import LrcSyncEditor from "../../components/LrcSyncEditor";
+import jsmediatags from "jsmediatags";
 
 export default function UploadSong() {
   const navigate = useNavigate();
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isArtistUser = !!currentUser.isArtist;
+
   const [coverImage, setCoverImage] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [title, setTitle] = useState("");
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const isArtistUser = !!currentUser.isArtist;
 
   const [artistName, setArtistName] = useState(isArtistUser ? (currentUser.displayName || currentUser.username || "") : "");
   const [selectedGenreIds, setSelectedGenreIds] = useState([]);
@@ -99,6 +101,41 @@ export default function UploadSong() {
       audio.addEventListener('loadedmetadata', () => {
         setDurationMs(Math.round(audio.duration * 1000));
       });
+
+      // Đọc ID3 metadata từ file nhạc (title, artist, cover image)
+      jsmediatags.read(file, {
+        onSuccess: (tag) => {
+          const tags = tag.tags;
+
+          // Tự động điền tên bài hát nếu trống
+          if (tags.title && !title) {
+            setTitle(tags.title);
+          }
+
+          // Tự động điền tên nghệ sĩ nếu không phải tác giả gốc và trường artist trống
+          if (tags.artist && !isOriginal && !artistName) {
+            setArtistName(tags.artist);
+          }
+
+          // Tự động lấy ảnh bìa từ metadata (APIC tag)
+          const picture = tags.picture;
+          if (picture && !coverImage) {
+            const { data, format } = picture;
+            // Convert byte array to Blob
+            const byteArray = new Uint8Array(data);
+            const blob = new Blob([byteArray], { type: format });
+            const imageUrl = URL.createObjectURL(blob);
+            setCoverPreview(imageUrl);
+            // Tạo File object để upload
+            const coverFile = new File([blob], 'cover-from-metadata.jpg', { type: format });
+            setCoverImage(coverFile);
+          }
+        },
+        onError: (error) => {
+          console.log('Không thể đọc metadata từ file nhạc:', error.type, error.info);
+          // Không hiển thị lỗi cho user vì metadata là optional
+        }
+      });
     }
   };
 
@@ -161,7 +198,14 @@ export default function UploadSong() {
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve(JSON.parse(xhr.responseText));
           } else {
-            reject(new Error("Upload thất bại"));
+            let errorMsg = "Upload thất bại";
+            try {
+              const resJson = JSON.parse(xhr.responseText);
+              if (resJson && resJson.error) {
+                errorMsg = resJson.error;
+              }
+            } catch (_) {}
+            reject(new Error(errorMsg));
           }
         });
 

@@ -3,6 +3,55 @@ import { Camera, Edit2, Save, User as UserIcon, Calendar, MapPin, Mail, AlertCir
 import { useNavigate } from 'react-router-dom';
 import { api, getMediaUrl } from '../../utils/api';
 
+// Helper: convert YYYY-MM-DD to dd/mm/yyyy
+function toDisplayDate(isoDateStr) {
+  if (!isoDateStr) return '';
+  const d = new Date(isoDateStr);
+  if (isNaN(d.getTime())) return '';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+// Helper: convert dd/mm/yyyy to YYYY-MM-DD for API
+function toISODate(displayDate) {
+  if (!displayDate) return '';
+  const parts = displayDate.split('/');
+  if (parts.length !== 3) return '';
+  const [day, month, year] = parts;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+// Helper: validate dd/mm/yyyy string
+function validateDob(value) {
+  if (!value) return ''; // optional field
+  const regex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const match = value.match(regex);
+  if (!match) return 'Định dạng ngày không hợp lệ. Vui lòng nhập theo dd/mm/yyyy';
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+  if (month < 1 || month > 12) return 'Tháng không hợp lệ (1-12)';
+  if (day < 1 || day > 31) return 'Ngày không hợp lệ (1-31)';
+  if (year > 2026) return 'Năm không được vượt quá 2026';
+  if (year < 1900) return 'Năm không hợp lệ';
+  // Check if the date actually exists
+  const testDate = new Date(year, month - 1, day);
+  if (testDate.getFullYear() !== year || testDate.getMonth() !== month - 1 || testDate.getDate() !== day) {
+    return 'Ngày tháng không tồn tại (ví dụ: 31/02 không hợp lệ)';
+  }
+  return '';
+}
+
+// Helper: safe format for joined date
+function formatJoinedDate(dateStr) {
+  if (!dateStr) return 'Không rõ';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'Không rõ';
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -12,6 +61,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [dobError, setDobError] = useState('');
   
   const navigate = useNavigate();
 
@@ -30,7 +80,7 @@ export default function Profile() {
         setUser(data);
         setFormData({
           displayName: data.displayName || data.username || '',
-          dob: data.dob ? new Date(data.dob).toISOString().split('T')[0] : '',
+          dob: toDisplayDate(data.dob),
           country: data.country || ''
         });
         
@@ -93,14 +143,24 @@ export default function Profile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate date before submitting
+    const dobValidation = validateDob(formData.dob);
+    if (dobValidation) {
+      setDobError(dobValidation);
+      return;
+    }
+    
     setLoading(true);
     setError('');
     setSuccess('');
+    setDobError('');
 
     try {
       const submitData = new FormData();
       submitData.append('displayName', formData.displayName);
-      if (formData.dob) submitData.append('dob', formData.dob);
+      // Convert dd/mm/yyyy to YYYY-MM-DD for the API
+      if (formData.dob) submitData.append('dob', toISODate(formData.dob));
       if (formData.country) submitData.append('country', formData.country);
       if (selectedFile) submitData.append('avatar', selectedFile);
 
@@ -135,10 +195,11 @@ export default function Profile() {
     setSelectedFile(null);
     setFormData({
       displayName: user.displayName || user.username || '',
-      dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : '',
+      dob: toDisplayDate(user.dob),
       country: user.country || ''
     });
     setError('');
+    setDobError('');
   };
 
   if (loading && !user) {
@@ -190,7 +251,7 @@ export default function Profile() {
           <div className="flex items-center justify-center md:justify-start gap-4 text-sm font-semibold">
             <span className="text-[#a0a0a0]">{user?.email}</span>
             <span className="text-[#333]">•</span>
-            <span className="text-[#a0a0a0]">Thành viên từ {new Date(user?.createdAt).getFullYear()}</span>
+            <span className="text-[#a0a0a0]">Thành viên từ {formatJoinedDate(user?.createdAt)}</span>
           </div>
         </div>
 
@@ -258,13 +319,31 @@ export default function Profile() {
                   <div className="relative">
                     <Calendar className="absolute left-3 top-3.5 text-[#666]" size={18} />
                     <input
-                      type="date"
+                      type="text"
                       name="dob"
                       value={formData.dob}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#2a2a2a] border border-[#444] rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-[#1db954] transition-colors"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // Only allow digits and /
+                        const cleaned = val.replace(/[^0-9/]/g, '');
+                        setFormData({ ...formData, dob: cleaned });
+                        // Live validate and clear error when valid
+                        const err = validateDob(cleaned);
+                        setDobError(err);
+                      }}
+                      maxLength={10}
+                      className={`w-full bg-[#2a2a2a] border rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none transition-colors ${
+                        dobError ? 'border-red-500 focus:border-red-500' : 'border-[#444] focus:border-[#1db954]'
+                      }`}
+                      placeholder="dd/mm/yyyy"
                     />
                   </div>
+                  {dobError && (
+                    <p className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                      <AlertCircle size={14} />
+                      {dobError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
