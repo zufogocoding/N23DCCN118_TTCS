@@ -1,15 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ListPlus, Plus, Check, Search, Loader2 } from 'lucide-react';
 import { api } from '../../utils/api';
-import useClickOutside from '../../hooks/useClickOutside';
 import CreatePlaylistModal from './CreatePlaylistModal';
 
 /**
  * AddToPlaylistMenu - Dropdown menu để thêm bài hát vào playlist
+ * Sử dụng React Portal + fixed positioning để tránh bị cắt bởi
+ * overflow-x-auto / overflow-y-auto của container cha.
+ *
  * Props:
  *   - songId: ID bài hát cần thêm
  *   - onCreatePlaylist: callback khi user muốn tạo playlist mới (mở modal)
+ *   - asMenuItem: hiển thị dạng menu item thay vì icon button
  */
 export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem = false }) {
   const navigate = useNavigate();
@@ -19,8 +23,12 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
   const [searchText, setSearchText] = useState('');
   const [addedTo, setAddedTo] = useState(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [positionClass, setPositionClass] = useState('right-0 top-full mt-2');
-  const menuRef = useRef(null);
+
+  // Vị trí fixed tính bằng px (thay vì Tailwind class)
+  const [menuStyle, setMenuStyle] = useState({});
+
+  const triggerRef = useRef(null);  // Nút bấm trigger
+  const dropdownRef = useRef(null); // Dropdown panel (rendered via Portal)
   const searchRef = useRef(null);
 
   useEffect(() => {
@@ -30,10 +38,98 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
     setIsOpen(false);
   }, [songId]);
 
-  useClickOutside(menuRef, () => {
-    setIsOpen(false);
-    setSearchText('');
-  });
+  // ── Tính toán vị trí dropdown dựa trên viewport ──
+  const calculatePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return {};
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const MENU_WIDTH = 256;  // w-64 = 16rem = 256px
+    const MENU_HEIGHT = 320; // Ước tính chiều cao tối đa
+    const GAP = 8;           // Khoảng cách giữa trigger và dropdown
+
+    let top, left;
+
+    if (asMenuItem) {
+      // ── Chế độ asMenuItem: bung ra cạnh bên ──
+      // Ưu tiên bung sang phải
+      if (viewportWidth - rect.right >= MENU_WIDTH + GAP) {
+        left = rect.right + 4;
+      } else {
+        // Bung sang trái
+        left = rect.left - MENU_WIDTH - 4;
+      }
+      top = rect.top;
+    } else {
+      // ── Chế độ bình thường: bung xuống/lên ──
+
+      // Chiều dọc: ưu tiên bung xuống dưới
+      if (viewportHeight - rect.bottom >= MENU_HEIGHT + GAP) {
+        top = rect.bottom + GAP;
+      } else {
+        // Bung lên trên
+        top = rect.top - MENU_HEIGHT - GAP;
+      }
+
+      // Chiều ngang: ưu tiên căn lề phải (bung trái), fallback căn lề trái
+      if (rect.right >= MENU_WIDTH) {
+        // Đủ chỗ bung sang trái → căn lề phải của trigger
+        left = rect.right - MENU_WIDTH;
+      } else {
+        // Sát mép trái → căn lề trái của trigger
+        left = rect.left;
+      }
+    }
+
+    // Clamp để không bao giờ bị ra ngoài viewport
+    left = Math.max(8, Math.min(left, viewportWidth - MENU_WIDTH - 8));
+    top = Math.max(8, Math.min(top, viewportHeight - MENU_HEIGHT - 8));
+
+    return {
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${MENU_WIDTH}px`,
+      zIndex: 9999,
+    };
+  }, [asMenuItem]);
+
+  // ── Click outside detection (thay useClickOutside vì dropdown ở portal) ──
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e) => {
+      const trigger = triggerRef.current;
+      const dropdown = dropdownRef.current;
+      if (
+        trigger && !trigger.contains(e.target) &&
+        dropdown && !dropdown.contains(e.target)
+      ) {
+        setIsOpen(false);
+        setSearchText('');
+      }
+    };
+
+    // Đóng dropdown khi scroll hoặc resize (trigger sẽ di chuyển)
+    const handleScrollOrResize = () => {
+      setIsOpen(false);
+      setSearchText('');
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleScrollOrResize);
+    // Bắt scroll trên capturing phase để detect scroll ở mọi container
+    window.addEventListener('scroll', handleScrollOrResize, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+    };
+  }, [isOpen]);
 
   // Auto-focus search khi mở
   useEffect(() => {
@@ -56,39 +152,8 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
       return;
     }
 
-    // Đo vị trí viewport để tự động điều chỉnh hướng mở của dropdown, chống tràn viền / cắt góc
-    if (menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      let horizontal = 'right-0'; // Mặc định căn lề phải (bung sang trái)
-      let vertical = 'top-full mt-2'; // Mặc định bung xuống dưới
-
-      // Nếu nút nằm quá sát mép trái (< 256px), căn lề trái (bung sang phải)
-      if (rect.left < 256) {
-        horizontal = 'left-0';
-      }
-
-      // Nếu nút nằm quá sát mép dưới (< 320px), bung ngược lên trên
-      if (viewportHeight - rect.bottom < 320) {
-        vertical = 'bottom-full mb-2';
-      }
-
-      // Nếu menu nằm trong menu dọc / ngang side-by-side
-      if (asMenuItem) {
-        // Nếu nút nằm sát mép phải (< 256px), bung sang trái
-        if (viewportWidth - rect.right < 256) {
-          horizontal = 'right-full mr-1 top-0';
-        } else {
-          horizontal = 'left-full ml-1 top-0';
-        }
-        vertical = '';
-      }
-
-      setPositionClass(`${horizontal} ${vertical}`);
-    }
-
+    // Tính vị trí trước khi mở
+    setMenuStyle(calculatePosition());
     setIsOpen(true);
     setLoading(true);
 
@@ -175,28 +240,14 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
     pl.title.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  return (
-    <div ref={menuRef} className="relative">
-      {asMenuItem ? (
-        <button
-          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
-          className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+  // ── Nội dung dropdown (render qua Portal) ──
+  const dropdownContent = isOpen
+    ? createPortal(
+        <div
+          ref={dropdownRef}
+          style={menuStyle}
+          className="bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-2"
         >
-          <ListPlus size={18} />
-          <span>Thêm vào Playlist</span>
-        </button>
-      ) : (
-        <button
-          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
-          className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
-          title="Thêm vào Playlist"
-        >
-          <ListPlus size={20} />
-        </button>
-      )}
-
-      {isOpen && (
-        <div className={`absolute ${positionClass} w-64 bg-[#282828] rounded-lg shadow-2xl border border-[#333] py-2 z-[60]`}>
           <p className="px-4 py-2 text-xs font-bold text-[#a0a0a0] uppercase tracking-wider">
             Thêm vào Playlist
           </p>
@@ -268,8 +319,32 @@ export default function AddToPlaylistMenu({ songId, onCreatePlaylist, asMenuItem
               ))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <div ref={triggerRef} className="relative">
+      {asMenuItem ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
+          className="w-full px-4 py-2 flex items-center gap-3 text-sm text-gray-200 hover:bg-white/10 transition-colors"
+        >
+          <ListPlus size={18} />
+          <span>Thêm vào Playlist</span>
+        </button>
+      ) : (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleToggle(); }}
+          className="p-2 rounded-full hover:bg-white/10 text-[#a0a0a0] hover:text-white transition-colors"
+          title="Thêm vào Playlist"
+        >
+          <ListPlus size={20} />
+        </button>
       )}
+
+      {dropdownContent}
 
       {/* Modal tạo playlist tích hợp sẵn */}
       <CreatePlaylistModal
