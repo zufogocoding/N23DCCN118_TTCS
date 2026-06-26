@@ -19,6 +19,12 @@ export default function EditPlaylistModal({ isOpen, onClose, onSuccess, playlist
     }
   }, [playlist]);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   if (!isOpen) return null;
 
   const handleImageChange = (e) => {

@@ -1,7 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import SongDetail from "./pages/music/SongDetail";
-import PlaylistView from './pages/music/PlaylistView';
 
 // Layouts
 import AuthLayout from './components/layout/AuthLayout';
@@ -11,31 +9,36 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PlayerProvider } from './context/PlayerContext';
 
-// Pages
+// Pages (eager - initial load)
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Home from './pages/user/Home';
-import Search from './pages/user/Search';
-import Profile from './pages/user/Profile';
-import Settings from './pages/user/Settings';
-import BecomeArtist from './pages/user/BecomeArtist';
-import LibraryPage from "./pages/LibraryHome/LibraryPage";
-import ArtistProfile from './pages/artist/ArtistProfile';
-import AlbumView from './pages/music/AlbumView';
 
-// Lazy loaded Pages (Admin & Artist)
+// Lazy loaded Pages
+const Search = lazy(() => import('./pages/user/Search'));
+const Profile = lazy(() => import('./pages/user/Profile'));
+const Settings = lazy(() => import('./pages/user/Settings'));
+const BecomeArtist = lazy(() => import('./pages/user/BecomeArtist'));
+const LibraryPage = lazy(() => import("./pages/LibraryHome/LibraryPage"));
+const ArtistProfile = lazy(() => import('./pages/artist/ArtistProfile'));
+const AlbumView = lazy(() => import('./pages/music/AlbumView'));
+const SongDetail = lazy(() => import("./pages/music/SongDetail"));
+const PlaylistView = lazy(() => import('./pages/music/PlaylistView'));
+const ChartDetail = lazy(() => import('./pages/user/ChartDetail'));
+const UploadSong = lazy(() => import("./pages/artist/UploadSong"));
+const ReleaseManager = lazy(() => import('./pages/artist/ReleaseManager'));
+const AnalyticsDashboard = lazy(() => import('./pages/artist/AnalyticsDashboard'));
+
+// Lazy loaded Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const ArtistRequests = lazy(() => import('./pages/admin/ArtistRequests'));
 const PendingSongs = lazy(() => import("./pages/admin/PendingSongs"));
-const ChartDetail = lazy(() => import('./pages/user/ChartDetail'));
-const UploadSong = lazy(() => import("./pages/artist/UploadSong"));
 const ManageGenres = lazy(() => import('./pages/admin/ManageGenres'));
 const AdminAlbums = lazy(() => import('./pages/admin/AdminAlbums'));
 const ManagePlaylists = lazy(() => import('./pages/admin/ManagePlaylists'));
-const ReleaseManager = lazy(() => import('./pages/artist/ReleaseManager'));
-const AnalyticsDashboard = lazy(() => import('./pages/artist/AnalyticsDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/adminUser'));
 const ManageSongs = lazy(() => import('./pages/admin/ManageSongs'));
 const ManageReports = lazy(() => import('./pages/admin/ManageReports'));
@@ -80,6 +83,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <PlayerProvider>
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
@@ -181,6 +185,7 @@ function App() {
         </Suspense>
   
         </BrowserRouter>
+        </PlayerProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

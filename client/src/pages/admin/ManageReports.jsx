@@ -252,11 +252,6 @@ export default function ManageReports() {
 
   return (
     <>
-      <style>{`
-        @keyframes fade-in  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in  { animation: fade-in 0.2s ease; }
-      `}</style>
-
       <div className="space-y-5 pb-10">
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

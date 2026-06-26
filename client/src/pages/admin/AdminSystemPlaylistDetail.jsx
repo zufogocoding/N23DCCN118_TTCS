@@ -98,6 +98,12 @@ export default function AdminSystemPlaylistDetail() {
 
   useEffect(() => { fetchPlaylist(); }, [fetchPlaylist]);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   // Auto-search with debounce
   useEffect(() => {
     const fetchSongs = async (q) => {

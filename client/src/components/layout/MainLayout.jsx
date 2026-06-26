@@ -372,11 +372,11 @@ export default function MainLayout() {
               
               {/* Audio Visualizer (Large) */}
               <div className="flex gap-2 mt-12 h-16 items-end">
-                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_0.8s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.1s' }} />
-                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_1.2s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.3s' }} />
-                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_0.9s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.5s' }} />
-                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_1.1s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.2s' }} />
-                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'animate-[audio-bar_1.3s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.4s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'h-16 animate-[audio-bar_0.8s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.1s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'h-16 animate-[audio-bar_1.2s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.3s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'h-16 animate-[audio-bar_0.9s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.5s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'h-16 animate-[audio-bar_1.1s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.2s' }} />
+                 <div className={`w-3 rounded-full bg-primary ${isPlaying ? 'h-16 animate-[audio-bar_1.3s_ease-in-out_infinite]' : 'h-2'}`} style={{ animationDelay: '0.4s' }} />
               </div>
             </div>
           </>

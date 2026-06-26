@@ -94,6 +94,18 @@ export default function ArtistProfile() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    };
+  }, [bannerPreview]);
+
   const fetchArtistData = useCallback(async () => {
     setLoading(true);
     try {

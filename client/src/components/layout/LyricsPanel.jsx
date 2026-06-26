@@ -92,7 +92,7 @@ export default function LyricsPanel({ isOpen, onClose }) {
 
       if (newActiveIndex !== -1 && containerRef.current) {
         const activeEl = containerRef.current.querySelector(`[data-index="${newActiveIndex}"]`);
-        activeEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        activeEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
       }
     }
   }, [currentTime, lyrics, isOpen, activeIndex]);
@@ -147,7 +147,7 @@ export default function LyricsPanel({ isOpen, onClose }) {
               return (
                 <button
                   type="button"
-                  key={index}
+                  key={line.time}
                   data-index={index}
                   onClick={() => handleSeek(line.time)}
                   className={`w-full text-left px-2 py-2 transition-all duration-500 ease-out transform origin-left ${

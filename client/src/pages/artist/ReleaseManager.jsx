@@ -73,6 +73,7 @@ export default function ReleaseManager() {
   const [coverPreview, setCoverPreview] = useState(null);
   const [scheduledAt, setScheduledAt] = useState('');
   const coverRef = useRef(null);
+  const audioUrlRef = useRef(null);
 
   // Upload Modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -157,6 +158,24 @@ export default function ReleaseManager() {
   }, [albumId, isNew]);
 
   useEffect(() => { loadAlbum(); }, [loadAlbum]);
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (uploadCoverPreview) URL.revokeObjectURL(uploadCoverPreview);
+    };
+  }, [uploadCoverPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    };
+  }, []);
 
   const handleCoverChange = (e) => {
     const file = e.target.files[0];
@@ -243,6 +262,8 @@ export default function ReleaseManager() {
     // Tự động detect duration
     const audio = new Audio();
     audio.src = URL.createObjectURL(file);
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    audioUrlRef.current = audio.src;
     audio.addEventListener('loadedmetadata', () => {
       setSongDurationMs(Math.round(audio.duration * 1000));
     });

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Play, Clock, MoreHorizontal, House, Heart, Trash2, Users } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
+import { useAuth } from '../../context/AuthContext';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/common/CreatePlaylistModal';
 import EditPlaylistModal from '../../components/common/EditPlaylistModal';
@@ -14,6 +15,7 @@ const PlaylistView = () => {
   const { playlistId } = useParams();
   const navigate = useNavigate();
   const { playSong } = usePlayer();
+  const { user: authUser } = useAuth();
   const [playlist, setPlaylist] = useState(null);
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,7 @@ const PlaylistView = () => {
 
   const fetchPlaylistData = async () => {
     setLoading(true);
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authUser;
 
     if (playlistId === 'liked') {
       setIsLikedPage(true);
@@ -64,7 +66,7 @@ const PlaylistView = () => {
           setSongs(extractedSongs);
 
           // Lưu lịch sử click playlist của khách
-          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const currentUser = authUser;
           if (!currentUser.id) {
             try {
               const guestPlaylists = JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]');
@@ -98,7 +100,7 @@ const PlaylistView = () => {
 
   // Fetch liked status for all songs in batch
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authUser;
     if (!user.id || songs.length === 0) return;
     
     api.post('/api/interactions/like-status-batch', { songIds: songs.map(s => s.id) })
@@ -113,7 +115,7 @@ const PlaylistView = () => {
         setLikedSongIds(liked);
       })
       .catch(err => console.error('Lỗi khi kiểm tra danh sách thích:', err));
-  }, [songs]);
+  }, [songs, authUser]);
 
   useEffect(() => {
     const handleClose = (e) => {
@@ -152,7 +154,7 @@ const PlaylistView = () => {
   };
 
   const handleToggleLike = async (songId) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authUser;
     if (!user.id) { navigate('/login'); return; }
     try {
       const res = await api.post('/api/interactions/like', { songId });
@@ -168,7 +170,7 @@ const PlaylistView = () => {
   };
 
   const handleRemoveSong = async (songId) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authUser;
     if (!user.id) return;
     try {
       const res = await api.delete(`/api/playlists/${playlistId}/songs/${songId}`);
@@ -234,7 +236,7 @@ const PlaylistView = () => {
 
   // ── Playlist Cloning ──────────────────────────────────────────────────────
   const handleClonePlaylist = async () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authUser;
     if (!user.id) {
       navigate('/login');
       return;
@@ -297,7 +299,7 @@ const PlaylistView = () => {
     if (!playlist?.id || !isPlaylistOwner || isLikedPage) return;
     if (!window.confirm(`Xóa playlist "${playlist.title}"? Không thể hoàn tác.`)) return;
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authUser;
     if (!user.id) {
       navigate('/login');
       return;

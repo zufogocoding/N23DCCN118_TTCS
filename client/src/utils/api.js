@@ -54,11 +54,8 @@ async function request(url, { method, body, headers = {}, ...customOptions } = {
       // Nếu không phải lỗi auth thực sự, trả về response gốc
       return res;
     } catch {
-      // Nếu không parse được JSON, redirect
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-      throw new Error('Unauthorized');
+      // Nếu không parse được JSON, trả về response gốc thay vì redirect
+      return res;
     }
   }
   return res;

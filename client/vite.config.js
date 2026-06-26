@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      external: ['react-native-fs'],
+    },
+  },
   server: {
     host: true, // Needed for Docker
     port: 5173,

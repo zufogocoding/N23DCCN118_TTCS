@@ -153,11 +153,54 @@ const setAdminSongStatus = async (req, res) => {
 // ── GET /api/admin/songs/pending ─────────────────────────────────────────────
 const getPendingSongs = async (req, res) => {
   try {
-    const songs = await prisma.song.findMany({
-      where: { status: "pending", isDeleted: false },
-      orderBy: { createdAt: "desc" },
+    const {
+      page = 1,
+      limit = 15,
+      search = "",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const where = { status: "pending", isDeleted: false };
+
+    if (search.trim()) {
+      where.OR = [
+        { title: { contains: search.trim(), mode: "insensitive" } },
+        { artistName: { contains: search.trim(), mode: "insensitive" } },
+      ];
+    }
+
+    const [songs, total] = await Promise.all([
+      prisma.song.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limitNum,
+        include: {
+          genres: { include: { genre: true } },
+          artists: {
+            include: {
+              artist: {
+                include: { user: { select: { username: true, displayName: true, avatarUrl: true } } },
+              },
+            },
+          },
+        },
+      }),
+      prisma.song.count({ where }),
+    ]);
+
+    res.json({
+      songs,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
     });
-    res.json(songs);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Cannot get pending songs" });

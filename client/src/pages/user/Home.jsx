@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search, Heart, Play, Info } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
+import { useAuth } from '../../context/AuthContext';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
 import CreatePlaylistModal from '../../components/common/CreatePlaylistModal';
 import UploadButton from "../../components/layout/UploadButton";
@@ -9,11 +10,8 @@ import { getPrimaryArtistUserId } from '../../utils/artistNav';
 import { api, getMediaUrl } from '../../utils/api';
 import { getArtistName, getCoverArt } from '../../utils/songHelpers';
 
-
-
-
 export default function Home() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { playSong } = usePlayer();
 
@@ -172,15 +170,14 @@ export default function Home() {
   // Lắng nghe sự kiện cập nhật lịch sử nghe nhạc của khách
   useEffect(() => {
     const handleUpdate = () => {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!currentUser.id) {
+      if (!user?.id) {
         setRecentSongs(JSON.parse(localStorage.getItem('guest_recent_songs') || '[]'));
         setRecentPlaylists(JSON.parse(localStorage.getItem('guest_recent_playlists') || '[]'));
       }
     };
     window.addEventListener('guestHistoryUpdated', handleUpdate);
     return () => window.removeEventListener('guestHistoryUpdated', handleUpdate);
-  }, []);
+  }, [user?.id]);
 
   const handlePlaySong = (song, queueList) => {
     playSong(song, queueList || songs);
@@ -252,9 +249,9 @@ export default function Home() {
                     Xóa
                   </button>
                 </div>
-                {filteredRecent.map((q, idx) => (
+                {filteredRecent.map((q) => (
                   <div
-                    key={idx}
+                    key={q}
                     onClick={() => handleRecentSearchClick(q)}
                     className="px-4 py-2.5 hover:bg-surface-hover cursor-pointer flex items-center text-sm text-text"
                   >

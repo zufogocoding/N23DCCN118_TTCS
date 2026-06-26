@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Music, X } from 'lucide-react';
 import { api } from '../../utils/api';
 
@@ -9,6 +9,12 @@ export default function CreatePlaylistModal({ isOpen, onClose, onSuccess }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   if (!isOpen) return null;
 

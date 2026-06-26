@@ -25,6 +25,12 @@ export default function TrackEditModal({ song, onClose, onSaved }) {
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
+
   const toggleGenre = (id) => {
     setSelectedGenreIds(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
   };

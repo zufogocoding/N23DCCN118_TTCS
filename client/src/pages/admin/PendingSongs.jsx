@@ -45,6 +45,8 @@ export default function PendingSongs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [approvedCount, setApprovedCount] = useState(0);
   const [rejectedCount, setRejectedCount] = useState(0);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
+  const [listenedSongs, setListenedSongs] = useState({}); // { [songId]: boolean }
 
   // Audio player state
   const [playingSongId, setPlayingSongId] = useState(null);
@@ -85,12 +87,15 @@ export default function PendingSongs() {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
-  async function fetchPendingSongs() {
+  async function fetchPendingSongs(page = 1) {
     try {
       setLoading(true);
-      const res = await api.get("/api/admin/songs/pending");
+      const params = new URLSearchParams({ page, limit: 15 });
+      if (searchQuery.trim()) params.append("search", searchQuery.trim());
+      const res = await api.get(`/api/admin/songs/pending?${params}`);
       const data = await res.json();
-      setSongs(data);
+      setSongs(data.songs ?? []);
+      setPagination(data.pagination ?? { total: 0, page: 1, totalPages: 1 });
     } catch (err) {
       console.log(err);
     } finally {
@@ -98,15 +103,27 @@ export default function PendingSongs() {
     }
   }
 
-  // Fetch pending songs
+  // Fetch pending songs on mount
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPendingSongs();
+    fetchPendingSongs(1);
   }, []);
+
+  // Debounce search: re-fetch with page 1 when search changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPendingSongs(1);
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   // Play/Pause song
   const togglePlaySong = (songId) => {
     const audio = audioRef.current;
+
+    // Đánh dấu đã nghe thử bài hát này
+    setListenedSongs(prev => ({ ...prev, [songId]: true }));
 
     if (playingSongId === songId) {
       // Toggle play/pause for current song
@@ -191,7 +208,7 @@ export default function PendingSongs() {
             </div>
             <p className="text-sm font-semibold text-[#a0a0a0]">Chờ duyệt</p>
           </div>
-          <h2 className="text-4xl font-bold text-[#00e6e6]">{songs.length}</h2>
+          <h2 className="text-4xl font-bold text-[#00e6e6]">{pagination.total}</h2>
           <p className="text-xs text-[#666] mt-1">bài hát đang chờ duyệt</p>
         </div>
 
@@ -357,8 +374,14 @@ export default function PendingSongs() {
               {/* Actions */}
               <div className="flex items-center justify-end gap-2">
                 <button
+                  disabled={!listenedSongs[song.id]}
                   onClick={() => setConfirmAction({ type: 'approve', songId: song.id, songTitle: song.title })}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all duration-200"
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    listenedSongs[song.id]
+                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 cursor-pointer'
+                      : 'bg-gray-500/5 border border-gray-500/10 text-gray-500 cursor-not-allowed opacity-50'
+                  }`}
+                  title={!listenedSongs[song.id] ? "Bạn cần nghe thử bài hát này trước khi duyệt" : "Duyệt bài hát"}
                 >
                   <CheckCircle size={14} />
                   Duyệt
@@ -374,6 +397,31 @@ export default function PendingSongs() {
             </div>
           );
         })}
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 px-5 py-4 border-t border-[#333]">
+            <span className="text-sm text-[#666]">
+              Trang {pagination.page} / {pagination.totalPages} &nbsp;·&nbsp; {pagination.total.toLocaleString()} kết quả
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => fetchPendingSongs(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#444] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => fetchPendingSongs(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#444] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Audio Player Bar (hiển thị khi đang phát) */}
@@ -485,6 +533,10 @@ export default function PendingSongs() {
               <button
                 onClick={() => {
                   if (confirmAction.type === 'approve') {
+                    if (!listenedSongs[confirmAction.songId]) {
+                      alert("Bạn cần nghe thử bài hát này trước khi duyệt!");
+                      return;
+                    }
                     handleApprove(confirmAction.songId);
                   } else {
                     handleReject(confirmAction.songId);

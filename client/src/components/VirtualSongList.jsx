@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Heart, Play } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { getCoverArt } from '../utils/songHelpers';
 
-export default function VirtualSongList({ songs, loadMore, hasMore, scrollContainerId }) {
+function VirtualSongList({ songs, loadMore, hasMore, scrollContainerId }) {
   const { playSong } = usePlayer();
 
   const handleEndReached = () => {
@@ -22,7 +23,7 @@ export default function VirtualSongList({ songs, loadMore, hasMore, scrollContai
       }
       data={songs}
       endReached={handleEndReached}
-      overscan={200}
+      overscan={50}
       itemContent={(index, song) => (
         <div className="flex items-center justify-between p-3 rounded-md hover:bg-[#282828] group transition-colors cursor-pointer" onClick={() => playSong(song, songs)}>
           <div className="flex items-center gap-4">
@@ -45,3 +46,5 @@ export default function VirtualSongList({ songs, loadMore, hasMore, scrollContai
     />
   );
 }
+
+export default memo(VirtualSongList);

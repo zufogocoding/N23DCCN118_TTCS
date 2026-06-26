@@ -431,13 +431,6 @@ export default function AdminUsers() {
 
   return (
     <>
-      <style>{`
-        @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slide-in { animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-        .animate-fade-in { animation: fade-in 0.2s ease; }
-      `}</style>
-
       <div className="space-y-5 pb-10">
 
         {/* Header Bar */}

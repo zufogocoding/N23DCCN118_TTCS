@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getMediaUrl } from '../../utils/api';
 import useClickOutside from '../../hooks/useClickOutside';
@@ -9,26 +9,7 @@ export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
-
-const [user, setUser] = useState({});
-  
-  const loadUser = () => {
-    const userStr = localStorage.getItem('user');
-    setUser(userStr ? JSON.parse(userStr) : {});
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadUser();
-    
-    // Lắng nghe sự kiện cập nhật profile để render lại dropdown
-    window.addEventListener('profileUpdated', loadUser);
-    
-    return () => {
-      window.removeEventListener('profileUpdated', loadUser);
-    };
-  }, []);
+  const { user, logout } = useAuth();
 
   const getInitial = () => {
     const displayName = user.artistName || user.displayName || user.username;

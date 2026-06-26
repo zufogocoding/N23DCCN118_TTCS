@@ -5,11 +5,12 @@ import {
   ShieldAlert, CheckCircle2, AlertTriangle, Loader2 
 } from 'lucide-react';
 import { api } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);

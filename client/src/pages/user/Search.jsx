@@ -225,9 +225,9 @@ export default function Search() {
                     Xóa
                   </button>
                 </div>
-                {filteredRecent.map((q, idx) => (
+                {filteredRecent.map((q) => (
                   <div
-                    key={idx}
+                    key={q}
                     onClick={() => handleRecentSearchClick(q)}
                     className="px-4 py-2.5 hover:bg-[#3e3e3e] cursor-pointer flex items-center text-sm text-white"
                   >
@@ -303,9 +303,9 @@ export default function Search() {
                   <div>
                     <h2 className="text-2xl font-bold text-white mb-4">Albums</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-                      {searchResults.albums.map((album, index) => (
+                      {searchResults.albums.map((album) => (
                         <div
-                          key={index}
+                          key={album.id}
                           className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group"
                           onClick={() => navigate(`/album/${album.id}`)}
                         >
@@ -329,9 +329,9 @@ export default function Search() {
                   <div>
                     <h2 className="text-2xl font-bold text-white mb-4">Playlists</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-                      {searchResults.playlists.map((playlist, index) => (
+                      {searchResults.playlists.map((playlist) => (
                         <div
-                          key={index}
+                          key={playlist.id}
                           className="bg-[#181818] p-4 rounded-xl hover:bg-[#282828] transition-colors cursor-pointer group"
                           onClick={() => navigate(`/playlist/${playlist.id}`)}
                         >

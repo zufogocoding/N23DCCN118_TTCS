@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Trash2, Plus, Loader2, Pencil } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
+import { useAuth } from '../../context/AuthContext';
 import { api, getMediaUrl } from '../../utils/api';
 import { getCoverArt, formatDuration, getArtistName } from '../../utils/songHelpers';
 import AddToPlaylistMenu from '../../components/common/AddToPlaylistMenu';
@@ -11,7 +12,7 @@ export default function AlbumView() {
   const { albumId } = useParams();
   const navigate = useNavigate();
   const { playSong } = usePlayer();
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user: currentUser } = useAuth();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

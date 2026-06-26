@@ -39,6 +39,7 @@ export default function UploadSong() {
   const [tempo, setTempo] = useState("");
   const [energy, setEnergy] = useState(0.5);
   const [danceability, setDanceability] = useState(0.5);
+  const audioUrlRef = useRef(null);
 
 
   // Fetch genres từ API
@@ -72,6 +73,18 @@ export default function UploadSong() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    };
+  }, []);
+
   const toggleGenre = (id) => {
     setSelectedGenreIds(prev =>
       prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
@@ -98,6 +111,8 @@ export default function UploadSong() {
       // Tự động detect duration
       const audio = new Audio();
       audio.src = URL.createObjectURL(file);
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = audio.src;
       audio.addEventListener('loadedmetadata', () => {
         setDurationMs(Math.round(audio.duration * 1000));
       });
