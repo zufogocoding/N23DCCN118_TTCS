@@ -3,6 +3,8 @@ from app.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
+import math
+
 def get_recommendations_for_user(user_id: int, limit: int = 10):
     """
     Fetch personalized hybrid recommendations using PostgreSQL pgvector cosine similarity.
@@ -37,23 +39,30 @@ def get_recommendations_for_user(user_id: int, limit: int = 10):
             LIMIT %s
         """
         with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor if hasattr(psycopg2, 'extras') else None) as cur:
-                # Fallback standard cursor mapping if extras is not present
+            with conn.cursor() as cur:
                 cur.execute(fallback_query, (limit,))
                 columns = [desc[0] for desc in cur.description]
                 results = []
                 for row in cur.fetchall():
-                    results.append(dict(zip(columns, row)))
+                    d = dict(zip(columns, row))
+                    for k, v in d.items():
+                        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                            d[k] = 0.0
+                    results.append(d)
                 return results
 
     # 2. User has vectors. Run the hybrid pgvector SQL similarity query
     recommend_query = """
         SELECT s.id, s.title, s."artistName", s."audioUrl", s."coverArtUrl", s."playCount",
+               COALESCE(CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) ELSE 0.0 END, 0.0) AS colab_score,
+               COALESCE(CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float THEN (1 - (u."contentVector" <=> s."contentVector")) ELSE 0.0 END, 0.0) AS content_score,
                (COALESCE(
                    0.7 * (CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL 
+                                    AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float
                                THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) 
                                ELSE 0.0 END) +
                    0.3 * (CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL 
+                                    AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float
                                THEN (1 - (u."contentVector" <=> s."contentVector")) 
                                ELSE 0.0 END),
                    0.0
@@ -71,7 +80,11 @@ def get_recommendations_for_user(user_id: int, limit: int = 10):
             columns = [desc[0] for desc in cur.description]
             results = []
             for row in cur.fetchall():
-                results.append(dict(zip(columns, row)))
+                d = dict(zip(columns, row))
+                for k, v in d.items():
+                    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                        d[k] = 0.0
+                results.append(d)
             return results
 
 def get_similar_songs(song_id: int, limit: int = 10):
@@ -85,7 +98,7 @@ def get_similar_songs(song_id: int, limit: int = 10):
                (1 - (origin."contentVector" <=> target."contentVector")) as similarity_score
         FROM "Song" origin, "Song" target
         WHERE origin.id = %s AND target.id != %s 
-          AND target."isDeleted" = false AND target.status = 'released'
+          AND target."isDeleted" = false AND target.status = 'approved'
           AND origin."contentVector" IS NOT NULL AND target."contentVector" IS NOT NULL
         ORDER BY similarity_score DESC, target."playCount" DESC
         LIMIT %s
@@ -97,5 +110,9 @@ def get_similar_songs(song_id: int, limit: int = 10):
             columns = [desc[0] for desc in cur.description]
             results = []
             for row in cur.fetchall():
-                results.append(dict(zip(columns, row)))
+                d = dict(zip(columns, row))
+                for k, v in d.items():
+                    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                        d[k] = 0.0
+                results.append(d)
             return results

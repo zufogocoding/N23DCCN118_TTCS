@@ -87,13 +87,15 @@ const recommendationController = {
       // Áp dụng hình phạt 95% (nhân với 0.05) đối với các bài hát của nghệ sĩ "Mock" để đẩy chúng xuống cuối danh sách
       const recommendations = await prisma.$queryRaw`
         SELECT s.id,
-               COALESCE(1 - (u."collaborativeVector" <=> s."collaborativeVector"), 0.0) AS colab_score,
-               COALESCE(1 - (u."contentVector" <=> s."contentVector"), 0.0) AS content_score,
+               COALESCE(CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) ELSE 0.0 END, 0.0) AS colab_score,
+               COALESCE(CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float THEN (1 - (u."contentVector" <=> s."contentVector")) ELSE 0.0 END, 0.0) AS content_score,
                (COALESCE(
                  0.7 * (CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL 
+                             AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float
                              THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) 
                              ELSE 0.0 END) +
                  0.3 * (CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL 
+                             AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float
                              THEN (1 - (u."contentVector" <=> s."contentVector")) 
                              ELSE 0.0 END),
                  0.0
