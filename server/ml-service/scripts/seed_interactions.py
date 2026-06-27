@@ -56,60 +56,88 @@ ALL_CLUSTER_NAMES = list(GENRE_CLUSTERS.keys())
 # ─────────────────────────────────────────────────────────────────────
 PERSONAS = [
     {
-        "name": "Pop",
-        "count": 15,
-        "genre_weights": {"Pop": 0.40, "Rock": 0.03, "Lofi": 0.12, "HipHop": 0.03, "EDM": 0.02},
-        "ground_truth": [0.75, 0.05, 0.10, 0.05, 0.05],
+        "name": "Pop_Loyalist",
+        "count": 12,
+        "genre_weights": {"Pop": 0.45, "Rock": 0.03, "Lofi": 0.12, "HipHop": 0.08, "EDM": 0.02},
+        "ground_truth": [0.70, 0.05, 0.10, 0.10, 0.05],
         "completion_primary": (0.80, 1.0),
-        "completion_secondary": (0.40, 0.70),
-        "completion_other": (0.03, 0.20),
-        "like_rate_primary": 0.35,
-        "like_rate_other": 0.03,
-        "skip_rate_primary": 0.05,
-        "skip_rate_other": 0.65,
-        "n_interactions": (130, 170),
-    },
-    {
-        "name": "Rock",
-        "count": 15,
-        "genre_weights": {"Pop": 0.03, "Rock": 0.42, "Lofi": 0.03, "HipHop": 0.02, "EDM": 0.10},
-        "ground_truth": [0.05, 0.75, 0.05, 0.05, 0.10],
-        "completion_primary": (0.75, 1.0),
-        "completion_secondary": (0.40, 0.70),
-        "completion_other": (0.03, 0.20),
-        "like_rate_primary": 0.35,
-        "like_rate_other": 0.03,
-        "skip_rate_primary": 0.05,
-        "skip_rate_other": 0.65,
-        "n_interactions": (130, 170),
-    },
-    {
-        "name": "Diverse",
-        "count": 15,
-        "genre_weights": {"Pop": 0.18, "Rock": 0.10, "Lofi": 0.18, "HipHop": 0.18, "EDM": 0.06},
-        "ground_truth": [0.25, 0.15, 0.25, 0.25, 0.10],
-        "completion_primary": (0.70, 0.95),
         "completion_secondary": (0.50, 0.80),
-        "completion_other": (0.05, 0.25),
-        "like_rate_primary": 0.30,
-        "like_rate_other": 0.05,
-        "skip_rate_primary": 0.08,
-        "skip_rate_other": 0.50,
+        "completion_other": (0.05, 0.20),
+        "like_rate_primary": 0.35,
+        "like_rate_other": 0.03,
+        "skip_rate_primary": 0.05,
+        "skip_rate_other": 0.65,
         "n_interactions": (140, 180),
     },
     {
-        "name": "Explorer",
-        "count": 5,
-        "genre_weights": {"Pop": 0.10, "Rock": 0.10, "Lofi": 0.10, "HipHop": 0.10, "EDM": 0.10},
-        "ground_truth": [0.20, 0.20, 0.20, 0.20, 0.20],
-        "completion_primary": (0.30, 0.60),
-        "completion_secondary": (0.20, 0.50),
+        "name": "Rock_Enthusiast",
+        "count": 12,
+        "genre_weights": {"Pop": 0.03, "Rock": 0.42, "Lofi": 0.03, "HipHop": 0.02, "EDM": 0.15},
+        "ground_truth": [0.05, 0.70, 0.05, 0.05, 0.15],
+        "completion_primary": (0.75, 1.0),
+        "completion_secondary": (0.45, 0.75),
+        "completion_other": (0.03, 0.20),
+        "like_rate_primary": 0.35,
+        "like_rate_other": 0.03,
+        "skip_rate_primary": 0.05,
+        "skip_rate_other": 0.65,
+        "n_interactions": (140, 180),
+    },
+    {
+        "name": "Chill_Listener",
+        "count": 10,
+        "genre_weights": {"Pop": 0.15, "Rock": 0.02, "Lofi": 0.40, "HipHop": 0.03, "EDM": 0.02},
+        "ground_truth": [0.20, 0.05, 0.60, 0.10, 0.05],
+        "completion_primary": (0.80, 1.0),
+        "completion_secondary": (0.55, 0.80),
         "completion_other": (0.05, 0.25),
-        "like_rate_primary": 0.10,
-        "like_rate_other": 0.02,
-        "skip_rate_primary": 0.30,
+        "like_rate_primary": 0.33,
+        "like_rate_other": 0.04,
+        "skip_rate_primary": 0.05,
         "skip_rate_other": 0.60,
-        "n_interactions": (100, 140),
+        "n_interactions": (130, 170),
+    },
+    {
+        "name": "Urban_HipHop",
+        "count": 10,
+        "genre_weights": {"Pop": 0.15, "Rock": 0.02, "Lofi": 0.03, "HipHop": 0.40, "EDM": 0.12},
+        "ground_truth": [0.20, 0.05, 0.05, 0.60, 0.10],
+        "completion_primary": (0.75, 1.0),
+        "completion_secondary": (0.50, 0.80),
+        "completion_other": (0.03, 0.20),
+        "like_rate_primary": 0.35,
+        "like_rate_other": 0.03,
+        "skip_rate_primary": 0.05,
+        "skip_rate_other": 0.65,
+        "n_interactions": (140, 180),
+    },
+    {
+        "name": "Party_Goer",
+        "count": 8,
+        "genre_weights": {"Pop": 0.10, "Rock": 0.05, "Lofi": 0.02, "HipHop": 0.15, "EDM": 0.40},
+        "ground_truth": [0.15, 0.10, 0.05, 0.20, 0.50],
+        "completion_primary": (0.70, 1.0),
+        "completion_secondary": (0.45, 0.75),
+        "completion_other": (0.05, 0.20),
+        "like_rate_primary": 0.32,
+        "like_rate_other": 0.03,
+        "skip_rate_primary": 0.08,
+        "skip_rate_other": 0.60,
+        "n_interactions": (130, 170),
+    },
+    {
+        "name": "Eclectic",
+        "count": 8,
+        "genre_weights": {"Pop": 0.18, "Rock": 0.12, "Lofi": 0.15, "HipHop": 0.18, "EDM": 0.10},
+        "ground_truth": [0.25, 0.15, 0.20, 0.25, 0.15],
+        "completion_primary": (0.65, 0.90),
+        "completion_secondary": (0.50, 0.80),
+        "completion_other": (0.08, 0.25),
+        "like_rate_primary": 0.25,
+        "like_rate_other": 0.05,
+        "skip_rate_primary": 0.10,
+        "skip_rate_other": 0.55,
+        "n_interactions": (120, 160),
     },
 ]
 
@@ -225,7 +253,7 @@ def ensure_genres(cur):
     return genre_map
 
 # ─────────────────────────────────────────────────────────────────────
-# MOCK DATA: 500 songs, 50 users
+# MOCK DATA: 500 songs, 60 users
 # ─────────────────────────────────────────────────────────────────────
 def create_mock_songs(cur, genre_map):
     n_total = sum(c["count"] for c in GENRE_CLUSTERS.values())
@@ -277,7 +305,7 @@ def create_mock_songs(cur, genre_map):
     return songs_by_cluster
 
 def create_mock_users(cur):
-    logger.info("Creating 50 mock users with personas...")
+    logger.info("Creating 60 mock users with personas...")
     dummy_hash = "$2b$10$R2MswwHjRoc67CbeQxXpReF9k7xV1y6eK/Qf/2Y5s4k2kHqE/J6yS"
     all_users = []
     user_idx = 0
@@ -630,7 +658,7 @@ def save_test_metadata(test_users, test_songs, genre_map):
 def run_seed():
     logger.info("=" * 50)
     logger.info("SEEDING FULL CONTROLLED DATASET")
-    logger.info("= MOCK: 500 songs, 50 users")
+    logger.info("= MOCK: 500 songs, 60 users")
     logger.info("= TEST: 120 songs,  5 users")
     logger.info("=" * 50)
 

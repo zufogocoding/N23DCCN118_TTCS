@@ -24,6 +24,7 @@ const ML_API_URL = process.env.ML_API_URL || 'http://localhost:8000';
 const METADATA_PATH = path.join(__dirname, 'ai-test-metadata.json');
 const HELD_OUT_PATH = path.join(__dirname, 'held_out.json');
 const REPORT_PATH = path.join(__dirname, 'ai-test-report.html');
+const GROUND_TRUTH_PATH = path.join(__dirname, '..', 'ml-service', 'ground_truth.json');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILS
@@ -62,6 +63,7 @@ const results = {
   tc3_hybrid: [],  // Hybrid recommendation accuracy
   tc4_similar: [], // Similar songs
   tc5_groundTruth: null, // Ground truth validation
+  tc6_persona: null,     // Persona benchmark
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -556,6 +558,113 @@ async function runTC5(groundTruthPath) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TC6: Persona Benchmark — Precision per persona group (mock users)
+// ─────────────────────────────────────────────────────────────────────────────
+async function runTC6() {
+  log('\n👥 TC6: Persona Benchmark (Precision per persona)...');
+
+  if (!fs.existsSync(GROUND_TRUTH_PATH)) {
+    log('  ⚠️  ground_truth.json not found. Skip TC6.');
+    results.tc6_persona = { skipped: true };
+    return;
+  }
+
+  const groundTruth = JSON.parse(fs.readFileSync(GROUND_TRUTH_PATH, 'utf-8'));
+  const groups = groundTruth.user_groups;
+  const groupNames = Object.keys(groups);
+  log(`  📦 Found ${groupNames.length} persona groups: ${groupNames.join(', ')}`);
+
+  // Expected clusters per persona
+  const personaClusters = {
+    Pop_Loyalist: ['Pop'],
+    Rock_Enthusiast: ['Rock'],
+    Chill_Listener: ['Lofi'],
+    Urban_HipHop: ['HipHop'],
+    Party_Goer: ['EDM', 'HipHop'],
+    Eclectic: ['Pop', 'Rock', 'Lofi', 'HipHop', 'EDM'],
+  };
+
+  const clusterGenreTags = {
+    Pop: ['Pop', 'V-Pop', 'K-Pop'],
+    Rock: ['Rock', 'Alternative', 'Metal'],
+    Lofi: ['Lo-fi', 'Acoustic', 'Indie'],
+    HipHop: ['Hip-Hop', 'Rap', 'Rap Việt'],
+    EDM: ['EDM', 'House', 'Trance'],
+  };
+
+  const songGenreRows = await prisma.songGenre.findMany({
+    include: { genre: { select: { genreTag: true } } },
+  });
+  const songToCluster = {};
+  for (const sg of songGenreRows) {
+    for (const [cluster, tags] of Object.entries(clusterGenreTags)) {
+      if (tags.includes(sg.genre.genreTag) && !songToCluster[sg.songId]) {
+        songToCluster[sg.songId] = cluster;
+      }
+    }
+  }
+
+  const SAMPLE_SIZE = 3;
+  const personaResults = [];
+
+  for (const personaName of groupNames) {
+    const userIds = groups[personaName].map(Number);
+    const sample = userIds.slice(0, SAMPLE_SIZE);
+    log(`  👤 ${personaName} (${userIds.length} users) — sampling ${sample.length}...`);
+
+    const expectedClusters = personaClusters[personaName] || Object.keys(clusterGenreTags);
+    const userResults = [];
+
+    for (const uid of sample) {
+      try {
+        const recData = await fetchML(`/recommend/${uid}?limit=10`);
+        const recs = recData.recommendations || [];
+        const recIds = recs.map(r => r.id);
+
+        let relevantAt5 = 0, relevantAt10 = 0;
+        for (let i = 0; i < Math.min(5, recIds.length); i++) {
+          if (expectedClusters.includes(songToCluster[recIds[i]])) relevantAt5++;
+        }
+        for (let i = 0; i < Math.min(10, recIds.length); i++) {
+          if (expectedClusters.includes(songToCluster[recIds[i]])) relevantAt10++;
+        }
+
+        const p5 = recIds.length >= 5 ? relevantAt5 / 5 : (relevantAt5 / Math.max(recIds.length, 1));
+        const p10 = recIds.length >= 10 ? relevantAt10 / 10 : (relevantAt10 / Math.max(recIds.length, 1));
+
+        userResults.push({ userId: uid, p5, p10, nRecs: recIds.length });
+      } catch (err) {
+        log(`     ❌ User ${uid}: ${err.message}`);
+      }
+    }
+
+    if (userResults.length > 0) {
+      const avgP5 = userResults.reduce((s, u) => s + u.p5, 0) / userResults.length;
+      const avgP10 = userResults.reduce((s, u) => s + u.p10, 0) / userResults.length;
+      personaResults.push({
+        persona: personaName,
+        totalUsers: userIds.length,
+        sampledUsers: sample.length,
+        testedUsers: userResults.length,
+        avgPrecision5: parseFloat(avgP5.toFixed(3)),
+        avgPrecision10: parseFloat(avgP10.toFixed(3)),
+        pass: avgP5 >= 0.4,
+        userDetails: userResults,
+      });
+      log(`     🎯 P@5: ${(avgP5 * 100).toFixed(0)}%  P@10: ${(avgP10 * 100).toFixed(0)}% ${avgP5 >= 0.4 ? '✅' : '❌'}`);
+    }
+  }
+
+  results.tc6_persona = {
+    personaResults,
+    totalPersonas: personaResults.length,
+    passCount: personaResults.filter(p => p.pass).length,
+    overallPass: personaResults.length > 0 && personaResults.every(p => p.pass),
+  };
+  log(`  ✅ TC6: ${results.tc6_persona.passCount}/${results.tc6_persona.totalPersonas} personas PASS`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GENERATE HTML REPORT
 // ─────────────────────────────────────────────────────────────────────────────
 function generateReport(metadata) {
@@ -569,8 +678,10 @@ function generateReport(metadata) {
   const tc4Total = results.tc4_similar.filter(t => !t.error).length;
   const tc5Pass = results.tc5_groundTruth?.overallPass ? 1 : (results.tc5_groundTruth?.skipped ? 0 : 0);
   const tc5Total = results.tc5_groundTruth?.skipped ? 0 : 1;
-  const totalPass = tc1Pass + tc2Pass + tc3Pass + tc4Pass + tc5Pass;
-  const totalTests = tc1Total + 1 + tc3Total + tc4Total + tc5Total;
+  const tc6Pass = results.tc6_persona?.overallPass ? 1 : (results.tc6_persona?.skipped ? 0 : 0);
+  const tc6Total = results.tc6_persona?.skipped ? 0 : 1;
+  const totalPass = tc1Pass + tc2Pass + tc3Pass + tc4Pass + tc5Pass + tc6Pass;
+  const totalTests = tc1Total + 1 + tc3Total + tc4Total + tc5Total + tc6Total;
   const overallRate = totalTests ? Math.round((totalPass / totalTests) * 100) : 0;
 
   // Build TC1 rows
@@ -694,6 +805,38 @@ function generateReport(metadata) {
 
   // Training status
   const ts = results.trainingStatus || {};
+
+  // ── TC6 Render helper ──
+  function renderTC6() {
+    const tc6 = results.tc6_persona;
+    if (!tc6 || tc6.skipped) return '<div class="training-card"><span>⚠️ Chưa chạy TC6 (missing ground_truth.json)</span></div>';
+
+    const rows = (tc6.personaResults || []).map(p => `
+      <tr>
+        <td><span class="badge badge-${p.persona.toLowerCase().startsWith('pop') ? 'pop' : p.persona.toLowerCase().startsWith('rock') ? 'rock' : p.persona.toLowerCase().startsWith('chill') ? 'lofi' : p.persona.toLowerCase().startsWith('urban') ? 'hiphop' : p.persona.toLowerCase().startsWith('party') ? 'edm' : 'diverse'}">${p.persona}</span></td>
+        <td>${p.totalUsers}</td>
+        <td>${p.testedUsers}</td>
+        <td>${(p.avgPrecision5 * 100).toFixed(0)}%</td>
+        <td>${(p.avgPrecision10 * 100).toFixed(0)}%</td>
+        <td><span class="result-badge ${p.pass ? 'pass' : 'fail'}">${p.pass ? '✅ PASS' : '❌ FAIL'}</span></td>
+      </tr>`).join('');
+
+    const badges = tc6.personaResults.map(p => `
+      <div class="info-box ${p.pass ? 'pass-box' : 'fail-box'}">
+        <div class="val" style="font-size:1.2rem;">${(p.avgPrecision5 * 100).toFixed(0)}%</div>
+        <div class="lbl">${p.persona} P@5 ${p.pass ? '✅' : '❌'}</div>
+      </div>`).join('');
+
+    return `
+      <div class="info-boxes">${badges}</div>
+      <div class="table-card">
+        <h3>Chi tiết từng persona</h3>
+        <table>
+          <thead><tr><th>Persona</th><th>Tổng users</th><th>Tested</th><th>P@5</th><th>P@10</th><th>Kết quả</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="vi">
@@ -1054,6 +1197,16 @@ function generateReport(metadata) {
     </div>` : '⚠️ Chưa chạy validation'}
   </div>
 
+  <!-- TC6: Persona Benchmark -->
+  <div class="section">
+    <div class="section-title"><span class="icon">👥</span> TC6 — Persona Benchmark (Mock Users)</div>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem;">
+      Với mỗi persona, sample 3 users và gọi recommendation API. Precision@5 đo % gợi ý
+      thuộc đúng genre cluster của persona đó. Ngưỡng PASS: P@5 ≥ 40%.
+    </p>
+    ${renderTC6()}
+  </div>
+
   <!-- Methodology & Limitations -->
   <div class="section">
     <div class="section-title"><span class="icon">📐</span> Methodology &amp; Limitations</div>
@@ -1108,7 +1261,7 @@ function generateReport(metadata) {
   new Chart(document.getElementById('passRateChart'), {
     type: 'bar',
     data: {
-      labels: ['TC1 DSP', 'TC2 Content\\nVector', 'TC3 Hybrid\\nRec', 'TC4 Similar\\nSongs', 'TC5 Ground\\nTruth'],
+      labels: ['TC1 DSP', 'TC2 Content\\nVector', 'TC3 Hybrid\\nRec', 'TC4 Similar\\nSongs', 'TC5 Ground\\nTruth', 'TC6 Persona'],
       datasets: [{
         label: 'Pass Rate (%)',
         data: [
@@ -1117,9 +1270,10 @@ function generateReport(metadata) {
           ${tc3Total ? Math.round((tc3Pass/tc3Total)*100) : 0},
           ${tc4Total ? Math.round((tc4Pass/tc4Total)*100) : 0},
           ${tc5Total ? (results.tc5_groundTruth?.overallPass ? 100 : 0) : 0},
+          ${results.tc6_persona && !results.tc6_persona.skipped ? Math.round((results.tc6_persona.passCount / Math.max(results.tc6_persona.totalPersonas, 1)) * 100) : 0},
         ],
-        backgroundColor: ['#00e6e6aa','#8b5cf6aa','#ec4899aa','#f59e0baa','#10b981aa'],
-        borderColor: ['#00e6e6','#8b5cf6','#ec4899','#f59e0b','#10b981'],
+        backgroundColor: ['#00e6e6aa','#8b5cf6aa','#ec4899aa','#f59e0baa','#10b981aa','#ff6b6baa'],
+        borderColor: ['#00e6e6','#8b5cf6','#ec4899','#f59e0b','#10b981','#ff6b6b'],
         borderWidth: 2, borderRadius: 6,
       }]
     },
@@ -1300,8 +1454,9 @@ async function main() {
     await runTC3(metadata, heldOutData);
     await runTC4(metadata);
     // TC5: ground truth validation — cần ground_truth.json từ seed_interactions.py
-    const groundTruthPath = path.join(__dirname, '..', 'ml-service', 'ground_truth.json');
-    await runTC5(groundTruthPath);
+    await runTC5(GROUND_TRUTH_PATH);
+    // TC6: persona benchmark
+    await runTC6();
   } catch (err) {
     console.error('\n❌ Lỗi khi chạy tests:', err.message);
     console.error(err.stack);
@@ -1323,8 +1478,10 @@ async function main() {
   const tc4Total = results.tc4_similar.filter(t => !t.error).length;
   const tc5Pass = results.tc5_groundTruth?.overallPass ? 1 : 0;
   const tc5Total = results.tc5_groundTruth?.skipped ? 0 : 1;
-  const total = tc1Total + 1 + tc3Total + tc4Total + tc5Total;
-  const passed = tc1Pass + tc2Pass + tc3Pass + tc4Pass + tc5Pass;
+  const tc6Pass = results.tc6_persona?.overallPass ? 1 : (results.tc6_persona?.skipped ? 0 : 0);
+  const tc6Total = results.tc6_persona?.skipped ? 0 : 1;
+  const total = tc1Total + 1 + tc3Total + tc4Total + tc5Total + tc6Total;
+  const passed = tc1Pass + tc2Pass + tc3Pass + tc4Pass + tc5Pass + tc6Pass;
 
   console.log('\n╔══════════════════════════════════════════════════════════╗');
   console.log('║                 🏁 KẾT QUẢ KIỂM THỬ                   ║');
@@ -1334,6 +1491,7 @@ async function main() {
   console.log(`║  TC3 Hybrid Rec    : ${tc3Pass}/${tc3Total} PASS                        ║`);
   console.log(`║  TC4 Similar Songs : ${tc4Pass}/${tc4Total} PASS                        ║`);
   console.log(`║  TC5 Ground Truth  : ${tc5Pass}/${tc5Total} PASS                        ║`);
+  console.log(`║  TC6 Persona       : ${tc6Pass}/${tc6Total} PASS                        ║`);
   console.log('╠══════════════════════════════════════════════════════════╣');
   console.log(`║  TỔNG: ${passed}/${total} PASS (${Math.round(passed/total*100)}%)                          ║`);
   console.log('╠══════════════════════════════════════════════════════════╣');

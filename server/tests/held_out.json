@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-06-27T12:00:11.070873",
+  "users": {
+    "TEST_user_pop_fan": {
+      "userId": 1827,
+      "heldOutSongIds": [
+        16882,
+        16899,
+        16886,
+        16883,
+        16967
+      ],
+      "nHidden": 5
+    },
+    "TEST_user_rock_fan": {
+      "userId": 1828,
+      "heldOutSongIds": [
+        16928,
+        16912,
+        16910,
+        16893,
+        16908
+      ],
+      "nHidden": 5
+    },
+    "TEST_user_lofi_fan": {
+      "userId": 1829,
+      "heldOutSongIds": [
+        16930,
+        16946,
+        16936,
+        16940,
+        16933
+      ],
+      "nHidden": 5
+    },
+    "TEST_user_diverse": {
+      "userId": 1830,
+      "heldOutSongIds": [
+        16969,
+        16958,
+        16904,
+        16938,
+        16903,
+        16956
+      ],
+      "nHidden": 6
+    },
+    "TEST_user_cold_start": {
+      "userId": 1831,
+      "heldOutSongIds": [],
+      "nHidden": 0
+    }
+  }
+}
