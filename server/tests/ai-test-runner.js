@@ -631,8 +631,10 @@ async function runTC6() {
 
         const p5 = recIds.length >= 5 ? relevantAt5 / 5 : (relevantAt5 / Math.max(recIds.length, 1));
         const p10 = recIds.length >= 10 ? relevantAt10 / 10 : (relevantAt10 / Math.max(recIds.length, 1));
+        const colab = recs.length ? recs.reduce((s, r) => s + (parseFloat(r.colab_score) || 0), 0) / recs.length : 0;
+        const content = recs.length ? recs.reduce((s, r) => s + (parseFloat(r.content_score) || 0), 0) / recs.length : 0;
 
-        userResults.push({ userId: uid, p5, p10, nRecs: recIds.length });
+        userResults.push({ userId: uid, p5, p10, nRecs: recIds.length, avgColab: colab, avgContent: content });
       } catch (err) {
         log(`     ❌ User ${uid}: ${err.message}`);
       }
@@ -641,6 +643,8 @@ async function runTC6() {
     if (userResults.length > 0) {
       const avgP5 = userResults.reduce((s, u) => s + u.p5, 0) / userResults.length;
       const avgP10 = userResults.reduce((s, u) => s + u.p10, 0) / userResults.length;
+      const avgColabAll = userResults.reduce((s, u) => s + u.avgColab, 0) / userResults.length;
+      const avgContentAll = userResults.reduce((s, u) => s + u.avgContent, 0) / userResults.length;
       personaResults.push({
         persona: personaName,
         totalUsers: userIds.length,
@@ -648,6 +652,8 @@ async function runTC6() {
         testedUsers: userResults.length,
         avgPrecision5: parseFloat(avgP5.toFixed(3)),
         avgPrecision10: parseFloat(avgP10.toFixed(3)),
+        avgColabAll: parseFloat(avgColabAll.toFixed(4)),
+        avgContentAll: parseFloat(avgContentAll.toFixed(4)),
         pass: avgP5 >= 0.4,
         userDetails: userResults,
       });
@@ -728,12 +734,13 @@ function generateReport(metadata) {
 
   // TC3 precision table
   const tc3Rows = results.tc3_hybrid.map(tc => {
-    if (tc.error) return `<tr><td>${tc.user?.displayName}</td><td colspan="6" class="cell-fail">Error: ${tc.error}</td></tr>`;
+    if (tc.error) return `<tr><td>${tc.user?.displayName}</td><td colspan="9" class="cell-fail">Error: ${tc.error}</td></tr>`;
     if (tc.isColdStart) return `
       <tr>
         <td>${tc.user.displayName}</td>
         <td><span class="badge badge-lofi">Cold Start</span></td>
         <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td>
         <td><span class="result-badge ${tc.pass ? 'pass' : 'fail'}">${tc.pass ? '✅ Trending' : '❌'}</span></td>
       </tr>`;
     const recall5 = tc.recallAt5 !== null ? `${(tc.recallAt5 * 100).toFixed(0)}%` : '—';
@@ -747,9 +754,37 @@ function generateReport(metadata) {
         <td>${recall5}</td>
         <td>${recall10}</td>
         <td>${tc.avgScore?.toFixed(4) ?? '—'}</td>
+        <td>${tc.avgColab?.toFixed(4) ?? '—'}</td>
+        <td>${tc.avgContent?.toFixed(4) ?? '—'}</td>
         <td><span class="result-badge ${tc.pass ? 'pass' : 'fail'}">${tc.pass ? '✅ PASS' : '❌ FAIL'}</span></td>
       </tr>`;
   }).join('');
+
+  // TC3 reason distribution
+  const reasonCounts = {};
+  for (const tc of results.tc3_hybrid) {
+    if (tc.recs && !tc.isColdStart) {
+      for (const r of tc.recs) {
+        const reason = r.recommend_reason || 'Khám phá bài hát mới';
+        reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+      }
+    }
+  }
+  const tc3ReasonData = JSON.stringify(Object.entries(reasonCounts).map(([label, count]) => ({ label, count })));
+
+  // TC3 overall avg colab/content
+  const tc3UsersWithScores = results.tc3_hybrid.filter(tc => !tc.error && !tc.isColdStart);
+  const tc3OverallColab = tc3UsersWithScores.length
+    ? tc3UsersWithScores.reduce((s, tc) => s + (tc.avgColab || 0), 0) / tc3UsersWithScores.length
+    : 0;
+  const tc3OverallContent = tc3UsersWithScores.length
+    ? tc3UsersWithScores.reduce((s, tc) => s + (tc.avgContent || 0), 0) / tc3UsersWithScores.length
+    : 0;
+  const tc3ColabContentPerUser = JSON.stringify(tc3UsersWithScores.map(tc => ({
+    user: tc.user.displayName,
+    colab: tc.avgColab || 0,
+    content: tc.avgContent || 0,
+  })));
 
   // TC3 recommendation detail panels
   const tc3Details = results.tc3_hybrid.filter(tc => !tc.error && !tc.isColdStart).map(tc => {
@@ -818,6 +853,8 @@ function generateReport(metadata) {
         <td>${p.testedUsers}</td>
         <td>${(p.avgPrecision5 * 100).toFixed(0)}%</td>
         <td>${(p.avgPrecision10 * 100).toFixed(0)}%</td>
+        <td>${p.avgColabAll?.toFixed(4) ?? '—'}</td>
+        <td>${p.avgContentAll?.toFixed(4) ?? '—'}</td>
         <td><span class="result-badge ${p.pass ? 'pass' : 'fail'}">${p.pass ? '✅ PASS' : '❌ FAIL'}</span></td>
       </tr>`).join('');
 
@@ -832,7 +869,7 @@ function generateReport(metadata) {
       <div class="table-card">
         <h3>Chi tiết từng persona</h3>
         <table>
-          <thead><tr><th>Persona</th><th>Tổng users</th><th>Tested</th><th>P@5</th><th>P@10</th><th>Kết quả</th></tr></thead>
+          <thead><tr><th>Persona</th><th>Tổng users</th><th>Tested</th><th>P@5</th><th>P@10</th><th>Colab Avg</th><th>Content Avg</th><th>Kết quả</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>`;
@@ -982,7 +1019,7 @@ function generateReport(metadata) {
     <div class="meta">
       <span>🕐 ${new Date(results.runAt).toLocaleString('vi-VN')}</span>
       <span>🤖 ML API: ${results.mlApiUrl}</span>
-      <span>🎵 ${metadata.totalSongs} bài test · 5 user profiles · 5 genre clusters</span>
+      <span>🎵 ${metadata.totalSongs} bài test · 5 profiles · 6 personas · 5 clusters</span>
     </div>
   </div>
 </div>
@@ -1017,6 +1054,10 @@ function generateReport(metadata) {
       <div class="summary-card">
         <div class="num" style="color:var(--edm)">5</div>
         <div class="label">Genre Clusters</div>
+      </div>
+      <div class="summary-card">
+        <div class="num" style="color:var(--primary);font-size:1.4rem;">${tc3OverallColab.toFixed(3)} / ${tc3OverallContent.toFixed(3)}</div>
+        <div class="label">Hybrid Weight (Colab / Content)</div>
       </div>
     </div>
 
@@ -1121,9 +1162,33 @@ function generateReport(metadata) {
     <div class="table-card" style="margin-bottom:1.5rem;">
       <h3>Precision &amp; Recall@K cho từng user profile</h3>
       <table>
-        <thead><tr><th>User</th><th>Profile</th><th>P@5</th><th>P@10</th><th>R@5</th><th>R@10</th><th>Avg Score</th><th>Kết quả</th></tr></thead>
+        <thead><tr><th>User</th><th>Profile</th><th>P@5</th><th>P@10</th><th>R@5</th><th>R@10</th><th>Avg Score</th><th>Colab Avg</th><th>Content Avg</th><th>Kết quả</th></tr></thead>
         <tbody>${tc3Rows}</tbody>
       </table>
+    </div>
+    <div class="info-boxes" style="margin-bottom:1rem;">
+      <div class="info-box highlight">
+        <div class="val">${tc3OverallColab.toFixed(4)}</div>
+        <div class="lbl">Avg Collaborative Score</div>
+      </div>
+      <div class="info-box highlight">
+        <div class="val">${tc3OverallContent.toFixed(4)}</div>
+        <div class="lbl">Avg Content Score</div>
+      </div>
+      <div class="info-box">
+        <div class="val" style="font-size:1.2rem;">${(tc3OverallColab / Math.max(tc3OverallContent, 0.001)).toFixed(2)}x</div>
+        <div class="lbl">Colab/Content Ratio</div>
+      </div>
+    </div>
+    <div class="charts-row" style="margin-bottom:1rem;">
+      <div class="chart-card">
+        <h3>📊 Reason Distribution</h3>
+        <div class="chart-wrap"><canvas id="reasonChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>⚖️ Colab vs Content per User</h3>
+        <div class="chart-wrap"><canvas id="colabContentChart"></canvas></div>
+      </div>
     </div>
     <div class="rec-grid">${tc3Details}</div>
   </div>
@@ -1403,6 +1468,52 @@ function generateReport(metadata) {
         }
       });
     }
+  }
+
+  // 6. TC3 Reason Distribution (pie chart)
+  const reasonData = ${tc3ReasonData};
+  if (reasonData.length > 0) {
+    const reasonColors = ['#00e6e6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#6b7280'];
+    new Chart(document.getElementById('reasonChart'), {
+      type: 'doughnut',
+      data: {
+        labels: reasonData.map(d => d.label),
+        datasets: [{
+          data: reasonData.map(d => d.count),
+          backgroundColor: reasonData.map((_, i) => reasonColors[i % reasonColors.length] + 'aa'),
+          borderColor: reasonData.map((_, i) => reasonColors[i % reasonColors.length]),
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
+        }
+      }
+    });
+  }
+
+  // 7. TC3 Colab vs Content per user
+  const colabContentData = ${tc3ColabContentPerUser};
+  if (colabContentData.length > 0) {
+    new Chart(document.getElementById('colabContentChart'), {
+      type: 'bar',
+      data: {
+        labels: colabContentData.map(d => d.user.replace('[TEST] ','')),
+        datasets: [
+          { label: 'Colab Score', data: colabContentData.map(d => d.colab),
+            backgroundColor: '#8b5cf6aa', borderColor: '#8b5cf6', borderWidth: 2, borderRadius: 4 },
+          { label: 'Content Score', data: colabContentData.map(d => d.content),
+            backgroundColor: '#00e6e6aa', borderColor: '#00e6e6', borderWidth: 2, borderRadius: 4 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } },
+        scales: { y: { min: 0, max: 1, grid: { color: '#2a2a3e' } }, x: { grid: { display: false } } }
+      }
+    });
   }
 </script>
 </body>
