@@ -79,13 +79,13 @@ export default function Home() {
 
         const [songsRes, playlistsRes, albumsRes, dailyRes, weeklyRes, monthlyRes, recRes, recentRes, systemRes] = await Promise.all([
           api.get('/api/songs'),
-          user.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
+          user?.id ? api.get(`/api/playlists/user/${user.id}`) : Promise.resolve(null),
           api.get('/api/albums'),
           api.get('/api/charts/DAILY'),
           api.get('/api/charts/WEEKLY'),
           api.get('/api/charts/MONTHLY'),
-          user.id ? api.get('/api/recommendations') : Promise.resolve(null),
-          user.id ? api.get('/api/interactions/recent') : Promise.resolve(null),
+          user?.id ? api.get('/api/recommendations') : Promise.resolve(null),
+          user?.id ? api.get('/api/interactions/recent') : Promise.resolve(null),
           api.get('/api/system-playlists/home')
         ]);
 
@@ -389,9 +389,9 @@ export default function Home() {
             {/* Greeting */}
             <div className="mt-8 mb-6">
               <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-hover mb-1 uppercase tracking-wider">
-                {user.username ? 'Welcome Back' : 'Welcome to Soundwave'}
+                {user?.username ? 'Welcome Back' : 'Welcome to Soundwave'}
               </h1>
-              {user.username && <h2 className="text-xl font-bold text-text">{user.artistName || user.displayName || user.username}</h2>}
+              {user?.username && <h2 className="text-xl font-bold text-text">{user.artistName || user.displayName || user.username}</h2>}
             </div>
 
             {/* System Playlists - Nổi bật */}
@@ -510,7 +510,7 @@ export default function Home() {
             )}
 
             {/* Section: My Library - User Playlists từ DB */}
-            {user.id && (
+            {user?.id && (
               <div className="mb-10">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-primary">My Library</h2>
