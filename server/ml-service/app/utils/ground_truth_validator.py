@@ -16,8 +16,10 @@ GROUND_TRUTH_PATH = os.path.join(
 # Validation thresholds (calibrated for high-dim vectors with ~50-500 users)
 # In high-dimensional space, random cosine similarity ~0 with std ~ 1/sqrt(dim).
 # These thresholds check for SIGNAL above noise, not perfect separation.
+# Note: cross-cluster genre tagging (20%) + higher DSP variance added June 2026
+# makes ground truth noisier but more realistic — thresholds adjusted accordingly.
 THRESHOLDS = {
-    "intra_coherence_min": 0.15,
+    "intra_coherence_min": 0.10,
     "inter_separation_max": 0.30,
     "separation_gap_min": 0.02,
     "cluster_purity_min": 0.27,

@@ -278,7 +278,8 @@ const recommendationController = {
       await prisma.recommendationCache.deleteMany();
       console.log("🧹 Đã dọn dẹp toàn bộ bộ nhớ đệm (Recommendation Cache) thành công!");
       
-      const response = await fetch(`${ML_API_URL}/train`, {
+      const factors = 64;
+      const response = await fetch(`${ML_API_URL}/train?factors=${factors}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

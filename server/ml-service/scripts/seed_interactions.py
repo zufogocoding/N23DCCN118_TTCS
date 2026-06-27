@@ -20,31 +20,31 @@ GENRE_CLUSTERS = {
     "Pop": {
         "tags": ["Pop", "V-Pop", "K-Pop"],
         "features": {"tempo": 115, "energy": 0.68, "danceability": 0.72},
-        "variance": {"tempo": 8, "energy": 0.07, "danceability": 0.07},
+        "variance": {"tempo": 22, "energy": 0.15, "danceability": 0.15},
         "count": 100,
     },
     "Rock": {
         "tags": ["Rock", "Alternative", "Metal"],
         "features": {"tempo": 130, "energy": 0.88, "danceability": 0.48},
-        "variance": {"tempo": 10, "energy": 0.06, "danceability": 0.06},
+        "variance": {"tempo": 24, "energy": 0.14, "danceability": 0.14},
         "count": 100,
     },
     "Lofi": {
         "tags": ["Lo-fi", "Acoustic", "Indie"],
         "features": {"tempo": 72, "energy": 0.28, "danceability": 0.38},
-        "variance": {"tempo": 6, "energy": 0.06, "danceability": 0.06},
+        "variance": {"tempo": 20, "energy": 0.14, "danceability": 0.14},
         "count": 100,
     },
     "HipHop": {
         "tags": ["Hip-Hop", "Rap", "Rap Việt"],
         "features": {"tempo": 92, "energy": 0.72, "danceability": 0.82},
-        "variance": {"tempo": 7, "energy": 0.06, "danceability": 0.06},
+        "variance": {"tempo": 22, "energy": 0.14, "danceability": 0.14},
         "count": 100,
     },
     "EDM": {
         "tags": ["EDM", "House", "Trance"],
         "features": {"tempo": 128, "energy": 0.90, "danceability": 0.92},
-        "variance": {"tempo": 5, "energy": 0.05, "danceability": 0.05},
+        "variance": {"tempo": 20, "energy": 0.13, "danceability": 0.13},
         "count": 100,
     },
 }
@@ -265,6 +265,14 @@ def create_mock_songs(cur, genre_map):
                         'INSERT INTO "SongGenre" ("songId", "genreId") VALUES (%s, %s) ON CONFLICT DO NOTHING',
                         (song_id, genre_map[secondary_tag]),
                     )
+            if random.random() < 0.2:
+                other = pick([c for c in ALL_CLUSTER_NAMES if c != cluster_name])
+                cross_tag = pick(GENRE_CLUSTERS[other]["tags"])
+                if cross_tag in genre_map:
+                    cur.execute(
+                        'INSERT INTO "SongGenre" ("songId", "genreId") VALUES (%s, %s) ON CONFLICT DO NOTHING',
+                        (song_id, genre_map[cross_tag]),
+                    )
     logger.info(f"Created {sum(len(v) for v in songs_by_cluster.values())} mock songs.")
     return songs_by_cluster
 
@@ -416,6 +424,14 @@ def create_test_songs(cur, genre_map):
                         'INSERT INTO "SongGenre" ("songId", "genreId") VALUES (%s, %s) ON CONFLICT DO NOTHING',
                         (song_id, genre_map[secondary_tag]),
                     )
+            if random.random() < 0.2:
+                other = pick([c for c in ALL_CLUSTER_NAMES if c != cluster_name])
+                cross_tag = pick(GENRE_CLUSTERS[other]["tags"])
+                if cross_tag in genre_map:
+                    cur.execute(
+                        'INSERT INTO "SongGenre" ("songId", "genreId") VALUES (%s, %s) ON CONFLICT DO NOTHING',
+                        (song_id, genre_map[cross_tag]),
+                    )
     count = sum(len(v) for v in test_songs.values())
     logger.info(f"Created {count} test songs.")
     return test_songs
@@ -444,25 +460,36 @@ def generate_test_interactions(cur, test_users, test_songs):
     total_interactions = 0
     total_likes = 0
 
+    genre_to_cluster = {}
+    for cluster_name, tags in CLUSTER_GENRE_MAP.items():
+        for tag in tags:
+            genre_to_cluster[tag] = cluster_name
+
     for user_rec in test_users:
         cfg = user_rec["config"]
         profile = cfg["profile"]
         if profile == "ColdStart":
             continue
 
-        preferred_cluster = profile if profile != "Diverse" else None
+        if profile == "Diverse":
+            preferred_clusters = set()
+            for genre in cfg.get("likeGenres", []):
+                cluster = genre_to_cluster.get(genre)
+                if cluster:
+                    preferred_clusters.add(cluster)
+        else:
+            preferred_clusters = {profile}
+
         preferred_songs = []
         other_songs = []
 
         for cluster, ids in test_songs.items():
-            if preferred_cluster and cluster == preferred_cluster:
-                preferred_songs.extend(ids)
-            elif profile == "Diverse":
+            if cluster in preferred_clusters:
                 preferred_songs.extend(ids)
             else:
                 other_songs.extend(ids)
 
-        preferred_listens = int(cfg["listenCount"] * 0.75)
+        preferred_listens = int(cfg["listenCount"] * 0.70)
         selected_preferred = pick_n(preferred_songs, preferred_listens)
         liked_ids = set()
 
@@ -479,7 +506,9 @@ def generate_test_interactions(cur, test_users, test_songs):
             )
             total_interactions += 1
 
-        to_like = pick_n(selected_preferred, cfg["likeCount"])
+        like_budget = cfg["likeCount"]
+        base_likes = int(like_budget * 0.85)
+        to_like = pick_n(selected_preferred, base_likes)
         for song_id in to_like:
             if song_id not in liked_ids:
                 liked_ids.add(song_id)
@@ -488,6 +517,18 @@ def generate_test_interactions(cur, test_users, test_songs):
                     (user_rec["id"], song_id),
                 )
                 total_likes += 1
+
+        noise_likes = like_budget - base_likes
+        if noise_likes > 0 and other_songs:
+            noise_candidates = [s for s in other_songs if s not in liked_ids]
+            if noise_candidates:
+                for song_id in pick_n(noise_candidates, noise_likes):
+                    liked_ids.add(song_id)
+                    cur.execute(
+                        'INSERT INTO "SongLike" ("userId", "songId") VALUES (%s, %s) ON CONFLICT DO NOTHING',
+                        (user_rec["id"], song_id),
+                    )
+                    total_likes += 1
 
         other_listens = cfg["listenCount"] - preferred_listens
         if other_songs and other_listens > 0:
