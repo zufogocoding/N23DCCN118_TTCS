@@ -510,7 +510,7 @@ async function runTC5(groundTruthPath) {
     separationGap: parseFloat(separationGap.toFixed(4)),
     clusterPurity: parseFloat(avgPurity.toFixed(4)),
     checks: {
-      intraCoherence: { value: parseFloat(avgIntraAll.toFixed(4)), threshold: 0.13, pass: avgIntraAll >= 0.13 },
+      intraCoherence: { value: parseFloat(avgIntraAll.toFixed(4)), threshold: 0.15, pass: avgIntraAll >= 0.15 },
       interSeparation: { value: parseFloat(avgInter.toFixed(4)), threshold: 0.30, pass: avgInter <= 0.30 },
       separationGap: { value: parseFloat(separationGap.toFixed(4)), threshold: 0.02, pass: separationGap >= 0.02 },
       clusterPurity: { value: parseFloat(avgPurity.toFixed(4)), threshold: 0.27, pass: avgPurity >= 0.27 },
@@ -970,7 +970,7 @@ function generateReport(metadata) {
     <div class="info-boxes">
       <div class="info-box ${results.tc5_groundTruth.checks.intraCoherence.pass ? 'pass-box' : 'fail-box'}">
         <div class="val">${results.tc5_groundTruth.checks.intraCoherence.value.toFixed(4)}</div>
-        <div class="lbl">Intra Coherence ${results.tc5_groundTruth.checks.intraCoherence.pass ? '✅' : '❌'} (≥ 0.13)</div>
+        <div class="lbl">Intra Coherence ${results.tc5_groundTruth.checks.intraCoherence.pass ? '✅' : '❌'} (≥ 0.15)</div>
       </div>
       <div class="info-box ${results.tc5_groundTruth.checks.interSeparation.pass ? 'pass-box' : 'fail-box'}">
         <div class="val">${results.tc5_groundTruth.checks.interSeparation.value.toFixed(4)}</div>
@@ -1201,39 +1201,6 @@ async function main() {
     }
   } catch (err) {
     log(`⚠️  Không lấy được training status: ${err.message}`);
-  }
-
-  // Tự động kiểm tra và huấn luyện nếu có bài hát mới chưa có vector
-  try {
-    const allSongIds = Object.values(metadata.songClusters).flat();
-    const untrainedSongsCount = await prisma.song.count({
-      where: {
-        id: { in: allSongIds },
-        contentVector: null
-      }
-    });
-
-    if (untrainedSongsCount > 0) {
-      log(`⚠️  Phát hiện ${untrainedSongsCount} bài hát test chưa được tính toán contentVector!`);
-      log('🤖 Đang tự động kích hoạt tiến trình huấn luyện ML API (factors=16)...');
-      const trainRes = await fetch(`${ML_API_URL}/train?factors=16`, { method: 'POST' });
-      if (!trainRes.ok) throw new Error(`Không thể bắt đầu training: status ${trainRes.status}`);
-      log('⏳ Tiến trình huấn luyện đã bắt đầu. Đang đợi hoàn tất...');
-      
-      let attempts = 0;
-      while (attempts < 30) {
-        await new Promise(r => setTimeout(r, 1000));
-        const statusData = await fetchML('/train/status');
-        if (statusData.status === 'success' && statusData.is_training === false) {
-          log('✅ Huấn luyện hoàn tất thành công!');
-          results.trainingStatus = statusData;
-          break;
-        }
-        attempts++;
-      }
-    }
-  } catch (trainErr) {
-    log(`❌ Lỗi khi tự động huấn luyện: ${trainErr.message}`);
   }
 
   try {
