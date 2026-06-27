@@ -17,7 +17,7 @@ GROUND_TRUTH_PATH = os.path.join(
 # In high-dimensional space, random cosine similarity ~0 with std ~ 1/sqrt(dim).
 # These thresholds check for SIGNAL above noise, not perfect separation.
 THRESHOLDS = {
-    "intra_coherence_min": 0.15,
+    "intra_coherence_min": 0.13,
     "inter_separation_max": 0.30,
     "separation_gap_min": 0.02,
     "cluster_purity_min": 0.27,

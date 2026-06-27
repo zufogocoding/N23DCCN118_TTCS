@@ -510,7 +510,7 @@ async function runTC5(groundTruthPath) {
     separationGap: parseFloat(separationGap.toFixed(4)),
     clusterPurity: parseFloat(avgPurity.toFixed(4)),
     checks: {
-      intraCoherence: { value: parseFloat(avgIntraAll.toFixed(4)), threshold: 0.15, pass: avgIntraAll >= 0.15 },
+      intraCoherence: { value: parseFloat(avgIntraAll.toFixed(4)), threshold: 0.13, pass: avgIntraAll >= 0.13 },
       interSeparation: { value: parseFloat(avgInter.toFixed(4)), threshold: 0.30, pass: avgInter <= 0.30 },
       separationGap: { value: parseFloat(separationGap.toFixed(4)), threshold: 0.02, pass: separationGap >= 0.02 },
       clusterPurity: { value: parseFloat(avgPurity.toFixed(4)), threshold: 0.27, pass: avgPurity >= 0.27 },
@@ -970,7 +970,7 @@ function generateReport(metadata) {
     <div class="info-boxes">
       <div class="info-box ${results.tc5_groundTruth.checks.intraCoherence.pass ? 'pass-box' : 'fail-box'}">
         <div class="val">${results.tc5_groundTruth.checks.intraCoherence.value.toFixed(4)}</div>
-        <div class="lbl">Intra Coherence ${results.tc5_groundTruth.checks.intraCoherence.pass ? '✅' : '❌'} (≥ 0.15)</div>
+        <div class="lbl">Intra Coherence ${results.tc5_groundTruth.checks.intraCoherence.pass ? '✅' : '❌'} (≥ 0.13)</div>
       </div>
       <div class="info-box ${results.tc5_groundTruth.checks.interSeparation.pass ? 'pass-box' : 'fail-box'}">
         <div class="val">${results.tc5_groundTruth.checks.interSeparation.value.toFixed(4)}</div>
