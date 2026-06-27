@@ -9,7 +9,7 @@ DATABASE_URL = os.getenv(
 )
 
 # Implicit ALS Model Hyperparameters (Tuned parameters will override these)
-ALS_FACTORS = int(os.getenv("ALS_FACTORS", "64"))
+ALS_FACTORS = int(os.getenv("ALS_FACTORS", "20"))
 ALS_REGULARIZATION = float(os.getenv("ALS_REGULARIZATION", "0.1"))
 ALS_ALPHA = float(os.getenv("ALS_ALPHA", "40.0"))
 ALS_ITERATIONS = int(os.getenv("ALS_ITERATIONS", "15"))

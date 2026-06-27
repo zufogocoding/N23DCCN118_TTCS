@@ -5,6 +5,23 @@ const ML_API_URL = process.env.ML_API_URL || 'http://localhost:8000';
 
 const recommendationController = {
   /**
+   * Calculate adaptive hybrid weights based on user's genre diversity.
+   * More genres = more content-based weight to avoid collapse to one cluster.
+   */
+  calculateAdaptiveWeight: (genreCount) => {
+    if (genreCount <= 0) return { collabWeight: 0.7, contentWeight: 0.3 };
+    // 1 genre → 30% content (default)
+    // 2 genres → 45% content
+    // 3 genres → 58% content
+    // 4+ genres → 70% content
+    const contentWeight = Math.min(0.30 + (genreCount - 1) * 0.14, 0.72);
+    const collabWeight = 1.0 - contentWeight;
+    return {
+      collabWeight: parseFloat(collabWeight.toFixed(4)),
+      contentWeight: parseFloat(contentWeight.toFixed(4)),
+    };
+  },
+  /**
    * GET /api/recommendations
    * Lấy danh sách bài hát gợi ý cá nhân hóa cho User hiện tại.
    * Sử dụng cơ chế: cache -> pgvector hybrid raw SQL -> trending fallback.
@@ -52,8 +69,8 @@ const recommendationController = {
             return {
               ...song,
               score: c.finalScore,
-              colab_score: c.finalScore * 0.7,
-              content_score: c.finalScore * 0.3,
+              colab_score: c.finalScore * (1 - 0.4),
+              content_score: c.finalScore * 0.4,
               recommend_reason: c.finalScore > 0.6 ? "Gu âm nhạc của bạn" : "Gợi ý khám phá mới"
             };
           })
@@ -83,21 +100,33 @@ const recommendationController = {
         return await recommendationController.getTrendingFallback(res, limit);
       }
 
-      // Thực hiện truy vấn tương đồng Cosine kết hợp (Lọc cộng tác 0.7 + Nội dung 0.3)
+      // Tính genre diversity để điều chỉnh hybrid weight động
+      const genreCountResult = await prisma.$queryRaw`
+        SELECT COUNT(DISTINCT g.id)::int AS genre_count
+        FROM "Interaction" i
+        JOIN "SongGenre" sg ON sg."songId" = i."songId"
+        JOIN "Genre" g ON g.id = sg."genreId"
+        WHERE i."userId" = ${userId}
+      `;
+      const genreCount = Math.max(1, parseInt(genreCountResult[0]?.genre_count) || 1);
+      const { collabWeight, contentWeight } = recommendationController.calculateAdaptiveWeight(genreCount);
+      console.log(`🎯 User ${userId}: genreCount=${genreCount}, hybrid weight=${collabWeight}/${contentWeight}`);
+
+      // Thực hiện truy vấn tương đồng Cosine kết hợp (adaptive hybrid weights)
       // Áp dụng hình phạt 95% (nhân với 0.05) đối với các bài hát của nghệ sĩ "Mock" để đẩy chúng xuống cuối danh sách
       const recommendations = await prisma.$queryRaw`
         SELECT s.id,
                COALESCE(CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) ELSE 0.0 END, 0.0) AS colab_score,
                COALESCE(CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float THEN (1 - (u."contentVector" <=> s."contentVector")) ELSE 0.0 END, 0.0) AS content_score,
                (COALESCE(
-                 0.7 * (CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL 
-                             AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float
-                             THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) 
-                             ELSE 0.0 END) +
-                 0.3 * (CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL 
-                             AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float
-                             THEN (1 - (u."contentVector" <=> s."contentVector")) 
-                             ELSE 0.0 END),
+                 ${collabWeight} * (CASE WHEN u."collaborativeVector" IS NOT NULL AND s."collaborativeVector" IS NOT NULL 
+                              AND (u."collaborativeVector" <=> s."collaborativeVector") IS DISTINCT FROM 'NaN'::float
+                              THEN (1 - (u."collaborativeVector" <=> s."collaborativeVector")) 
+                              ELSE 0.0 END) +
+                 ${contentWeight} * (CASE WHEN u."contentVector" IS NOT NULL AND s."contentVector" IS NOT NULL 
+                              AND (u."contentVector" <=> s."contentVector") IS DISTINCT FROM 'NaN'::float
+                              THEN (1 - (u."contentVector" <=> s."contentVector")) 
+                              ELSE 0.0 END),
                  0.0
                ) * (CASE WHEN s."artistName" ILIKE '%mock%' THEN 0.05 ELSE 1.0 END)) AS score
         FROM "Song" s, "User" u
@@ -145,12 +174,13 @@ const recommendationController = {
           
           let reason = "Khám phá bài hát mới";
           if (score > 0.0) {
+            const dominantWeight = contentWeight > collabWeight ? "content" : "collab";
             if (colab > 0.6 && content > 0.6) {
               reason = "Phù hợp cả gu nghe & nhịp điệu";
+            } else if (dominantWeight === "content" && content > 0.2) {
+              reason = genreCount > 2 ? "Nhịp điệu & thể loại đa dạng bạn yêu thích" : "Nhịp điệu đồng điệu gu của bạn";
             } else if (colab > content && colab > 0.2) {
               reason = "Nhiều người nghe giống bạn thích";
-            } else if (content >= colab && content > 0.2) {
-              reason = "Nhịp điệu đồng điệu gu của bạn";
             }
           }
           

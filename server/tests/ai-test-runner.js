@@ -60,6 +60,7 @@ const results = {
   tc2_content: [], // Content vector quality
   tc3_hybrid: [],  // Hybrid recommendation accuracy
   tc4_similar: [], // Similar songs
+  tc5_groundTruth: null, // Ground truth validation
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,7 +214,6 @@ async function runTC3(metadata) {
   // Map songId → cluster dựa trên genres
   const allTestSongIds = Object.values(metadata.songClusters).flat();
   const songGenreRows = await prisma.songGenre.findMany({
-    where: { songId: { in: allTestSongIds } },
     include: { genre: { select: { genreTag: true } } },
   });
 
@@ -328,9 +328,7 @@ async function runTC4(metadata) {
   };
 
   // Map songId → cluster
-  const allTestSongIds = Object.values(metadata.songClusters).flat();
   const songGenreRows = await prisma.songGenre.findMany({
-    where: { songId: { in: allTestSongIds } },
     include: { genre: { select: { genreTag: true } } },
   });
   const songToCluster = {};
@@ -405,6 +403,135 @@ async function runTC4(metadata) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TC5: Ground Truth Validation (Persona Clustering)
+// ─────────────────────────────────────────────────────────────────────────────
+async function runTC5(groundTruthPath) {
+  log('\n🔬 TC5: Kiểm tra Ground Truth (Persona Clustering)...');
+
+  const fs = require('fs');
+  if (!fs.existsSync(groundTruthPath)) {
+    log('  ⚠️  Không tìm thấy ground_truth.json. Bỏ qua TC5.');
+    results.tc5_groundTruth = { skipped: true, reason: 'ground_truth.json not found' };
+    return;
+  }
+
+  const groundTruth = JSON.parse(fs.readFileSync(groundTruthPath, 'utf-8'));
+  const groups = groundTruth.user_groups;
+  const groupNames = Object.keys(groups);
+
+  // Fetch collaborative vectors from DB
+  const rows = await prisma.$queryRaw`
+    SELECT id, "collaborativeVector"::text as vec
+    FROM "User"
+    WHERE id = ANY(${[].concat(...Object.values(groups)).map(Number)}::int[])
+      AND "collaborativeVector" IS NOT NULL
+  `;
+
+  if (rows.length < 3) {
+    log('  ⚠️  Quá ít user có vector. Chạy training trước.');
+    results.tc5_groundTruth = { skipped: true, reason: 'Not enough trained vectors' };
+    return;
+  }
+
+  // Parse vectors
+  const parseVector = (str) => str ? str.replace(/[\[\]]/g, '').split(',').map(Number) : null;
+  const cosineSim = (a, b) => {
+    if (!a || !b || a.length !== b.length) return 0;
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] ** 2; nb += b[i] ** 2; }
+    return na && nb ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+  };
+
+  const userVecs = {};
+  for (const r of rows) {
+    const v = parseVector(r.vec);
+    if (v) userVecs[Number(r.id)] = v;
+  }
+
+  // Map user → group
+  const userToGroup = {};
+  for (const [g, ids] of Object.entries(groups)) {
+    for (const id of ids) userToGroup[Number(id)] = g;
+  }
+
+  const validIds = Object.keys(userVecs).map(Number).filter(id => userToGroup[id]);
+  if (validIds.length < 3) {
+    log('  ⚠️  Không đủ user để validate.');
+    results.tc5_groundTruth = { skipped: true, reason: 'Not enough matched users' };
+    return;
+  }
+
+  // Compute pairwise similarities
+  const intraScores = {};
+  const interScores = [];
+  for (let i = 0; i < validIds.length; i++) {
+    for (let j = i + 1; j < validIds.length; j++) {
+      const a = validIds[i], b = validIds[j];
+      const sim = cosineSim(userVecs[a], userVecs[b]);
+      const ga = userToGroup[a], gb = userToGroup[b];
+      if (ga === gb) {
+        if (!intraScores[ga]) intraScores[ga] = [];
+        intraScores[ga].push(sim);
+      } else {
+        interScores.push(sim);
+      }
+    }
+  }
+
+  const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+  const avgIntra = {};
+  for (const g of groupNames) {
+    avgIntra[g] = intraScores[g] ? avg(intraScores[g]) : 0;
+  }
+  const avgIntraAll = avg(Object.values(avgIntra).filter(v => v > 0));
+  const avgInter = avg(interScores);
+  const separationGap = avgIntraAll - avgInter;
+
+  // Cluster purity: for each user, what % of top-10 neighbors are same group?
+  let puritySum = 0, purityCount = 0;
+  for (const uid of validIds) {
+    const g = userToGroup[uid];
+    const others = validIds.filter(id => id !== uid);
+    const sims = others.map(id => ({ id, sim: cosineSim(userVecs[uid], userVecs[id]) }));
+    sims.sort((a, b) => b.sim - a.sim);
+    const top10 = sims.slice(0, 10);
+    const same = top10.filter(s => userToGroup[s.id] === g).length;
+    puritySum += same / top10.length;
+    purityCount++;
+  }
+  const avgPurity = purityCount > 0 ? puritySum / purityCount : 0;
+
+  const result = {
+    nUsers: validIds.length,
+    avgIntraCluster: avgIntra,
+    avgIntraAll: parseFloat(avgIntraAll.toFixed(4)),
+    avgInterCluster: parseFloat(avgInter.toFixed(4)),
+    separationGap: parseFloat(separationGap.toFixed(4)),
+    clusterPurity: parseFloat(avgPurity.toFixed(4)),
+    checks: {
+      intraCoherence: { value: parseFloat(avgIntraAll.toFixed(4)), threshold: 0.15, pass: avgIntraAll >= 0.15 },
+      interSeparation: { value: parseFloat(avgInter.toFixed(4)), threshold: 0.30, pass: avgInter <= 0.30 },
+      separationGap: { value: parseFloat(separationGap.toFixed(4)), threshold: 0.02, pass: separationGap >= 0.02 },
+      clusterPurity: { value: parseFloat(avgPurity.toFixed(4)), threshold: 0.27, pass: avgPurity >= 0.27 },
+    },
+  };
+  result.overallPass = Object.values(result.checks).every(c => c.pass);
+
+  results.tc5_groundTruth = result;
+
+  log(`  📊 Users validated: ${validIds.length}`);
+  log(`  📈 Avg Intra-cluster Sim: ${avgIntraAll.toFixed(4)}`);
+  log(`  📉 Avg Inter-cluster Sim: ${avgInter.toFixed(4)}`);
+  log(`  🎯 Separation Gap: ${separationGap.toFixed(4)} ${separationGap >= 0.02 ? '✅' : '❌'}`);
+  log(`  🎯 Cluster Purity: ${(avgPurity * 100).toFixed(0)}% ${avgPurity >= 0.27 ? '✅' : '❌'}`);
+  for (const [g, v] of Object.entries(avgIntra)) {
+    if (v > 0) log(`     ${g.padEnd(10)} intra: ${v.toFixed(4)}`);
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GENERATE HTML REPORT
 // ─────────────────────────────────────────────────────────────────────────────
 function generateReport(metadata) {
@@ -416,8 +543,10 @@ function generateReport(metadata) {
   const tc3Total = results.tc3_hybrid.filter(t => !t.error).length;
   const tc4Pass = results.tc4_similar.filter(t => t.pass && !t.error).length;
   const tc4Total = results.tc4_similar.filter(t => !t.error).length;
-  const totalPass = tc1Pass + tc2Pass + tc3Pass + tc4Pass;
-  const totalTests = tc1Total + 1 + tc3Total + tc4Total;
+  const tc5Pass = results.tc5_groundTruth?.overallPass ? 1 : (results.tc5_groundTruth?.skipped ? 0 : 0);
+  const tc5Total = results.tc5_groundTruth?.skipped ? 0 : 1;
+  const totalPass = tc1Pass + tc2Pass + tc3Pass + tc4Pass + tc5Pass;
+  const totalTests = tc1Total + 1 + tc3Total + tc4Total + tc5Total;
   const overallRate = totalTests ? Math.round((totalPass / totalTests) * 100) : 0;
 
   // Build TC1 rows
@@ -828,6 +957,59 @@ function generateReport(metadata) {
     <div class="rec-grid">${tc4Details}</div>
   </div>
 
+  <!-- TC5: Ground Truth -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🔬</span> TC5 — Ground Truth Validation (Persona Clustering)</div>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem;">
+      Kiểm tra ALS collaborative vectors có phân cụm đúng theo persona ground truth không.
+      Kỳ vọng: Intra-group similarity > 0.15, Inter-group < 0.30, Separation Gap > 0.02, Purity > 27%.
+    </p>
+    ${results.tc5_groundTruth?.skipped
+      ? `<div class="training-card" style="margin-bottom:1rem;"><span>⚠️ ${results.tc5_groundTruth.reason}</span></div>`
+      : results.tc5_groundTruth ? `
+    <div class="info-boxes">
+      <div class="info-box ${results.tc5_groundTruth.checks.intraCoherence.pass ? 'pass-box' : 'fail-box'}">
+        <div class="val">${results.tc5_groundTruth.checks.intraCoherence.value.toFixed(4)}</div>
+        <div class="lbl">Intra Coherence ${results.tc5_groundTruth.checks.intraCoherence.pass ? '✅' : '❌'} (≥ 0.15)</div>
+      </div>
+      <div class="info-box ${results.tc5_groundTruth.checks.interSeparation.pass ? 'pass-box' : 'fail-box'}">
+        <div class="val">${results.tc5_groundTruth.checks.interSeparation.value.toFixed(4)}</div>
+        <div class="lbl">Inter Separation ${results.tc5_groundTruth.checks.interSeparation.pass ? '✅' : '❌'} (≤ 0.30)</div>
+      </div>
+      <div class="info-box ${results.tc5_groundTruth.checks.separationGap.pass ? 'pass-box' : 'fail-box'}">
+        <div class="val">${results.tc5_groundTruth.checks.separationGap.value.toFixed(4)}</div>
+        <div class="lbl">Separation Gap ${results.tc5_groundTruth.checks.separationGap.pass ? '✅' : '❌'} (≥ 0.02)</div>
+      </div>
+      <div class="info-box ${results.tc5_groundTruth.checks.clusterPurity.pass ? 'pass-box' : 'fail-box'}">
+        <div class="val">${(results.tc5_groundTruth.checks.clusterPurity.value * 100).toFixed(0)}%</div>
+        <div class="lbl">Cluster Purity ${results.tc5_groundTruth.checks.clusterPurity.pass ? '✅' : '❌'} (≥ 27%)</div>
+      </div>
+      <div class="info-box highlight">
+        <div class="val">${results.tc5_groundTruth.nUsers}</div>
+        <div class="lbl">Users validated</div>
+      </div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>📊 Intra-cluster Similarity theo Group</h3>
+        <div class="chart-wrap"><canvas id="gtIntraChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>🏆 Overall Validation Result</h3>
+        <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;height:260px;">
+          <div style="text-align:center;">
+            <div style="font-size:4rem;font-weight:800;${results.tc5_groundTruth.overallPass ? 'color:var(--pass)' : 'color:var(--fail)'}">
+              ${results.tc5_groundTruth.overallPass ? '✅ PASS' : '❌ FAIL'}
+            </div>
+            <div style="color:var(--muted);margin-top:.5rem;">
+              ${Object.values(results.tc5_groundTruth.checks).filter(c => c.pass).length}/${Object.values(results.tc5_groundTruth.checks).length} checks passed
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>` : '⚠️ Chưa chạy validation'}
+  </div>
+
 </div><!-- /container -->
 
 <script>
@@ -843,7 +1025,7 @@ function generateReport(metadata) {
   new Chart(document.getElementById('passRateChart'), {
     type: 'bar',
     data: {
-      labels: ['TC1 DSP', 'TC2 Content\\nVector', 'TC3 Hybrid\\nRec', 'TC4 Similar\\nSongs'],
+      labels: ['TC1 DSP', 'TC2 Content\\nVector', 'TC3 Hybrid\\nRec', 'TC4 Similar\\nSongs', 'TC5 Ground\\nTruth'],
       datasets: [{
         label: 'Pass Rate (%)',
         data: [
@@ -851,9 +1033,10 @@ function generateReport(metadata) {
           ${tc2Pass ? 100 : 0},
           ${tc3Total ? Math.round((tc3Pass/tc3Total)*100) : 0},
           ${tc4Total ? Math.round((tc4Pass/tc4Total)*100) : 0},
+          ${tc5Total ? (results.tc5_groundTruth?.overallPass ? 100 : 0) : 0},
         ],
-        backgroundColor: ['#00e6e6aa','#8b5cf6aa','#ec4899aa','#f59e0baa'],
-        borderColor: ['#00e6e6','#8b5cf6','#ec4899','#f59e0b'],
+        backgroundColor: ['#00e6e6aa','#8b5cf6aa','#ec4899aa','#f59e0baa','#10b981aa'],
+        borderColor: ['#00e6e6','#8b5cf6','#ec4899','#f59e0b','#10b981'],
         borderWidth: 2, borderRadius: 6,
       }]
     },
@@ -950,6 +1133,40 @@ function generateReport(metadata) {
       }
     }
   });
+
+  // 5. TC5 Ground Truth — Intra-group similarity by persona
+  const gtResult = ${JSON.stringify(results.tc5_groundTruth || null)};
+  if (gtResult && !gtResult.skipped) {
+    const gtIntraData = Object.entries(gtResult.avgIntraCluster || {})
+      .filter(([_, v]) => v > 0)
+      .map(([g, v]) => ({ group: g, value: parseFloat(v.toFixed(4)) }));
+    if (gtIntraData.length > 0) {
+      new Chart(document.getElementById('gtIntraChart'), {
+        type: 'bar',
+        data: {
+          labels: gtIntraData.map(d => d.group),
+          datasets: [{
+            label: 'Avg Intra-group Similarity',
+            data: gtIntraData.map(d => d.value),
+            backgroundColor: gtIntraData.map(d => (COLORS[d.group] || '#6b7280') + 'aa'),
+            borderColor: gtIntraData.map(d => COLORS[d.group] || '#6b7280'),
+            borderWidth: 2, borderRadius: 6,
+          }, {
+            label: 'Avg Inter-group (baseline)',
+            data: gtIntraData.map(() => gtResult.avgInterCluster || 0),
+            type: 'line',
+            borderColor: '#ef4444', borderDash: [5,3], borderWidth: 2,
+            pointRadius: 0, fill: false,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } },
+          scales: { y: { min: 0, max: 1, grid: { color: '#2a2a3e' } }, x: { grid: { display: false } } }
+        }
+      });
+    }
+  }
 </script>
 </body>
 </html>`;
@@ -986,11 +1203,47 @@ async function main() {
     log(`⚠️  Không lấy được training status: ${err.message}`);
   }
 
+  // Tự động kiểm tra và huấn luyện nếu có bài hát mới chưa có vector
+  try {
+    const allSongIds = Object.values(metadata.songClusters).flat();
+    const untrainedSongsCount = await prisma.song.count({
+      where: {
+        id: { in: allSongIds },
+        contentVector: null
+      }
+    });
+
+    if (untrainedSongsCount > 0) {
+      log(`⚠️  Phát hiện ${untrainedSongsCount} bài hát test chưa được tính toán contentVector!`);
+      log('🤖 Đang tự động kích hoạt tiến trình huấn luyện ML API (factors=16)...');
+      const trainRes = await fetch(`${ML_API_URL}/train?factors=16`, { method: 'POST' });
+      if (!trainRes.ok) throw new Error(`Không thể bắt đầu training: status ${trainRes.status}`);
+      log('⏳ Tiến trình huấn luyện đã bắt đầu. Đang đợi hoàn tất...');
+      
+      let attempts = 0;
+      while (attempts < 30) {
+        await new Promise(r => setTimeout(r, 1000));
+        const statusData = await fetchML('/train/status');
+        if (statusData.status === 'success' && statusData.is_training === false) {
+          log('✅ Huấn luyện hoàn tất thành công!');
+          results.trainingStatus = statusData;
+          break;
+        }
+        attempts++;
+      }
+    }
+  } catch (trainErr) {
+    log(`❌ Lỗi khi tự động huấn luyện: ${trainErr.message}`);
+  }
+
   try {
     await runTC1(metadata);
     await runTC2(metadata);
     await runTC3(metadata);
     await runTC4(metadata);
+    // TC5: ground truth validation — cần ground_truth.json từ seed_interactions.py
+    const groundTruthPath = path.join(__dirname, '..', 'ml-service', 'ground_truth.json');
+    await runTC5(groundTruthPath);
   } catch (err) {
     console.error('\n❌ Lỗi khi chạy tests:', err.message);
     console.error(err.stack);
@@ -1010,8 +1263,10 @@ async function main() {
   const tc3Total = results.tc3_hybrid.filter(t => !t.error).length;
   const tc4Pass = results.tc4_similar.filter(t => t.pass && !t.error).length;
   const tc4Total = results.tc4_similar.filter(t => !t.error).length;
-  const total = tc1Total + 1 + tc3Total + tc4Total;
-  const passed = tc1Pass + tc2Pass + tc3Pass + tc4Pass;
+  const tc5Pass = results.tc5_groundTruth?.overallPass ? 1 : 0;
+  const tc5Total = results.tc5_groundTruth?.skipped ? 0 : 1;
+  const total = tc1Total + 1 + tc3Total + tc4Total + tc5Total;
+  const passed = tc1Pass + tc2Pass + tc3Pass + tc4Pass + tc5Pass;
 
   console.log('\n╔══════════════════════════════════════════════════════════╗');
   console.log('║                 🏁 KẾT QUẢ KIỂM THỬ                   ║');
@@ -1020,6 +1275,7 @@ async function main() {
   console.log(`║  TC2 Content Vec   : ${tc2Pass}/1 PASS (separation ${(results.tc2_content.separation||0).toFixed(4)})   ║`);
   console.log(`║  TC3 Hybrid Rec    : ${tc3Pass}/${tc3Total} PASS                        ║`);
   console.log(`║  TC4 Similar Songs : ${tc4Pass}/${tc4Total} PASS                        ║`);
+  console.log(`║  TC5 Ground Truth  : ${tc5Pass}/${tc5Total} PASS                        ║`);
   console.log('╠══════════════════════════════════════════════════════════╣');
   console.log(`║  TỔNG: ${passed}/${total} PASS (${Math.round(passed/total*100)}%)                          ║`);
   console.log('╠══════════════════════════════════════════════════════════╣');

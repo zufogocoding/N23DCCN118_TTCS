@@ -161,8 +161,10 @@ class ImplicitALSModel:
         if self.model is None:
             raise ValueError("Model is not trained yet.")
         
-        user_factors = self.model.user_factors
-        song_factors = self.model.item_factors
+        # Because the model is trained with item_user_matrix (transposed, where items are rows and users are columns),
+        # implicit's user_factors corresponds to items (songs) and item_factors corresponds to users.
+        user_factors = self.model.item_factors
+        song_factors = self.model.user_factors
 
         # In newer versions of implicit, user_factors/item_factors are Decomposition objects,
         # and we can extract the raw numpy arrays from their .factors attribute if present.
