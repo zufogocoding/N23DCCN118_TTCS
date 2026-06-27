@@ -10,11 +10,13 @@ const recommendationController = {
    */
   calculateAdaptiveWeight: (genreCount) => {
     if (genreCount <= 0) return { collabWeight: 0.7, contentWeight: 0.3 };
-    // 1 genre → 30% content (default)
-    // 2 genres → 45% content
-    // 3 genres → 58% content
-    // 4+ genres → 70% content
-    const contentWeight = Math.min(0.30 + (genreCount - 1) * 0.14, 0.72);
+    // Few genres → more content (narrow focus within known genre)
+    // Many genres → more collab (leverage cross-genre patterns from similar users)
+    // 1 genre  → content 0.50, collab 0.50
+    // 2 genres → content 0.40, collab 0.60
+    // 3 genres → content 0.30, collab 0.70
+    // 4+ genres → content 0.20, collab 0.80
+    const contentWeight = Math.max(0.50 - (genreCount - 1) * 0.10, 0.20);
     const collabWeight = 1.0 - contentWeight;
     return {
       collabWeight: parseFloat(collabWeight.toFixed(4)),
